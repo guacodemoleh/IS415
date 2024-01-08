@@ -9,7 +9,7 @@ date-modified: "last-modified"
 
 # Introduction
 
-Thematic mapping involces the use of map symbols to visualise selected properties of geographic features that are not naturally visible, such as population, temperature, crime rates and property prices.
+Thematic mapping involves the use of map symbols to visualise selected properties of geographic features that are not naturally visible, such as population, temperature, crime rates and property prices.
 
 Geovisualisation works by providing graphical ideation to render a place, phenomenon or a process.
 

@@ -11,7 +11,7 @@
     "href": "Hands-on_Ex/Hands-on_Ex02/Hands-on_Ex02.html",
     "title": "Hands-on Exercise 2: Thematic Mapping and Geovisualisation with R",
     "section": "",
-    "text": "Thematic mapping involces the use of map symbols to visualise selected properties of geographic features that are not naturally visible, such as population, temperature, crime rates and property prices.\nGeovisualisation works by providing graphical ideation to render a place, phenomenon or a process."
+    "text": "Thematic mapping involves the use of map symbols to visualise selected properties of geographic features that are not naturally visible, such as population, temperature, crime rates and property prices.\nGeovisualisation works by providing graphical ideation to render a place, phenomenon or a process."
   },
   {
     "objectID": "Hands-on_Ex/Hands-on_Ex02/Hands-on_Ex02.html#importing-geospatial-data-into-rstudio",
