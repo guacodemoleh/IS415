@@ -1,0 +1,239 @@
+---
+title: "Hands-on Exercise 2: Thematic Mapping and Geovisualisation with R"
+author: "Victoria Grace ANN"
+execute: 
+  warning: false
+date: "6 January, 2024"
+date-modified: "last-modified"
+---
+
+# Introduction
+
+Thematic mapping involces the use of map symbols to visualise selected properties of geographic features that are not naturally visible, such as population, temperature, crime rates and property prices.
+
+Geovisualisation works by providing graphical ideation to render a place, phenomenon or a process.
+
+# Setting up
+
+*tmap* package is used for this exercise. To install these packages in RStudio:
+
+```{r}
+pacman::p_load(sf, tmap, tidyverse)
+```
+
+## Importing Geospatial Data into RStudio
+
+```{r}
+mpsz <- st_read(dsn = "data/geospatial", 
+                layer = "MP14_SUBZONE_WEB_PL")
+```
+
+Examine the `mpsz` content by parsing:
+
+```{r}
+mpsz
+```
+
+## Importing Attribute Data into RStudio
+
+After downloading the *respopagessex2011to2020.csv* file, save the file into an R dataframe, *popdata*.
+
+Access the csv file using *read_csv()* in the **readr** package:
+
+```{r}
+popdata <- read_csv("data/aspatial/respopagesextod2011to2020.csv")
+
+show_col_types = FALSE
+```
+
+# Data preparation
+
+Focusing on year 2020, prepare a data table.It should include variables PA, SZ, YOUNG, ECONOMY ACTIVE, AGED, TOTAL, DEPENDENCY.
+
+-   YOUNG: age group 0 to 4 until age group 20 to 24
+
+-   ECONOMY ACTIVE: age group 25-29 until age group 60-64
+
+-   AGED: age group 65 and above
+
+-   TOTAL: all age groups, and
+
+-   DEPENDENCY: the ratio between young and aged against economy active group.
+
+## Data wrangling
+
+These are the following wrangling and transformation functions that will be used: - *pivot_wider()* from **tidyr** package - *mutate(), filter(), group_by()* and *select()* from **dplyr** package
+
+*Note: Added additional argument, .groups, in the summarise() function. Error occurred initially.*
+
+```{r}
+popdata2020 <- popdata %>%
+  filter(Time == 2020) %>%
+  group_by(PA, SZ, AG) %>%
+  summarise(`POP` = sum(`Pop`), .groups = "drop") %>%
+  ungroup() %>%
+  pivot_wider(names_from=AG, 
+              values_from=POP) %>%
+  mutate(YOUNG = rowSums(.[3:6])
+         +rowSums(.[12])) %>%
+mutate(`ECONOMY ACTIVE` = rowSums(.[7:11])+
+rowSums(.[13:15]))%>%
+mutate(`AGED`=rowSums(.[16:21])) %>%
+mutate(`TOTAL`=rowSums(.[3:21])) %>%  
+mutate(`DEPENDENCY` = (`YOUNG` + `AGED`)
+/`ECONOMY ACTIVE`) %>%
+  select(`PA`, `SZ`, `YOUNG`, 
+       `ECONOMY ACTIVE`, `AGED`, 
+       `TOTAL`, `DEPENDENCY`)
+```
+
+## Joining attribute data and geospatial data
+
+Before performing the georelational join, the values in the PA and SZ fields need an uppercase conversion. The SUBZONE_N and PLN_AREA_N are already in uppercase.
+
+```{r}
+popdata2020 <- popdata2020 %>%
+  mutate_at(.vars = vars(PA, SZ), 
+          .funs = list(toupper)) %>%
+  filter(`ECONOMY ACTIVE` > 0)
+```
+
+Next, *left_join()* of **dplyr** is used to join the geographical data and attribute table using planning subzone name e.g. *SUBZONE_N* and *SZ* as the common identifier.
+
+```{r}
+mpsz_pop2020 <- left_join(mpsz, popdata2020,
+                          by = c("SUBZONE_N" = "SZ"))
+```
+
+-   The *left_join()* from **dplyr** package is used with `mpsz` simple feature data frame as the left data table is to ensure that the output will be a simple feature dataframe.
+
+Save the changes.
+
+```{r}
+write_rds(mpsz_pop2020, "data/rds/mpszpop2020.rds")
+```
+
+-   RDS files take less space than textual data formats like CSV, JSON. Further, RDS also reads and writes faster than those.
+
+# Choropleth Mapping Geospatial Data Using *tmap*
+
+Choropleth mapping is the symbolisation of enumeration units, including countries, provinces, states, or census units. This involves the use of area patterns or graduated colours.
+
+**Scenario** A social scientist may need to use a choropleth map to portray the spatial distribution of aged population of Singapore w.r.t the Master Plan 2014 Subzone Boundary.
+
+There are two approaches to prepare thematic maps using *tmap*: 1. Plotting a quick thematic map using *qtm()* 2. Plotting a customisable thematic map using *tmap* elements
+
+## Method 1: Plotting a quick choropleth map using *qtm()*
+
+```{r}
+tmap_mode("plot")
+qtm(mpsz_pop2020, 
+    fill = "DEPENDENCY")
+```
+
+-   *tmap_mode()* with "plot" option is used to produce a static map. For interactive mode, "view" option should be used.
+-   *fill* argument is used to map the attribute (i.e. DEPENDENCY)
+
+## Method 2: Creating a choropleth map using *tmap's* elements
+
+```{r}
+tm_shape(mpsz_pop2020)+
+  tm_fill("DEPENDENCY", 
+          style = "quantile", 
+          palette = "Blues",
+          title = "Dependency ratio") +
+  tm_layout(main.title = "Distribution of Dependency Ratio by planning subzone",
+            main.title.position = "center",
+            main.title.size = 1.2,
+            legend.height = 0.45, 
+            legend.width = 0.35,
+            frame = TRUE) +
+  tm_borders(alpha = 0.5) +
+  tm_compass(type="8star", size = 2) +
+  tm_scale_bar() +
+  tm_grid(alpha =0.2) +
+  tm_credits("Source: Planning Sub-zone boundary from Urban Redevelopment Authorithy (URA)\n and Population data from Department of Statistics DOS", 
+             position = c("left", "bottom"))
+```
+
+The following subsection explains the *tmap* functions used to plot these elements.
+
+### Drawing a base map
+
+The basic building block of **tmap** is *tm_shape* followed by one or more layer elements such as *tm_fill()* or *tm_polygons()*.
+
+*tm_shape()* is used to define the input data *mpsz_pop2020* and *tm_polygons()* is used to draw the planning subzone polygons
+
+```{r}
+tm_shape(mpsz_pop2020) + tm_polygons()
+```
+
+### Drawing a choropleth map using *tm_polygons()*
+
+```{r}
+tm_shape(mpsz_pop2020) + tm_polygons("DEPENDENCY")
+```
+
+-   The default interval bin is called "pretty". A detailed discussion of the classification methods supported by **tmap** will be provided in a later sub-section.
+-   The default colour scheme used is `YlOrRd` of ColorBrewer. More about the colour scheme can be learnt in a later section.
+
+### Drawing a choropleth map using *tm_fill()* and *tm_border()*
+
+*tm_polygons()* is a wrapper of *tm_fill()* and *tm_border()*. *tm_fill()* shades the polygons using the default colour scheme and *tm_borders()* adds the borders of the shapefile onto the choropleth map.
+
+Draw the choropleth map using *tm_fill()* alone,
+
+```{r}
+tm_shape(mpsz_pop2020)+
+  tm_fill("DEPENDENCY")
+```
+
+-   The planning subzones are shared according to the respective dependency values.
+
+*tm_boarders()* is used to draw up the boundaries of the subzones:
+
+```{r}
+tm_shape(mpsz_pop2020)+
+  tm_fill("DEPENDENCY") +
+  tm_borders(lwd = 0.1,  alpha = 1)
+```
+
+The alpha argument is used to define transparency number between 0 (totally transparent) and 1 (not transparent). By default, the alpha value of the col is used (normally 1).
+
+Beside alpha argument, there are three other arguments for tm_borders(), they are:
+
+-   col = border colour,
+-   lwd = border line width. The default is 1, and
+-   lty = border line type. The default is “solid”.
+
+## Data classification methods of *tmap*
+
+Classification helps to group a large number of observations into data ranges or classes.
+
+**tmap** provides a total of ten data classification methods (i.e. *fixed, sd, equal, pretty (default), quantile, kmeans, hclust, bclust, fisher, jenks*).
+
+To define a data classification method, the *style* argument of *tm_fill()* or *tm_polygons()* will be used.
+
+### Plotting choropleth maps with built-in classification
+
+Within the **tm_fill()** argument, the number of classes can be customised. First we will use the **jenks** method, which is also known as natural breaks, is based on natural groupings inherent in the data. Data is clustered into groups that minimise the within-group variance and maximises the between-group variance.
+
+```{r}
+tm_shape(mpsz_pop2020)+
+  tm_fill("DEPENDENCY",
+          n=5,
+          style="jenks") +
+  tm_borders(alpha=0.5)
+
+```
+
+Next, we will try the **equal** data classification method.
+```{r}
+tm_shape(mpsz_pop2020)+
+  tm_fill("DEPENDENCY",
+          n=5,
+          style="equal") +
+  tm_borders(alpha=0.5)
+
+```
+
