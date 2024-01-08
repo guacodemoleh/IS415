@@ -3,7 +3,8 @@ title: "Hands-on Exercise 1: Geospatial Data Wrangling with R"
 author: "Victoria Grace ANN"
 execute: 
   warning: false
-date: "`r Sys.Date()`"
+date: "4 January, 2024"
+date-modified: "last-modified"
 ---
 
 # Getting Started
@@ -217,7 +218,7 @@ mpsz3414$Area <- mpsz3414 %>%
 
 2. To compute the density, use *mutate()* in the **dplyr** package.
 ```{r}
-mpsz3414$Area <- mpsz3414 %>%
+mpsz3414 <- mpsz3414 %>%
   mutate(`PreSch Density` = `PreSch Count`/ Area * 1000000)
 ```
 

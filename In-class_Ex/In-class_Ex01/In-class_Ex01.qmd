@@ -1,0 +1,46 @@
+---
+title: "In-class Exercise 1"
+author: "Victoria Grace ANN"
+execute: 
+  warning: false
+date: "8 January, 2024"
+date-modified: "last-modified"
+---
+
+
+
+```{r}
+
+```
+
+
+
+```{r}
+
+```
+
+
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
+
+```{r}
+
+```
