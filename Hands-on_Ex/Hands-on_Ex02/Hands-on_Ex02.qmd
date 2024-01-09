@@ -228,6 +228,7 @@ tm_shape(mpsz_pop2020)+
 ```
 
 Next, we will try the **equal** data classification method.
+
 ```{r}
 tm_shape(mpsz_pop2020)+
   tm_fill("DEPENDENCY",
@@ -236,4 +237,3 @@ tm_shape(mpsz_pop2020)+
   tm_borders(alpha=0.5)
 
 ```
-
