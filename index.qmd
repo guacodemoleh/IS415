@@ -1,7 +1,10 @@
 ---
-title: "IS415-Geospatial Analytics and Applications"
+title: "IS415-Geospatial Analytics and Applications Journey"
+author: Victoria Grace ANN
 ---
 
-Welcome to **IS415 Geospatial Analytics and Applications**
+![](img/linkedin_logo.png){width="30"}
 
-This is the course website of IS415! I study this in AY2023/24 Term 2. You will find my course work on this website.
+Welcome to **Geospatial Analytics and Applications**!
+
+This is the course website of IS415. I study this in AY2023/24 Term 2. You will find my coursework on this website.
