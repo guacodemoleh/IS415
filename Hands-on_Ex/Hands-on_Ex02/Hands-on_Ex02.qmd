@@ -15,6 +15,13 @@ Geovisualisation works by providing graphical ideation to render a place, phenom
 
 # Setting up
 
+## Data 
+
+- Master Plan 2014 Subzone Boundary (Web) from [data.gov.sg ](https://data.gov.sg)
+- Singapore Residents by Planning Area / Subzone, Age Group, Sex and Type of Dwelling, June 2011-2020 in csv format from [Department of Statistics, Singapore] (https://singstat.gov.sg)
+
+## Package
+
 *tmap* package is used for this exercise. To install these packages in RStudio:
 
 ```{r}
@@ -218,6 +225,9 @@ To define a data classification method, the *style* argument of *tm_fill()* or *
 
 Within the **tm_fill()** argument, the number of classes can be customised. First we will use the **jenks** method, which is also known as natural breaks, is based on natural groupings inherent in the data. Data is clustered into groups that minimise the within-group variance and maximises the between-group variance.
 
+The following code chunk depicts a quantile data classification that uses 5 classes.
+
+#### jenks
 ```{r}
 tm_shape(mpsz_pop2020)+
   tm_fill("DEPENDENCY",
@@ -227,6 +237,7 @@ tm_shape(mpsz_pop2020)+
 
 ```
 
+#### equal
 Next, we will try the **equal** data classification method.
 
 ```{r}
@@ -237,3 +248,107 @@ tm_shape(mpsz_pop2020)+
   tm_borders(alpha=0.5)
 
 ```
+-   The distribution of quantile data classification is more evenly distributed than the equal data classification method.
+
+
+**tmap** actually has 10 data classification methods:
+- jenks (or natural breaks as mentioned)
+- equal (as mentioned)
+- fixed
+- sd
+- pretty (default)
+- quantile
+- kmeans
+- fisher
+- hclust
+- bclust
+
+Looking closer at...
+#### sd
+```{r}
+tm_shape(mpsz_pop2020)+
+  tm_fill("DEPENDENCY",
+          n=5,
+          style="sd") +
+  tm_borders(alpha=0.5)
+
+```
+#### kmeans 
+```{r}
+tm_shape(mpsz_pop2020)+
+  tm_fill("DEPENDENCY",
+          n=5,
+          style="kmeans") +
+  tm_borders(alpha=0.5)
+
+```
+
+```{r}
+tm_shape(mpsz_pop2020)+
+  tm_fill("DEPENDENCY",
+          n=10,
+          style="kmeans") +
+  tm_borders(alpha=0.5)
+
+```
+
+#### fisher
+```{r}
+tm_shape(mpsz_pop2020)+
+  tm_fill("DEPENDENCY",
+          n=5,
+          style="fisher") +
+  tm_borders(alpha=0.5)
+
+```
+- At a glance, using Fisher and KMeans lead to similar visualisations.
+
+#### hclust
+**hclust** is hierarchical clustering. It is a method aiming to create a hierarchy of clusters based on their similarity. Each data point starts as an individual cluster and then progressively merges or splits clusters until a stopping criterion is met. 
+```{r}
+tm_shape(mpsz_pop2020)+
+  tm_fill("DEPENDENCY",
+          n=5,
+          style="hclust") +
+  tm_borders(alpha=0.5)
+
+```
+```{r}
+tm_shape(mpsz_pop2020)+
+  tm_fill("DEPENDENCY",
+          n=20,
+          style="hclust") +
+  tm_borders(alpha=0.5)
+
+```
+
+#### bclust
+**bclust** is bagged clustering which creates multiple subsets of the original dataset through resampling. Each subset is then used to train an individual clustering model, and the final cluster assignments are obtained by combining the results from all models.
+```{r}
+tm_shape(mpsz_pop2020)+
+  tm_fill("DEPENDENCY",
+          n=5,
+          style="bclust") +
+  tm_borders(alpha=0.5)
+
+```
+
+```{r}
+tm_shape(mpsz_pop2020)+
+  tm_fill("DEPENDENCY",
+          n=4,
+          style="bclust") +
+  tm_borders(alpha=0.5)
+
+```
+```
+
+### Plotting choropleth maps with custom breaks
+Breakpoints can be set explicitly to override the default category breaks. This can be done with the help of the *breaks* argument in *tm_fill()*. For n categories, n+1 elements must be included in the *breaks*.
+
+Get descriptive statistics before setting the break points.
+```{r}
+summary(mpsz_pop2020$DEPENDENCY)
+
+```
+
