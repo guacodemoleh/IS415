@@ -1,0 +1,20 @@
+---
+title: "Hands-on Exercise 8: Calibrating Hedonic Pricing Model for Private Highrise Property with GWR"
+author: "Victoria Grace ANN"
+execute: 
+  warning: false
+date: "27 February, 2024"
+date-modified: "last-modified"
+---
+# Overview
+**Geographically weighted regression (GWR)** is a spatial statistical technique that considers non-stationary variables, including but not withstanding climate, demographic factors, and physical environment characteristics. GWR also models local relationships between these independent variables and the outcome of interest, i.e. dependent variable. 
+
+This exercise is working on building hedonic pricing models using GWR methods. The dependent variable is the condominim resale prices in 2015, and the independent variables are divided in to either structural and locational.
+
+# Data used 
+- Geospatial: MP14_SUBZONE_WEB_PL
+- Aspatial: condo_resale_2015.csv
+
+# Set-up
+
+

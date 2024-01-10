@@ -1,6 +1,6 @@
 ---
 title: "IS415 Geospatial Analytics and Applications Journey"
-author: Victoria Grace ANN  <a href="https://www.linkedin.com/in/victoriagraceann2021/"><img src="img/linkedin_logo.png" alt="LinkedIn logo" width="30"></a> <a href="https://github.com/guacodemoleh"><img src="img/github_logo.png" alt="Github logo" width="30"></a>
+author: Victoria Grace ANN  <a href="https://www.linkedin.com/in/victoriagraceann2021/"><img src="img/linkedin_logo.png" alt="LinkedIn logo" width="30"></a> <a href="https://github.com/guacodemoleh"><img src="img/github_logo.png" alt="Github logo" width="30"></a> 
 ---
 
 Welcome to **Geospatial Analytics and Applications**!
