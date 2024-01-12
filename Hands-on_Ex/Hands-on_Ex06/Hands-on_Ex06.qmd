@@ -1,0 +1,84 @@
+---
+title: "Hands-on Exercise 6: Global and Local Measures of Spatial Autocorrelation"
+author: "Victoria Grace ANN"
+execute: 
+  warning: false
+date: "9 February, 2024"
+date-modified: "last-modified"
+---
+
+These exercises trains on the collection of geospatial statistical methods specially designed for meaasuring global and local spatial association.
+
+These spatial statistics are well suited for: - detecting clusters or outliers - identifying hot spot or cold spot areas - assessing the assumptions of stationarity - identifying distances beyond which no discernible association obtains.
+
+# Content
+
+1.  What is Spatial Autocorrelation - Measures of Global Spatial Autocorrelation - Measures of Global High/Low Clustering
+
+2.  Introducing Localised Geospatial Analysis - Local Indicators of Spatial Association (LISA)
+
+3.  Cluster and Outlier Analysis - Local Moran and Local Geary - Moran scatterplot - LISA Cluster Map
+
+4.  Hot Spot and Cold Spot Areas Analysis - Getis and Ord's G-statistics
+
+5.  Case Studies
+
+# A. Global Measures of Spatial Autocorrelation (Hunan)
+
+## Overview
+
+In Section A, we are learning how to compute Global and Local Measure of SPatial Autocorrelation (GSLA) by using the **spdep** package. The aim of this exercise is to:
+
+-   import geospatial data using appropriate function(s) of **sf** package,
+
+-   import csv file using appropriate function of **readr** package,
+
+-   perform relational join using appropriate join function of **dplyr** package,
+
+-   compute Global Spatial Autocorrelation (GSA) statistics by using appropriate functions of **spdep** package,
+
+    -   plot Moran scatterplot,
+
+    -   compute and plot spatial correlogram using appropriate function of **spdep** package
+
+-   compute Local Indicator of Spatial Association (LISA) statistics for detecting clusters and outliers by using appropriate functions **spdep** package
+
+-   compute Getis-Ord's Gi-statistics for detecting hot spot and/or cold spot area by using appropriate functions of **spdep** package, and
+
+-   to visualise the analysis output by using tmap package.
+
+## Getting Started
+
+### Asking ourselves
+
+Policymakers need to verify if development has been evenly distributed or implemented within a county or province. Thus, this study involves the application of appropriate spatial statistical methods if the development is evenly distributed geographically.
+
+If the answer to that is **no**, then we should observe if there is the presence of spatial clustering. If the answer to this question is **yes**, then we should check where are these clusters.
+
+We are interested to examine the spatial pattern of a selected development indicator (i.e. GDP per capita) of Hunan Province, the People's Republic of China.
+
+### The Study Area and Data
+
+Two data sets will be used in this hands-on exercise:
+
+-   Hunan province administrative boundary layer at county level. This is a geospatial data set in ESRI shapefile format.
+
+-   Hunan_2012.csv: This csv file contains selected Hunan’s local development indicators in 2012.
+
+### Setting the Analytical Tools
+
+Before starting, ensure that **spdep**, **sf**, **tmap** and **tidyverse** packages of R are installed.
+
+-   sf is use for importing and handling geospatial data in R,
+
+-   tidyverse is mainly use for wrangling attribute data in R,
+
+-   spdep will be used to compute spatial weights, global and local spatial autocorrelation statistics, and
+
+-   tmap will be used to prepare cartographic quality chropleth map.
+
+```{r}
+pacman::p_load(sf, spdep, tmap, tidyverse)
+```
+
+

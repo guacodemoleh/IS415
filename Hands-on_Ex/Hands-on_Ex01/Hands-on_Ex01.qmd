@@ -158,33 +158,40 @@ Breakdown of the above arguments:
 
 2.  *crs* - to provide the coordinates system in EPSG format. (Search for country EPSG codes at [epsg.io](epsg.io))
 
-3. *%>%* is used to nest *st_transform()* to transform the newly created simple feature data frame into svy21 projected coordinates system.
+3.  *%\>%* is used to nest *st_transform()* to transform the newly created simple feature data frame into svy21 projected coordinates system.
 
 Examine content of newly created simple feature data frame:
+
 ```{r}
 glimpse(listings_sf)
 ```
+
 A new column called `geometry` has been added into the data frame. The `longitude` and `latitude` columns have been dropped from the data frame.
 
 # Geoprocessing with sf package
+
 ## Buffering
+
 Take for instance that the authority wants to acquire 5 metres fo reserved land on both sides of the current cycling path.
 
-Such a scenario is possible if the authority is planning to upgrade an exiting cycling path. 
+Such a scenario is possible if the authority is planning to upgrade an exiting cycling path.
 
 **Skill**: Determining the extent of the land required to acquire and the total land area.
 
-1. *st_buffer()* of **sf** package is used to compute the 5-metre buffers around cycling paths
+1.  *st_buffer()* of **sf** package is used to compute the 5-metre buffers around cycling paths
+
 ```{r}
 buffer_cycling <- st_buffer(cyclingpath, dist=5, nQuadSegs=30)
 ```
 
-2. Calculate the area of the buffers as shown below:
+2.  Calculate the area of the buffers as shown below:
+
 ```{r}
 buffer_cycling$AREA <- st_area(buffer_cycling)
 ```
 
-3. *sum()* of Base R is used to derive the total land involved in this upgrade.
+3.  *sum()* of Base R is used to derive the total land involved in this upgrade.
+
 ```{r}
 sum(buffer_cycling$AREA)
 ```
@@ -193,30 +200,35 @@ sum(buffer_cycling$AREA)
 
 Case: A pre-school service group wants to find out the number of preschools in each planning subzone.
 
-1. Identify preschools located inside each subzone using *st_intersects*. Then use *length()* of Base R to calculate the number of preschools that fall within each subzone.
+1.  Identify preschools located inside each subzone using *st_intersects*. Then use *length()* of Base R to calculate the number of preschools that fall within each subzone.
+
 ```{r}
 mpsz3414$`PreSch Count`<- lengths(st_intersects(mpsz3414, preschool3414))
 ```
+
 **Note**: *st_intersects* and *st_intersection* are two different functions.
 
 Check summary statistics of newly derived *PreSch Count* field by using *summary()* as shown in the code chunk below.
+
 ```{r}
 summary(mpsz3414$`PreSch Count`)
 ```
 
 To list the planning subzone with the most number of preschools, the *top_n()* of the **dplyr** package is used:
+
 ```{r}
 top_n(mpsz3414, 1, `PreSch Count`)
 ```
 
-**Calculate the density of preschools by planning subzone**
-1. Use *st_area()* of **sf** package to get the area of each planning subzone
+**Calculate the density of preschools by planning subzone** 1. Use *st_area()* of **sf** package to get the area of each planning subzone
+
 ```{r}
 mpsz3414$Area <- mpsz3414 %>%
   st_area()
 ```
 
-2. To compute the density, use *mutate()* in the **dplyr** package.
+2.  To compute the density, use *mutate()* in the **dplyr** package.
+
 ```{r}
 mpsz3414 <- mpsz3414 %>%
   mutate(`PreSch Density` = `PreSch Count`/ Area * 1000000)
@@ -225,11 +237,13 @@ mpsz3414 <- mpsz3414 %>%
 # Exploratory Data Analysis (error from this section onwards)
 
 Apply function **hist()**:
+
 ```{r}
 hist(mpsz3414$`PreSch Density`)
 ```
 
 Using *ggplot2* function can enhance the presentation of the histogram.
+
 ```{r}
 ggplot(data=mpsz3414, 
        aes(x= as.numeric(`PreSch Density`)))+
@@ -243,6 +257,7 @@ ggplot(data=mpsz3414,
 ```
 
 To observe the relationship between Pre-school Density and Pre-school Count, we can produce their scatterplot.
+
 ```{r}
 ggplot(data=mpsz3414, 
        aes(y = `PreSch Count`, 
@@ -255,5 +270,3 @@ ggplot(data=mpsz3414,
       x = "Pre-school density (per km sq)",
       y = "Pre-school count")
 ```
-
-
