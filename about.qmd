@@ -1,9 +1,5 @@
 ---
-title: "About"
+title: "About Victoria"
 ---
 
-About this site
-
-```{r}
-1 + 1
-```
+Check out this space soon!

@@ -6,3 +6,11 @@ author: Victoria Grace ANN  <a href="https://www.linkedin.com/in/victoriagracean
 Welcome to **Geospatial Analytics and Applications**!
 
 This is the course website of IS415. I am studying this in AY2023/24 Term 2. You will find my coursework on this website.
+
+# What is Geospatial Data and Analytics?
+Geospatial data refers to information including both locational and attribute data, often involving large sets of diverse data sources. 
+
+Geospatial analytics is the process of analysing and visualising data to gain insights and predictions. It combines traditional data with location and temporal information to create data visualisations like maps, graphs and statistics, enabling a more comprehensive understanding of events and patterns. The overlaying and integration of various data layers reveal relationships and patterns within and across geospatial variables.
+
+[Source: IBM](https://www.ibm.com/topics/geospatial-data)
+

@@ -31,6 +31,8 @@ website:
           - text: "In-class Exercise 7"
           - text: "In-class Exercise 8"
       - text: "Take-home Exercises"
+        menu: 
+          - text: "Take-home Exercise 1"
     right:
       - href: index.qmd
         text: Home
