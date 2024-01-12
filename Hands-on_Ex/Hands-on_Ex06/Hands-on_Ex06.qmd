@@ -333,7 +333,7 @@ summary(bperm$res[1:999])
 
 ```{r}
 hist(bperm$res, freq=TRUE, breaks=20, xlab="Simulated Geary c")
-abline(v=1, col="red") 
+abline(v=1, col="red")  
 ```
 
 # Spatial Correlogram
