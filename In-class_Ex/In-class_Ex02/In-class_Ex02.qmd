@@ -7,4 +7,18 @@ date: "15 January, 2024"
 date-modified: "last-modified"
 ---
 
+Packages that will be used,
 
+-   arrow
+
+-   lubridate
+
+-   tidyverse
+
+-   tmap
+
+-   sf
+
+```{r}
+pacman::p_load(arrow, lubridate, tidyverse, tmap, sf)
+```
