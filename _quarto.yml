@@ -24,6 +24,7 @@ website:
       - text: "In-class Exercises"
         menu: 
           - text: "In-class Exercise 2"
+            href: "In-class_Ex/In-class_Ex02/In-class_Ex02.html"
           - text: "In-class Exercise 3"
           - text: "In-class Exercise 4"
           - text: "In-class Exercise 5"
