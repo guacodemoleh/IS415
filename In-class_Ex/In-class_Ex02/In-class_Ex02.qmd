@@ -1,17 +1,26 @@
 ---
-title: "In-class_Ex02"
+title: "In-class Exercise 2"
 author: "Victoria Grace ANN"
 execute: 
   warning: false
+  eval: true
+  echo: true
+format:  
+  html: 
+    code-fold: true
+    code-summary: "Show the code"
+    toc-depth: 4
 date: "15 January, 2024"
 date-modified: "last-modified"
+editor: visual
 ---
 
-Packages that will be used,
+# Data preparation
+Packages that will be used:
 
--   arrow
+-   [arrow](https://arrow.apache.org/docs/r/), to read and write Parquet files (format which data is in)
 
--   lubridate
+-   lubridate, to work with time-related data more easily
 
 -   tidyverse
 
@@ -20,6 +29,90 @@ Packages that will be used,
 -   sf
 
 ```{r}
-pacman::p_load(arrow, lubridate, tidyverse, tmap, sf)
+pacman::p_load(arrow, lubridate, tidyverse, tmap, sf) 
 ```
- 
+
+## Importing Grab Posisi Dataset
+
+```{r}
+df <- read_parquet("data/GrabPosisi/part-00000-8bbff892-97d2-4011-9961-703e38972569.c000.snappy.parquet")
+```
+
+```{r}
+
+head(df)
+```
+
+-   One trajectory id, trj_id, represents one Grab ride.
+
+-   There may be multiple repeated trj_id as the ride data is collected every minute
+
+## 
+```{r}
+df$pingtimestamp <- as_datetime(df$pingtimestamp) ## $ to overwrite the variable in df
+```
+
+Check updated df
+```{r}
+head(df)
+```
+- `pingtimestamp` looks better now
+
+## Extracting trip starting locations
+```{r}
+# Using lubridate
+origin_df <- df %>%
+  group_by(trj_id) %>%
+  arrange(pingtimestamp) %>% 
+  filter(row_number()==1) %>% 
+  mutate(weekday = wday(pingtimestamp, 
+                        label=TRUE,
+                        abbr=TRUE), 
+         start_hr = factor(hour(pingtimestamp)), 
+         day = factor(mday(pingtimestamp)))
+```
+
+```{r}
+# head(origin_df)
+```
+
+-   *arranges* sorts out the time stamps in ascending order.
+-   The first row of each trajectory data contains the trip origin's coordinates.
+-   `wday` defines the workday.
+
+## Extracting trip ending locations
+```{r}
+dest_df <- df %>%
+  group_by(trj_id) %>%
+  arrange(desc(pingtimestamp)) %>% 
+  filter(row_number()==1) %>% 
+  mutate(weekday = wday(pingtimestamp, 
+                        label=TRUE,
+                        abbr=TRUE), 
+         end_hr = factor(hour(pingtimestamp)), 
+         day = factor(mday(pingtimestamp)))
+```
+
+```{r}
+# head(dest_df)
+```
+
+
+## Overwrite the dataset with the new variables
+The original dataset takes up a lot of space.
+```{r}
+write_rds(origin_df,"data/rds/origin_df.rds")
+write_rds(dest_df,"data/rds/dest_df.rds")
+```
+-   Object classes will be intact
+-   Saving data in rds format also allows the updated dataframe to be reusable
+
+# Data importing
+In future, the files can be read as such,
+```{r}
+origin_df <- read_rds("data/rds/origin_df.rds")
+dest_df <- read_rds("data/rds/dest_df.rds")
+```
+
+**Homework: Hands-on Ex 3 and Data Preparation for Take-home Ex 1**
+

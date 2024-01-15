@@ -422,8 +422,43 @@
   {
     "objectID": "In-class_Ex/In-class_Ex02/In-class_Ex02.html",
     "href": "In-class_Ex/In-class_Ex02/In-class_Ex02.html",
-    "title": "In-class_Ex02",
+    "title": "In-class Exercise 2",
     "section": "",
-    "text": "Packages that will be used,\n\narrow\nlubridate\ntidyverse\ntmap\nsf\n\n\npacman::p_load(arrow, lubridate, tidyverse, tmap, sf)"
+    "text": "Packages that will be used:\n\narrow, to read and write Parquet files (format which data is in)\nlubridate, to work with time-related data more easily\ntidyverse\ntmap\nsf\n\n\n\nCode\npacman::p_load(arrow, lubridate, tidyverse, tmap, sf) \n\n\n\n\n\n\nCode\ndf &lt;- read_parquet(\"data/GrabPosisi/part-00000-8bbff892-97d2-4011-9961-703e38972569.c000.snappy.parquet\")\n\n\n\n\nCode\nhead(df)\n\n\n# A tibble: 6 × 9\n  trj_id driving_mode osname  pingtimestamp rawlat rawlng speed bearing accuracy\n  &lt;chr&gt;  &lt;chr&gt;        &lt;chr&gt;           &lt;int&gt;  &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;   &lt;int&gt;    &lt;dbl&gt;\n1 70014  car          android    1554943236   1.34   104.  18.9     248      3.9\n2 73573  car          android    1555582623   1.32   104.  17.7      44      4  \n3 75567  car          android    1555141026   1.33   104.  14.0      34      3.9\n4 1410   car          android    1555731693   1.26   104.  13.0     181      4  \n5 4354   car          android    1555584497   1.28   104.  14.8      93      3.9\n6 32630  car          android    1555395258   1.30   104.  23.2      73      3.9\n\n\n\nOne trajectory id, trj_id, represents one Grab ride.\nThere may be multiple repeated trj_id as the ride data is collected every minute\n\n\n\n\n\n\nCode\ndf$pingtimestamp &lt;- as_datetime(df$pingtimestamp) ## $ to overwrite the variable in df\n\n\nCheck updated df\n\n\nCode\nhead(df)\n\n\n# A tibble: 6 × 9\n  trj_id driving_mode osname  pingtimestamp       rawlat rawlng speed bearing\n  &lt;chr&gt;  &lt;chr&gt;        &lt;chr&gt;   &lt;dttm&gt;               &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;   &lt;int&gt;\n1 70014  car          android 2019-04-11 00:40:36   1.34   104.  18.9     248\n2 73573  car          android 2019-04-18 10:17:03   1.32   104.  17.7      44\n3 75567  car          android 2019-04-13 07:37:06   1.33   104.  14.0      34\n4 1410   car          android 2019-04-20 03:41:33   1.26   104.  13.0     181\n5 4354   car          android 2019-04-18 10:48:17   1.28   104.  14.8      93\n6 32630  car          android 2019-04-16 06:14:18   1.30   104.  23.2      73\n# ℹ 1 more variable: accuracy &lt;dbl&gt;\n\n\n\npingtimestamp looks better now\n\n\n\n\n\n\nCode\n# Using lubridate\norigin_df &lt;- df %&gt;%\n  group_by(trj_id) %&gt;%\n  arrange(pingtimestamp) %&gt;% \n  filter(row_number()==1) %&gt;% \n  mutate(weekday = wday(pingtimestamp, \n                        label=TRUE,\n                        abbr=TRUE), \n         start_hr = factor(hour(pingtimestamp)), \n         day = factor(mday(pingtimestamp)))\n\n\n\n\nCode\n# head(origin_df)\n\n\n\narranges sorts out the time stamps in ascending order.\nThe first row of each trajectory data contains the trip origin’s coordinates.\nwday defines the workday.\n\n\n\n\n\n\nCode\ndest_df &lt;- df %&gt;%\n  group_by(trj_id) %&gt;%\n  arrange(desc(pingtimestamp)) %&gt;% \n  filter(row_number()==1) %&gt;% \n  mutate(weekday = wday(pingtimestamp, \n                        label=TRUE,\n                        abbr=TRUE), \n         end_hr = factor(hour(pingtimestamp)), \n         day = factor(mday(pingtimestamp)))\n\n\n\n\nCode\n# head(dest_df)\n\n\n\n\n\nThe original dataset takes up a lot of space.\n\n\nCode\nwrite_rds(origin_df,\"data/rds/origin_df.rds\")\nwrite_rds(dest_df,\"data/rds/dest_df.rds\")\n\n\n\nObject classes will be intact\nSaving data in rds format also allows the updated dataframe to be reusable"
+  },
+  {
+    "objectID": "In-class_Ex/In-class_Ex02/In-class_Ex02.html#importing-grab-posisi-dataset",
+    "href": "In-class_Ex/In-class_Ex02/In-class_Ex02.html#importing-grab-posisi-dataset",
+    "title": "In-class Exercise 2",
+    "section": "",
+    "text": "Code\ndf &lt;- read_parquet(\"data/GrabPosisi/part-00000-8bbff892-97d2-4011-9961-703e38972569.c000.snappy.parquet\")\n\n\n\n\nCode\nhead(df)\n\n\n# A tibble: 6 × 9\n  trj_id driving_mode osname  pingtimestamp rawlat rawlng speed bearing accuracy\n  &lt;chr&gt;  &lt;chr&gt;        &lt;chr&gt;           &lt;int&gt;  &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;   &lt;int&gt;    &lt;dbl&gt;\n1 70014  car          android    1554943236   1.34   104.  18.9     248      3.9\n2 73573  car          android    1555582623   1.32   104.  17.7      44      4  \n3 75567  car          android    1555141026   1.33   104.  14.0      34      3.9\n4 1410   car          android    1555731693   1.26   104.  13.0     181      4  \n5 4354   car          android    1555584497   1.28   104.  14.8      93      3.9\n6 32630  car          android    1555395258   1.30   104.  23.2      73      3.9\n\n\n\nOne trajectory id, trj_id, represents one Grab ride.\nThere may be multiple repeated trj_id as the ride data is collected every minute"
+  },
+  {
+    "objectID": "In-class_Ex/In-class_Ex02/In-class_Ex02.html#section",
+    "href": "In-class_Ex/In-class_Ex02/In-class_Ex02.html#section",
+    "title": "In-class Exercise 2",
+    "section": "",
+    "text": "Code\ndf$pingtimestamp &lt;- as_datetime(df$pingtimestamp) ## $ to overwrite the variable in df\n\n\nCheck updated df\n\n\nCode\nhead(df)\n\n\n# A tibble: 6 × 9\n  trj_id driving_mode osname  pingtimestamp       rawlat rawlng speed bearing\n  &lt;chr&gt;  &lt;chr&gt;        &lt;chr&gt;   &lt;dttm&gt;               &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;   &lt;int&gt;\n1 70014  car          android 2019-04-11 00:40:36   1.34   104.  18.9     248\n2 73573  car          android 2019-04-18 10:17:03   1.32   104.  17.7      44\n3 75567  car          android 2019-04-13 07:37:06   1.33   104.  14.0      34\n4 1410   car          android 2019-04-20 03:41:33   1.26   104.  13.0     181\n5 4354   car          android 2019-04-18 10:48:17   1.28   104.  14.8      93\n6 32630  car          android 2019-04-16 06:14:18   1.30   104.  23.2      73\n# ℹ 1 more variable: accuracy &lt;dbl&gt;\n\n\n\npingtimestamp looks better now"
+  },
+  {
+    "objectID": "In-class_Ex/In-class_Ex02/In-class_Ex02.html#extracting-trip-starting-locations",
+    "href": "In-class_Ex/In-class_Ex02/In-class_Ex02.html#extracting-trip-starting-locations",
+    "title": "In-class Exercise 2",
+    "section": "",
+    "text": "Code\n# Using lubridate\norigin_df &lt;- df %&gt;%\n  group_by(trj_id) %&gt;%\n  arrange(pingtimestamp) %&gt;% \n  filter(row_number()==1) %&gt;% \n  mutate(weekday = wday(pingtimestamp, \n                        label=TRUE,\n                        abbr=TRUE), \n         start_hr = factor(hour(pingtimestamp)), \n         day = factor(mday(pingtimestamp)))\n\n\n\n\nCode\n# head(origin_df)\n\n\n\narranges sorts out the time stamps in ascending order.\nThe first row of each trajectory data contains the trip origin’s coordinates.\nwday defines the workday."
+  },
+  {
+    "objectID": "In-class_Ex/In-class_Ex02/In-class_Ex02.html#extracting-trip-ending-locations",
+    "href": "In-class_Ex/In-class_Ex02/In-class_Ex02.html#extracting-trip-ending-locations",
+    "title": "In-class Exercise 2",
+    "section": "",
+    "text": "Code\ndest_df &lt;- df %&gt;%\n  group_by(trj_id) %&gt;%\n  arrange(desc(pingtimestamp)) %&gt;% \n  filter(row_number()==1) %&gt;% \n  mutate(weekday = wday(pingtimestamp, \n                        label=TRUE,\n                        abbr=TRUE), \n         end_hr = factor(hour(pingtimestamp)), \n         day = factor(mday(pingtimestamp)))\n\n\n\n\nCode\n# head(dest_df)"
+  },
+  {
+    "objectID": "In-class_Ex/In-class_Ex02/In-class_Ex02.html#overwrite-the-dataset-with-the-new-variables",
+    "href": "In-class_Ex/In-class_Ex02/In-class_Ex02.html#overwrite-the-dataset-with-the-new-variables",
+    "title": "In-class Exercise 2",
+    "section": "",
+    "text": "The original dataset takes up a lot of space.\n\n\nCode\nwrite_rds(origin_df,\"data/rds/origin_df.rds\")\nwrite_rds(dest_df,\"data/rds/dest_df.rds\")\n\n\n\nObject classes will be intact\nSaving data in rds format also allows the updated dataframe to be reusable"
   }
 ]
