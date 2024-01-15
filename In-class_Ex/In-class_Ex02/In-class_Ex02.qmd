@@ -1,0 +1,10 @@
+---
+title: "In-class_Ex02"
+author: "Victoria Grace ANN"
+execute: 
+  warning: false
+date: "15 January, 2024"
+date-modified: "last-modified"
+---
+
+

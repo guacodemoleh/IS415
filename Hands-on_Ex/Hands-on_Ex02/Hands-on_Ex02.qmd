@@ -248,7 +248,7 @@ tm_shape(mpsz_pop2020)+
   tm_borders(alpha=0.5)
 
 ```
--   The distribution of quantile data classification is more evenly distributed than the equal data classification method.
+-   The distribution of jenks data classification is more evenly distributed than the equal data classification method.
 
 
 **tmap** actually has 10 data classification methods:
@@ -360,6 +360,7 @@ tm_shape(mpsz_pop2020)+
           breaks = c(0, 0.60, 0.70, 0.80, 0.90, 1.00)) +
   tm_borders(alpha = 0.5)
 ```
+- 
 
 ## Colour Scheme
 **tmap** also supports colour ramps. They can be defined by the analyst or preselected from the **RColorBrewer** package.
