@@ -7,7 +7,6 @@ execute:
   echo: true
 format:  
   html: 
-    code-fold: true
     code-summary: "Show the code"
     toc-depth: 4
 date: "16 January, 2024"
@@ -88,9 +87,10 @@ Let's use *pacman()* to first load the packages we will need to use. We require:
 -   *raster* to read, write, manipulate, analyse and model gridded spatial data (raster)
 
 ```{r}
-pacman::p_load(sf, tmap, spatstat, raster)
+pacman::p_load(sf, tmap, spatstat, raster,sp)
 ```
 
+If you are still interested in using maptools (though it has been deprecated),
 ```{r}
 install.packages("maptools", repos = "https://packagemanager.posit.co/cran/2023-10-13")
 ```
@@ -301,7 +301,7 @@ any(duplicated(childcare_ppp_jit))
 ## Creating *owin* object
 When analysing spatial point patterns, it is good practice to confine the analysis with a geographical area like Singapore boundary. In spatstat, an object called owin is specially designed to represent this polygonal region.
 
-The code cunk below is used to convert the sg SpatialPolygon object into owin object of spatstat.
+The code chunk below is used to convert the sg SpatialPolygon object into owin object of spatstat.
 ```{r}
 sg_owin <- as.owin(sg_sf)
 plot(sg_owin)
@@ -450,7 +450,7 @@ plot(kde_childcareSG_adaptive, main = "Adaptive bandwidth")
 ```
 
 ## Computing KDE by using adaptive bandwidth
-Fixed bandwidth method is very sensitive to highly skew distribution of spatial point patterns over geological units, i.e. urban vs rural. One way to overcoem this problem is by using adaptive bandwidth instead.
+Fixed bandwidth method is very sensitive to highly skew distribution of spatial point patterns over geological units, i.e. urban vs rural. One way to overcome this problem is by using adaptive bandwidth instead.
 
 This section focuses on how to derive adaptive kernel density estimation by using *density.adaptive()* of **spatstat**.
 ```{r}
@@ -467,6 +467,147 @@ plot(kde_childcareSG_adaptive, main = "Adaptive bandwidth")
 
 ## Converting KDE output into grid object
 Convert the result into grid object such that it is suitable for mapping purposes.
+```{r}
+# to solve "could not find function "as.SpatialGridDataFrame.im""
+#install.packages("spatial")
+#install.packages("sp")
+```
 
-### Converting Fridded Output into Raster
+```{r}
+# to solve "could not find function "as.SpatialGridDataFrame.im"" 
+library(spatial)
+library(sp)
+```
+```{r}
+# Debugging: check if object class is im
+if ("im" %in% class(kde_childcareSG.bw)) {
+  print("The object is of class 'im'")
+} else {
+  print("The object is not of class 'im'")
+}
+```
+
+```{r}
+gridded_kde_childcareSG_bw <- as(kde_childcareSG.bw, "SpatialGridDataFrame")
+
+spplot(gridded_kde_childcareSG_bw)
+```
+
+### Converting Gridded Output into Raster
+Next, do the conversion by using *raster()* from the **raster** package.
+```{r}
+kde_childcareSG_bw_raster <- raster(gridded_kde_childcareSG_bw)
+```
+
+Then observe the properties of the raster layer,
+```{r}
+kde_childcareSG_bw_raster
+```
+-   A raster layer does not have any CRS property, thus its value is NA after the grid (vector) is rasterised.
+
+### Assigning projection systems
+The code below will be used to include CRS information
+```{r}
+projection(kde_childcareSG_bw_raster) <- CRS("+init=EPSG:3414")
+kde_childcareSG_bw_raster
+```
+## Visualising tmap output
+Finally, we can display the raster in cartographic quality map using **tmap** package.
+```{r}
+tm_shape(kde_childcareSG_bw_raster) + 
+  tm_raster("v") +
+  tm_layout(legend.position = c("right", "bottom"), frame = FALSE)
+```
+-   Note that the raster values are encoded explicitly onto the raster pixel using the values in the “v” field.
+
+## Comparing Spatial Point Patterns using KDE
+Here, we will compare the KDE of childcare centres at various planning areas.
+### Extracting Study Areas
+Let's categorise and extract the planning areas of interest.
+```{r}
+pg = mpsz[mpsz@data$PLN_AREA_N == "PUNGGOL",]
+tm = mpsz[mpsz@data$PLN_AREA_N == "TAMPINES",]
+ck = mpsz[mpsz@data$PLN_AREA_N == "CHOA CHU KANG",]
+jw = mpsz[mpsz@data$PLN_AREA_N == "JURONG WEST",]
+
+print(class(pg))
+```
+
+Then plot the planning areas.
+```{r}
+par(mfrow = c(2, 2)) 
+
+par(fig = c(0, 0.8, 0, 0.8))   
+plot(pg, main = "Punggol")
+
+par(fig = c(0.2, 1, 0, 0.8)) 
+plot(tm, main = "Tampines")
+
+par(fig = c(0, 0.8, 0.2, 1))  
+plot(ck, main = "Choa Chu Kang")
+
+par(fig = c(0.2, 1, 0.2, 1))  
+plot(jw, main = "Jurong West")
+```
+
+### Converting spatial point data frame into generic sp format
+Next, we will convert the SpatialPolygonsDataFrame layers into generic SpatialPolygons layer.
+```{r}
+pg_sp = as(pg, "SpatialPolygons")
+tm_sp = as(tm, "SpatialPolygons")
+ck_sp = as(ck, "SpatialPolygons")
+jw_sp = as(jw, "SpatialPolygons")
+```
+
+### Creating ***owin*** object
+Now, convert the SpatialPolygons objects into owin objects that is required by **spastat**.
+```{r}
+pg_owin <- as.owin(owin(polygons = slot(pg_sp, "polygons")[[1]]@Polygons[[1]]))
+tm_owin <- as.owin(owin(polygons = slot(tm_sp, "polygons")[[1]]@Polygons[[1]]))
+ck_owin <- as.owin(owin(polygons = slot(ck_sp, "polygons")[[1]]@Polygons[[1]]))
+jw_owin <- as.owin(owin(polygons = slot(jw_sp, "polygons")[[1]]@Polygons[[1]]))
+```
+- In the code above, each **sp** object converts to an **owin** object by extracting the polygon coordinates using *slot()* and *@Polygons*. The extracted polygon coordinates are then passed to the *owin()* constructor within *as.owin()* to create the **owin** object.
+
+### Combining childcare points and the study area
+We can extract the childcare centres that are within the specific region for our analysis.
+```{r}
+childcare_pg_ppp = childcare_ppp_jit[pg_owin]
+childcare_tm_ppp = childcare_ppp_jit[tm_owin]
+childcare_ck_ppp = childcare_ppp_jit[ck_owin]
+childcare_jw_ppp = childcare_ppp_jit[jw_owin]
+```
+
+Now *rescale()* helps us to transform the unit of metre to kilometre.
+
+```{r}
+childcare_pg_ppp.km = rescale(childcare_pg_ppp, 1000, "km")
+childcare_tm_ppp.km = rescale(childcare_tm_ppp, 1000, "km")
+childcare_ck_ppp.km = rescale(childcare_ck_ppp, 1000, "km")
+childcare_jw_ppp.km = rescale(childcare_jw_ppp, 1000, "km")
+```
+
+The following code plots the four study areas and the location of the childcare centres.
+```{r}
+par(mfrow = c(2,2)) 
+
+par(fig = c(0, 0.8, 0, 0.8))   
+plot(childcare_pg_ppp.km, main="Punggol")
+
+par(fig = c(0.2, 1, 0, 0.8)) 
+plot(childcare_tm_ppp.km, main="Tampines")
+
+par(fig = c(0, 0.8, 0.2, 1))  
+plot(childcare_ck_ppp.km, main="Choa Chu Kang")
+
+par(fig = c(0.2, 1, 0.2, 1))  
+plot(childcare_jw_ppp.km, main="Jurong West")
+```
+
+## Computing KDE
+
+
+
+
+
 
