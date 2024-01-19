@@ -455,7 +455,7 @@ Fixed bandwidth method is very sensitive to highly skew distribution of spatial 
 This section focuses on how to derive adaptive kernel density estimation by using *density.adaptive()* of **spatstat**.
 ```{r}
 kde_childcareSG_adaptive <- adaptive.density(childcareSG_ppp.km, method="kernel")
-plot(kde_childcareSG_adaptive)
+plot(kde_childcareSG_adaptive) 
 ```
 
 Compare the fixed and adaptive kernel density estimation outputs,
