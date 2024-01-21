@@ -670,3 +670,36 @@ As P < 0.05, we reject the null hypothesis that the childcare services are rando
 We can infer from the R value (Nearest Neighbour Index) that since R = 0.60568 < 1, the pattern exhibits clustering in Tampines.
 
 # Second-order Spatial Point Patterns Analysis
+# Analysing Spatial Point Process Using G-Function
+The G function measures the distribution of the distances from an arbitrary event to its nearest event. This section focuses on how to compute G-function estimation using *Gest()* of **spatstat** package. Additionally, Monte Carlo simulation test will be performed using *envelope()* of **spatstat package**
+
+## Choa Chu Kang planning area
+### Computing G-function estimation
+The code chunk below is used to comput G-function using Gest() of **spastat** package
+```{r}
+G_CK = Gest(childcare_ck_ppp, correction = "border")
+plot(G_CK, xlim=c(0,500))
+```
+### Performing Complete Spatial Randomness Test
+H0: The distribution of childcare services at Choa Chu Kang are randomly distributed.
+
+H1: The distribution of childcare services at Choa Chu Kang are not randomly distributed.
+
+The null hypothesis will be rejected if p-value is smaller than alpha value of 0.001.
+
+Monte Carlo test with G-fucntion
+
+
+```{r}
+G_CK.csr <- envelope(childcare_ck_ppp, Gest, nsim = 999)
+```
+```{r}
+plot(G_CK.csr)
+```
+## Tampines planning area
+### Computing G-function estimation
+```{r}
+G_tm = Gest(childcare_tm_ppp, correction = "best")
+plot(G_tm)
+```
+
