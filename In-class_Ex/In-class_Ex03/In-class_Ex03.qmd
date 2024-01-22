@@ -1,3 +1,16 @@
 ---
-title: "In-class Exercise 3"
+title: "In-class Exercise 3: Kernel Density Estimation"
+author: "Victoria Grace ANN"
+execute: 
+  warning: false
+  eval: true
+  echo: true
+format:  
+  html: 
+    code-summary: "Show the code"
+    toc-depth: 4
+date: "22 January, 2024"
+date-modified: "last-modified"
+editor: visual
 ---
+

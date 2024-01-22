@@ -86,14 +86,17 @@ Let's use *pacman()* to first load the packages we will need to use. We require:
 
 -   *raster* to read, write, manipulate, analyse and model gridded spatial data (raster)
 
+maptools has been deprecated so,
 ```{r}
-pacman::p_load(sf, tmap, spatstat, raster,sp)
-```
-
-If you are still interested in using maptools (though it has been deprecated),
-```{r}
+#| eval: false
 install.packages("maptools", repos = "https://packagemanager.posit.co/cran/2023-10-13")
 ```
+
+```{r}
+pacman::p_load(sf, tmap, spatstat, raster,sp, maptools, tidyverse)
+```
+
+
 
 ### Data
 
@@ -110,15 +113,22 @@ install.packages("maptools", repos = "https://packagemanager.posit.co/cran/2023-
 Geospatial data will be imported using \*st_read()\* from the sf package.
 
 ```{r}
-childcare_sf <- st_read(dsn = "data/geospatial/PreSchoolsLocation.geojson") %>% st_transform(crs=3414)
+childcare_sf <- st_read(dsn = "data/geospatial/ChildCareServices.geojson") %>% st_transform(crs=3414)
 ```
 
 ```{r}
 mpsz_sf <- st_read(dsn="data/geospatial", layer="MP14_SUBZONE_WEB_PL")
+print(class(mpsz_sf))
 ```
 
 ```{r}
 sg_sf <- st_read(dsn = "data/geospatial", layer = "CostalOutline")
+```
+
+Learning from Lesson 1, we can also extract the coastal outline from the `MP14 SUBZONE_WEB_PL` layer.
+```{r}
+sg_sf <- mpsz_sf %>% st_union()
+plot(sg_sf)
 ```
 
 ## Inspecting and Reprojecting CRS
@@ -283,9 +293,10 @@ There are a few ways to overcome this problem:
 
 -   Delete the duplicates. However, some useful point events will be lost 
 
--   jittering. Adds small perturrbations to duplicate points so that they do not occupy the same exact space
+-   jittering. Adds small perturbations to duplicate points so that they do not occupy the same exact space
 
 -   Make each point “unique” and then attach duplicates of points to the patterns as marks, as attributes of the points. Then we can use analytical techniques that take into account the marks.
+
 
 Using jittering,
 ```{r}
@@ -510,12 +521,19 @@ tm_shape(kde_childcareSG_bw_raster) +
 Here, we will compare the KDE of childcare centres at various planning areas.
 #### Extracting Study Areas
 Let's categorise and extract the planning areas of interest.
+
 ```{r}
-pg = mpsz[mpsz@data$PLN_AREA_N == "PUNGGOL",]
-tm = mpsz[mpsz@data$PLN_AREA_N == "TAMPINES",]
-ck = mpsz[mpsz@data$PLN_AREA_N == "CHOA CHU KANG",]
-jw = mpsz[mpsz@data$PLN_AREA_N == "JURONG WEST",]
+pg <- mpsz_sf %>% 
+  filter(PLN_AREA_N == "PUNGGOL")
+tm <- mpsz_sf %>% 
+  filter(PLN_AREA_N == "TAMPINES")
+ck <- mpsz_sf %>% 
+  filter(PLN_AREA_N == "CHOA CHU KANG")
+jw <- mpsz_sf %>% 
+  filter(PLN_AREA_N == "JURONG WEST")
 ```
+
+
 
 Then plot the planning areas.
 ```{r}
@@ -527,25 +545,14 @@ plot(ck, main = "Choa Chu Kang")
 plot(jw, main = "Jurong West")
 ```
 
-#### Converting the spatial point data frame into generic sp format
-Next, we will convert these SpatialPolygonsDataFrame layers into generic spatialpolygons layers.
-
-```{r}
-pg_sp = as(pg, "SpatialPolygons")
-tm_sp = as(tm, "SpatialPolygons")
-ck_sp = as(ck, "SpatialPolygons")
-jw_sp = as(jw, "SpatialPolygons")
-```
-
 #### Creating ***owin*** object
 Now, we will convert the SpatialPolygons objects into owin objects required by **spatstat**.
 
 ```{r}
-library(maptools)
-pg_owin <- as.owin(pg_sp)
-tm_owin <- as.owin(tm_sp)
-ck_owin <- as.owin(ck_sp)
-jw_owin <- as.owin(jw_sp)
+pg_owin <- as.owin(pg)
+tm_owin <- as.owin(tm)
+ck_owin <- as.owin(ck)
+jw_owin <- as.owin(jw)
 ```
 
 #### Combining childcare points and the study area
@@ -667,7 +674,7 @@ clarkevans.test(childcare_tm_ppp,
 ```
 As P < 0.05, we reject the null hypothesis that the childcare services are randomly distributed. 
 
-We can infer from the R value (Nearest Neighbour Index) that since R = 0.60568 < 1, the pattern exhibits clustering in Tampines.
+We can infer from the R value (Nearest Neighbour Index) that since R = 0.69037 < 1, the pattern exhibits clustering in Tampines.
 
 # Second-order Spatial Point Patterns Analysis
 # Analysing Spatial Point Process Using G-Function
