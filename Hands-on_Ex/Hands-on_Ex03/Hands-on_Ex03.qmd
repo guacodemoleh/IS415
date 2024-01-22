@@ -102,7 +102,7 @@ pacman::p_load(sf, tmap, spatstat, raster,sp, maptools, tidyverse)
 
 | Name                                    | Source                                                                                                    |
 |------------------------------------------------|------------------------|
-| Pre-Schools Location (geojson)          | [data.gov.sg](https://beta.data.gov.sg/collections/2064/datasets/d_61eefab99958fd70e6aab17320a71f1c/view) |
+| Child Care Location (geojson)          | [data.gov.sg](https://beta.data.gov.sg/collections/2015/view) |
 | Master Plan 2014 Subzone Boundary (Web) | [data.gov.sg](https://beta.data.gov.sg/collections/1708/view)                                             |
 | Coastal Outline                         | SLA                                                                                                       |
 
