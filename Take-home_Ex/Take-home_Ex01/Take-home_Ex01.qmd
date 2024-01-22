@@ -16,10 +16,213 @@ editor: visual
 
 # Context
 
-Human mobility, the movement of human beings in space and time, reflects the spatial-temporal characteristics of human behavior. With the advancement Information and Communication Technologies (ICT) especially smart phone, a large volume of data related to human mobility have been collected. By using appropriate GIS analysis methods, these data are potentially useful in supporting smart city planning and management.
+## Introduction
 
-In Singapore, one of the important source of data related to human mobility is from [Land Transport Authority (LTA) DataMall](https://datamall.lta.gov.sg/content/datamall/en.html). Two data sets related to human mobility are provided by the portal, they are: Passenger Volume by Origin Destination Train Stations and Passenger Volume by Origin Destination Bus Stops. One of the limitation of these data sets is that their location are biased to either bus stops or MRT/LRT stations. In 2020, another very interesting human mobility data set called [Grab Posisi](https://engineering.grab.com/grab-posisi) was released by GRAB, one of the largest shared taxi operator in South-east Asia. There are two data sets been released and one of them is for Singapore.
+Human mobility, the movement of people in space and time, reflects the spatial-temporal characteristics of human behaviour ([Wang et al., 2021](https://www.mdpi.com/2220-9964/10/1/13)). With the advancement Information and Communication Technologies (ICT), pertinent through the ubiquitous use of smartphones, a large and growing volume of data relating to human mobility is available today. By using appropriate GIS analysis methods, such data are potentially useful in supporting smart-city planning and management.
 
-# Task
+## Data
+
+In 2020, an interesting human mobility data set called [Grab Posisi](https://engineering.grab.com/grab-posisi) was released by GRAB, one of the largest shared taxi operators in Southeast Asia. One of the two data sets released is focusing on Singapore only.
+
+In Singapore, relevant human mobility data can be extracted from [Land Transport Authority (LTA) DataMall](https://datamall.lta.gov.sg/content/datamall/en.html). In particular, two data sets related to human mobility are provided by the portal: [Passenger Volume by Origin Destination Train Stations](https://datamall.lta.gov.sg/content/datamall/en/search_datasets.html?searchText=Passenger%20Volume%20by%20Origin%20Destinat#:~:text=Passenger%20Volume%20by%20Origin%20Destination%20Train%20Stations) and [Passenger Volume by Origin Destination Bus Stops](https://datamall.lta.gov.sg/content/datamall/en/search_datasets.html?searchText=Passenger%20Volume%20by%20Origin%20Destinat#:~:text=Passenger%20Volume%20by%20Origin%20Destination%20Bus%20Stops).
+
+## Limitation
+
+A limitation of the LTA data sets is that their location is biased to either bus stops or MRT/LRT stations.
 
 # Importing Packages
+
+The following R packages are used for this assignment:
+
+-   [**arrow**](https://arrow.apache.org/docs/r/), to read and write Parquet files (format in which data is in)
+
+-   **lubridate**, to work with time-related data more easily
+
+-   **tidyverse**, for importing, wrangling and visualising data
+
+-   **tmap,** to create thematic maps
+
+-   **sf**, for importing, managing and processing geospatial data
+
+```{r}
+pacman::p_load(arrow, lubridate, tidyverse, tmap, sf,sp, dplyr,spatstat)
+```
+
+# Data
+
+# Geospatial Data
+
+## Data preprocessing
+
+\*\*\*\*Master Plan 2019 Subzone Boundary\*\*\* First, we want to get a clear Singapore boundary layer.
+
+Extracted from [data.gov.sg](https://beta.data.gov.sg/collections/1749/view), let's read the 2019 master plan subzone boundary layer and convert the CRS to EPSG3414.
+
+```{r}
+mpsz <- st_read("data/geospatial/master-plan-2019-subzone-boundary-no-sea-kml.kml")
+summary(mpsz)
+```
+
+-   The dimension contains XYZ, meaning that `mpsz` contains 3D geometries
+
+Convert `mpsz` to 2D geometry using *st_zm()* and save the converted form as a shapefile.
+
+```{r}
+mpsz <- st_zm(mpsz, drop = TRUE) # Convert 3D geometries to 2D
+```
+
+```{r}
+#| include: false
+st_write(mpsz, "data/geospatial/mpsz.shp")
+mpsz_sf <- st_read("data/geospatial/mpsz.shp")
+```
+
+Then transform the CRS from WGS84 to SVY21.
+
+```{r}
+mpsz3414 <- st_transform(mpsz_sf, 3414)
+plot(mpsz3414)
+```
+
+Currently, there is no subzone column and the subzone name information is embedded in the `Dscrptn` column, so create a new column `SUBZONE_N` containing the subzone names.
+```{r}
+# create a new column 'SUBZONE_N' and extract subzone names from 'Dscrptn' field
+mpsz3414 <- mpsz3414 %>%
+  rowwise() %>%
+  mutate(SUBZONE_N = str_extract(Dscrptn, "<th>SUBZONE_N</th> <td>(.*?)</td>")) %>%
+  ungroup()
+
+# remove HTML tags and 'SUBZONE_N' from 'SUBZONE_N' column
+mpsz3414$SUBZONE_N <- str_remove_all(mpsz3414$SUBZONE_N, "<.*?>|SUBZONE_N")
+
+# view the updated 'mpsz3414' dataframe
+mpsz3414
+```
+No commercial ride hailing services are available in the outer islands of Singapore. Let's identify them first.
+
+![Outer Islands Subzones Viewed with QGIS](/img/outer_islands_qgis.jpg)
+
+Filter the outer islands.
+```{r}
+outer_islands <- c("SEMAKAU", "SUDONG", "NORTH-EASTERN ISLANDS", "SOUTHERN GROUP")
+
+# Remove rows where 'SUBZONE_N' is in the list
+mpsz3414 <- mpsz3414 %>%
+  filter(!str_trim(SUBZONE_N) %in% str_trim(outer_islands))
+
+
+plot(mpsz3414)
+```
+
+
+Then dissolve all the inner subzone boundaries using *st_union()* (if necessary).
+```{r}
+sg_sf <- mpsz3414 %>% st_union()
+plot(sg_sf)
+```
+
+Dissolve all the inner subzone boundaries using *st_union()*.
+
+```{f}
+sg_sf <- mpsz3414 %>% st_union()
+```
+
+***OSM Singapore Roads***
+
+Read the Singapore Roads layer imported from [OSM](geofabrik.de) and convert it to the correct CRS.
+
+```{r}
+roads3414 <- st_read(dsn= "data/geospatial", layer="gis_osm_roads_free_1") %>%
+  st_transform(crs=3414)
+```
+
+Verify that `roads3414` are in the correct in CRS
+```{r}
+summary(roads3414)
+```
+
+## Data Size Management
+
+Before further data manipulation, save the files in **rds** format as the size of `roads3414` is very large.
+
+```{r}
+write_rds(roads3414,"data/geospatial/rds/roads3414.rds")
+roads3414 <- read_rds("data/geospatial/rds/roads3414.rds")
+```
+
+
+# Aspatial Data
+
+## Data preprocessing
+
+Read all the Grab-Posisi using **arrow's** *read_parquet()* function to read the parquet files containing the ride trajectories.
+
+```{r}
+df0 <- read_parquet("data/aspatial/part-00000-8bbff892-97d2-4011-9961-703e38972569.c000.snappy.parquet")
+df1 <- read_parquet("data/aspatial/part-00001-8bbff892-97d2-4011-9961-703e38972569.c000.snappy.parquet")
+df2 <- read_parquet("data/aspatial/part-00002-8bbff892-97d2-4011-9961-703e38972569.c000.snappy.parquet")
+df3 <- read_parquet("data/aspatial/part-00003-8bbff892-97d2-4011-9961-703e38972569.c000.snappy.parquet")
+df4 <- read_parquet("data/aspatial/part-00004-8bbff892-97d2-4011-9961-703e38972569.c000.snappy.parquet")
+df5 <- read_parquet("data/aspatial/part-00005-8bbff892-97d2-4011-9961-703e38972569.c000.snappy.parquet")
+df6 <- read_parquet("data/aspatial/part-00006-8bbff892-97d2-4011-9961-703e38972569.c000.snappy.parquet")
+df7 <- read_parquet("data/aspatial/part-00007-8bbff892-97d2-4011-9961-703e38972569.c000.snappy.parquet")
+df8 <- read_parquet("data/aspatial/part-00008-8bbff892-97d2-4011-9961-703e38972569.c000.snappy.parquet")
+df9 <- read_parquet("data/aspatial/part-00009-8bbff892-97d2-4011-9961-703e38972569.c000.snappy.parquet")
+```
+
+Then combine the rows using the *bindrows* function in the **dplyr** package embedded in the **tidyverse** package.
+
+```{r}
+df <- bind_rows(df0, df1, df2, df3, df4, df5, df6, df7, df8, df9)
+head(df)
+```
+
+The observed `pingtimestamp` is not easily comprehensible, thus it needs to be amended to a proper timestamp.
+
+```{r}
+df$pingtimestamp <- as_datetime(df$pingtimestamp) ## $ to overwrite the variable in df
+head(df$pingtimestamp)
+```
+
+The data can be further segmented to two groups: - `origin_df` representing the starting locations of trips taken - `dest_df` representing the end locations of trips taken
+
+## Further Observation
+
+***Starting Locations***
+
+```{r}
+origin_df <- df %>%
+  group_by(trj_id) %>%
+  arrange(pingtimestamp) %>% 
+  filter(row_number()==1) %>% 
+  mutate(weekday = wday(pingtimestamp, 
+                        label=TRUE,
+                        abbr=TRUE), 
+         start_hr = factor(hour(pingtimestamp)), 
+         day = factor(mday(pingtimestamp)))
+```
+
+***End Locations***
+
+```{r}
+dest_df <- df %>%
+  group_by(trj_id) %>%
+  arrange(desc(pingtimestamp)) %>% 
+  filter(row_number()==1) %>% 
+  mutate(weekday = wday(pingtimestamp, 
+                        label=TRUE,
+                        abbr=TRUE), 
+         end_hr = factor(hour(pingtimestamp)), 
+         day = factor(mday(pingtimestamp)))
+```
+
+## Data Size Management
+
+Before further data manipulation, save the files in **rds** format as the size of df is very large. Running the whole tibble dataframe will not be practical and processing time will be very long.
+
+```{r}
+write_rds(origin_df,"data/aspatial/rds/origin_df.rds")
+origin_df <- read_rds("data/aspatial/rds/origin_df.rds")
+write_rds(dest_df,"data/aspatial/rds/dest_df.rds")
+dest_df <- read_rds("data/aspatial/rds/dest_df.rds")
+```

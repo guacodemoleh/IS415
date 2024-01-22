@@ -48,7 +48,9 @@ tm_shape(childcare) +
 tmap_mode('plot')
 ```
 
-In order to run the Network Constraint Analysis, - Segment the lines - Snap
+In order to run the Network Constraint Analysis, 
+-   Segment the lines 
+-   Snap
 
 Creating the line segment,
 
