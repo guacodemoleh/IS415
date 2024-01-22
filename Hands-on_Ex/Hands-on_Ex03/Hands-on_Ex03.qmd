@@ -86,6 +86,8 @@ Let's use *pacman()* to first load the packages we will need to use. We require:
 
 -   *raster* to read, write, manipulate, analyse and model gridded spatial data (raster)
 
+-   *tidyverse* for data transformation
+
 maptools has been deprecated so,
 ```{r}
 #| eval: false
