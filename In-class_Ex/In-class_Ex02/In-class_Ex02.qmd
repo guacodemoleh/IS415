@@ -16,6 +16,7 @@ editor: visual
 ---
 
 # Data preparation
+
 Packages that will be used:
 
 -   [arrow](https://arrow.apache.org/docs/r/), to read and write Parquet files (format which data is in)
@@ -48,17 +49,21 @@ head(df)
 -   There may be multiple repeated trj_id as the ride data is collected every minute
 
 ## 
+
 ```{r}
 df$pingtimestamp <- as_datetime(df$pingtimestamp) ## $ to overwrite the variable in df
 ```
 
 Check updated df
+
 ```{r}
 head(df)
 ```
-- `pingtimestamp` looks better now
+
+-   `pingtimestamp` looks better now
 
 ## Extracting trip starting locations
+
 ```{r}
 # Using lubridate
 origin_df <- df %>%
@@ -81,6 +86,7 @@ origin_df <- df %>%
 -   `wday` defines the workday.
 
 ## Extracting trip ending locations
+
 ```{r}
 dest_df <- df %>%
   group_by(trj_id) %>%
@@ -97,22 +103,25 @@ dest_df <- df %>%
 # head(dest_df)
 ```
 
-
 ## Overwrite the dataset with the new variables
+
 The original dataset takes up a lot of space.
+
 ```{r}
 write_rds(origin_df,"data/rds/origin_df.rds")
 write_rds(dest_df,"data/rds/dest_df.rds")
 ```
+
 -   Object classes will be intact
 -   Saving data in rds format also allows the updated dataframe to be reusable
 
 # Data importing
+
 In future, the files can be read as such,
+
 ```{r}
 origin_df <- read_rds("data/rds/origin_df.rds")
 dest_df <- read_rds("data/rds/dest_df.rds")
 ```
 
 **Homework: Hands-on Ex 3 and Data Preparation for Take-home Ex 1**
-

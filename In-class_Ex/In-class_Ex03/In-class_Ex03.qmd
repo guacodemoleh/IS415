@@ -14,3 +14,95 @@ date-modified: "last-modified"
 editor: visual
 ---
 
+# Set up
+
+```{r}
+pacman::p_load(sf, tmap, spNetwork, classInt, virdis, tidyverse)
+```
+
+# Importing data
+
+```{r}
+mpsz <- st_read(dsn = "data/geospatial", layer="MP14_SUBZONE_WEB_PL")
+
+childcare <- st_read(dsn = "data/geospatial", layer="Punggol_CC")
+
+network <- st_read(dsn = "data/geospatial", layer="Punggol_St")
+```
+
+Examine the structure of the SpatialDataFrame output.
+
+```{r}
+str(network)
+str(childcare)
+```
+
+Let's have a look at how the childcare centres and the network look on the map!
+
+```{r}
+tmap_mode('view') # to zoom
+tm_shape(childcare) +
+  tm_dots() +
+  tm_shape(network) +
+  tm_lines()
+tmap_mode('plot')
+```
+
+In order to run the Network Constraint Analysis, - Segment the lines - Snap
+
+Creating the line segment,
+
+```{r}
+lixels <- lixelize_lines(network,
+                         750, # max dist ppl are willing to walk to a CC
+                         mindist=375) #midpoint
+```
+
+```{r}
+samples <- lines_center(lixels)
+```
+
+# Performing KDE
+
+More information at https://github.com/JeremyGelb/spNetwork/tree/master
+
+```{r}
+densities <- nkde(network, 
+                  events = childcare,
+                  w = rep(1,nrow(childcare)),
+                  samples = samples,
+                  kernel_name = "quartic",
+                  bw = 300, 
+                  div= "bw", 
+                  method = "simple", 
+                  digits = 1, 
+                  tol = 1,
+                  grid_shape = c(1,1), 
+                  max_depth = 8,
+                  agg = 5, #we aggregate events within a 5m radius (faster calculation)
+                  sparse = TRUE,
+                  verbose = FALSE)
+```
+
+```{r}
+samples$density <- densities
+lixels$density <- densities
+```
+
+```{r}
+# rescaling to help the mapping
+samples$density <- samples$density*1000
+lixels$density <- lixels$density*1000
+```
+
+Visualise
+```{r}
+tmap_mode('view')
+tm_shape(lixels)+
+  tm_lines(col='density')+
+tm_shape(childcare)+
+  tm_dots()
+```
+```{r}
+tmap_mode('plot')
+```
