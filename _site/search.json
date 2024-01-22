@@ -480,7 +480,7 @@
     "href": "Hands-on_Ex/Hands-on_Ex03/Hands-on_Ex03.html#preparation",
     "title": "Hands-on Exercise 3: Spatial Point Patterns Analysis",
     "section": "Preparation",
-    "text": "Preparation\n\nPackages\nLet’s use pacman() to first load the packages we will need to use. We require:\n\nsf to import and process vector geospatial data\ntmap to plot high quality (interactive) maps\nmaptools for manipulating geographic data\nspatstat for point pattern analysis\nraster to read, write, manipulate, analyse and model gridded spatial data (raster)\n\nmaptools has been deprecated so,\n\ninstall.packages(\"maptools\", repos = \"https://packagemanager.posit.co/cran/2023-10-13\")\n\n\npacman::p_load(sf, tmap, spatstat, raster,sp, maptools, tidyverse)\n\n\n\nData\n\n\n\nName\nSource\n\n\n\n\nPre-Schools Location (geojson)\ndata.gov.sg\n\n\nMaster Plan 2014 Subzone Boundary (Web)\ndata.gov.sg\n\n\nCoastal Outline\nSLA"
+    "text": "Preparation\n\nPackages\nLet’s use pacman() to first load the packages we will need to use. We require:\n\nsf to import and process vector geospatial data\ntmap to plot high quality (interactive) maps\nmaptools for manipulating geographic data\nspatstat for point pattern analysis\nraster to read, write, manipulate, analyse and model gridded spatial data (raster)\ntidyverse for data transformation\n\nmaptools has been deprecated so,\n\ninstall.packages(\"maptools\", repos = \"https://packagemanager.posit.co/cran/2023-10-13\")\n\n\npacman::p_load(sf, tmap, spatstat, raster,sp, maptools, tidyverse)\n\n\n\nData\n\n\n\nName\nSource\n\n\n\n\nChild Care Location (geojson)\ndata.gov.sg\n\n\nMaster Plan 2014 Subzone Boundary (Web)\ndata.gov.sg\n\n\nCoastal Outline\nSLA"
   },
   {
     "objectID": "Hands-on_Ex/Hands-on_Ex03/Hands-on_Ex03.html#spatial-data-wrangling",
@@ -613,14 +613,14 @@
     "href": "Hands-on_Ex/Hands-on_Ex03/Hands-on_Ex03.html#clark-and-evans-test-choa-chu-kang-planning-area",
     "title": "Hands-on Exercise 3: Spatial Point Patterns Analysis",
     "section": "Clark and Evans Test: Choa Chu Kang planning area",
-    "text": "Clark and Evans Test: Choa Chu Kang planning area\n\nclarkevans.test(childcare_ck_ppp,\n                correction=\"none\",\n                clipregion=NULL,\n                alternative=c(\"two.sided\"),\n                nsim=999)\n\n\n    Clark-Evans test\n    No edge correction\n    Z-test\n\ndata:  childcare_ck_ppp\nR = 0.84464, p-value = 0.01056\nalternative hypothesis: two-sided\n\n\nAs P &gt; 0.05, we cannot reject the null hypothesis that the childcare services are randomly distributed in Choa Chu Kang."
+    "text": "Clark and Evans Test: Choa Chu Kang planning area\n\nclarkevans.test(childcare_ck_ppp,\n                correction=\"none\",\n                clipregion=NULL,\n                alternative=c(\"two.sided\"),\n                nsim=999)\n\n\n    Clark-Evans test\n    No edge correction\n    Z-test\n\ndata:  childcare_ck_ppp\nR = 0.89066, p-value = 0.07196\nalternative hypothesis: two-sided\n\n\nAs P &gt; 0.05, we cannot reject the null hypothesis that the childcare services are randomly distributed in Choa Chu Kang."
   },
   {
     "objectID": "Hands-on_Ex/Hands-on_Ex03/Hands-on_Ex03.html#clark-and-evans-test-tampines-planning-area",
     "href": "Hands-on_Ex/Hands-on_Ex03/Hands-on_Ex03.html#clark-and-evans-test-tampines-planning-area",
     "title": "Hands-on Exercise 3: Spatial Point Patterns Analysis",
     "section": "Clark and Evans Test: Tampines planning area",
-    "text": "Clark and Evans Test: Tampines planning area\n\nclarkevans.test(childcare_tm_ppp,\n                correction=\"none\",\n                clipregion=NULL,\n                alternative=c(\"two.sided\"),\n                nsim=999)\n\n\n    Clark-Evans test\n    No edge correction\n    Z-test\n\ndata:  childcare_tm_ppp\nR = 0.69851, p-value = 4.41e-10\nalternative hypothesis: two-sided\n\n\nAs P &lt; 0.05, we reject the null hypothesis that the childcare services are randomly distributed.\nWe can infer from the R value (Nearest Neighbour Index) that since R = 0.69037 &lt; 1, the pattern exhibits clustering in Tampines."
+    "text": "Clark and Evans Test: Tampines planning area\n\nclarkevans.test(childcare_tm_ppp,\n                correction=\"none\",\n                clipregion=NULL,\n                alternative=c(\"two.sided\"),\n                nsim=999)\n\n\n    Clark-Evans test\n    No edge correction\n    Z-test\n\ndata:  childcare_tm_ppp\nR = 0.67366, p-value = 1.449e-11\nalternative hypothesis: two-sided\n\n\nAs P &lt; 0.05, we reject the null hypothesis that the childcare services are randomly distributed.\nWe can infer from the R value (Nearest Neighbour Index) that since R = 0.69037 &lt; 1, the pattern exhibits clustering in Tampines."
   },
   {
     "objectID": "Hands-on_Ex/Hands-on_Ex03/Hands-on_Ex03.html#choa-chu-kang-planning-area",
@@ -635,5 +635,12 @@
     "title": "Hands-on Exercise 3: Spatial Point Patterns Analysis",
     "section": "Tampines planning area",
     "text": "Tampines planning area\n\nComputing G-function estimation\n\nG_tm = Gest(childcare_tm_ppp, correction = \"best\")\nplot(G_tm)"
+  },
+  {
+    "objectID": "Take-home_Ex/Take-home_Ex01/Take-home_Ex01.html",
+    "href": "Take-home_Ex/Take-home_Ex01/Take-home_Ex01.html",
+    "title": "Take-home Exercise 1: Application of Spatial Point Patterns Analysis – Geographical Distribution of Grab hailing services (Singapore)",
+    "section": "",
+    "text": "Context\nHuman mobility, the movement of human beings in space and time, reflects the spatial-temporal characteristics of human behavior. With the advancement Information and Communication Technologies (ICT) especially smart phone, a large volume of data related to human mobility have been collected. By using appropriate GIS analysis methods, these data are potentially useful in supporting smart city planning and management.\nIn Singapore, one of the important source of data related to human mobility is from Land Transport Authority (LTA) DataMall. Two data sets related to human mobility are provided by the portal, they are: Passenger Volume by Origin Destination Train Stations and Passenger Volume by Origin Destination Bus Stops. One of the limitation of these data sets is that their location are biased to either bus stops or MRT/LRT stations. In 2020, another very interesting human mobility data set called Grab Posisi was released by GRAB, one of the largest shared taxi operator in South-east Asia. There are two data sets been released and one of them is for Singapore."
   }
 ]
