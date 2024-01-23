@@ -17,7 +17,7 @@ editor: visual
 # Set up
 
 ```{r}
-pacman::p_load(sf, tmap, spNetwork, classInt, virdis, tidyverse)
+pacman::p_load(sf, tmap, spNetwork, classInt, virdis, tidyverse, sp)
 ```
 
 # Importing data
@@ -48,8 +48,10 @@ tm_shape(childcare) +
 tmap_mode('plot')
 ```
 
-In order to run the Network Constraint Analysis, 
--   Segment the lines 
+In order to run the Network Constraint Analysis,
+
+-   Segment the lines
+
 -   Snap
 
 Creating the line segment,
@@ -98,6 +100,7 @@ lixels$density <- lixels$density*1000
 ```
 
 Visualise
+
 ```{r}
 tmap_mode('view')
 tm_shape(lixels)+
@@ -105,6 +108,7 @@ tm_shape(lixels)+
 tm_shape(childcare)+
   tm_dots()
 ```
+
 ```{r}
 tmap_mode('plot')
 ```

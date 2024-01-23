@@ -44,8 +44,12 @@ The following R packages are used for this assignment:
 
 -   **sf**, for importing, managing and processing geospatial data
 
+-   **spatstat**, for point pattern analysis
+
+-   **raster**, reads, writes, manipulates, analyses and model of gridded spatial data (raster)
+
 ```{r}
-pacman::p_load(arrow, lubridate, tidyverse, tmap, sf,sp, dplyr,spatstat)
+pacman::p_load(arrow, lubridate, tidyverse, tmap, sf, spatstat, raster, readr)
 ```
 
 # Data
@@ -54,9 +58,11 @@ pacman::p_load(arrow, lubridate, tidyverse, tmap, sf,sp, dplyr,spatstat)
 
 ## Data preprocessing
 
-\*\*\*\*Master Plan 2019 Subzone Boundary\*\*\* First, we want to get a clear Singapore boundary layer.
+***Master Plan 2019 Subzone Boundary***
 
-Extracted from [data.gov.sg](https://beta.data.gov.sg/collections/1749/view), let's read the 2019 master plan subzone boundary layer and convert the CRS to EPSG3414.
+First, we want to get a clear Singapore boundary layer.
+
+Extracted from [data.gov.sg](https://beta.data.gov.sg/collections/1749/view), let's read the 2019 master plan subzone boundary layer.
 
 ```{r}
 mpsz <- st_read("data/geospatial/master-plan-2019-subzone-boundary-no-sea-kml.kml")
@@ -65,14 +71,50 @@ summary(mpsz)
 
 -   The dimension contains XYZ, meaning that `mpsz` contains 3D geometries
 
-Convert `mpsz` to 2D geometry using *st_zm()* and save the converted form as a shapefile.
+Convert `mpsz` to 2D geometry using *st_zm()* from **sf** and save the converted form as a shapefile.
 
 ```{r}
 mpsz <- st_zm(mpsz, drop = TRUE) # Convert 3D geometries to 2D
 ```
 
+Create a new column `SUBZONE_N` containing the subzone names.
+
 ```{r}
-#| include: false
+# create a new column 'SUBZONE_N' and extract subzone names from 'Dscrptn' field
+mpsz <- mpsz %>%
+  rowwise() %>%
+  mutate(SUBZONE_N = str_extract(Description, "<th>SUBZONE_N</th> <td>(.*?)</td>")) %>%
+  ungroup()
+
+# remove HTML tags and 'SUBZONE_N' from 'SUBZONE_N' column
+mpsz$SUBZONE_N <- str_remove_all(mpsz$SUBZONE_N, "<.*?>|SUBZONE_N")
+
+# view the updated 'mpsz3414' dataframe
+head(mpsz$SUBZONE_N)
+```
+Create a new column `PLN_AREA_N` containing the planning area names.
+```{r}
+# create a new column 'PLN_AREA_N' and extract subzone names from 'Dscrptn' field
+mpsz <- mpsz %>%
+  rowwise() %>%
+  mutate(PLN_AREA_N = str_extract(Description, "<th>PLN_AREA_N</th> <td>(.*?)</td>")) %>%
+  ungroup()
+
+# remove HTML tags and 'PLN_AREA_N' from 'PLN_AREA_N' column
+mpsz$PLN_AREA_N <- str_remove_all(mpsz$PLN_AREA_N, "<.*?>|PLN_AREA_N")
+
+# view the updated 'mpsz3414' dataframe
+head(mpsz$PLN_AREA_N)
+```
+```{r}
+# Remove the 'Description' column using the $ operator
+mpsz$Description <- NULL
+head(mpsz)
+```
+
+
+```{r}
+# |eval: false
 st_write(mpsz, "data/geospatial/mpsz.shp")
 mpsz_sf <- st_read("data/geospatial/mpsz.shp")
 ```
@@ -81,75 +123,57 @@ Then transform the CRS from WGS84 to SVY21.
 
 ```{r}
 mpsz3414 <- st_transform(mpsz_sf, 3414)
-plot(mpsz3414)
 ```
 
-Currently, there is no subzone column and the subzone name information is embedded in the `Dscrptn` column, so create a new column `SUBZONE_N` containing the subzone names.
-```{r}
-# create a new column 'SUBZONE_N' and extract subzone names from 'Dscrptn' field
-mpsz3414 <- mpsz3414 %>%
-  rowwise() %>%
-  mutate(SUBZONE_N = str_extract(Dscrptn, "<th>SUBZONE_N</th> <td>(.*?)</td>")) %>%
-  ungroup()
 
-# remove HTML tags and 'SUBZONE_N' from 'SUBZONE_N' column
-mpsz3414$SUBZONE_N <- str_remove_all(mpsz3414$SUBZONE_N, "<.*?>|SUBZONE_N")
-
-# view the updated 'mpsz3414' dataframe
-mpsz3414
-```
 No commercial ride hailing services are available in the outer islands of Singapore. Let's identify them first.
 
 ![Outer Islands Subzones Viewed with QGIS](/img/outer_islands_qgis.jpg)
 
-Filter the outer islands.
+Filter out the outer islands.
+
 ```{r}
 outer_islands <- c("SEMAKAU", "SUDONG", "NORTH-EASTERN ISLANDS", "SOUTHERN GROUP")
 
-# Remove rows where 'SUBZONE_N' is in the list
+# remove rows where 'SUBZONE_N' is in the list
 mpsz3414 <- mpsz3414 %>%
   filter(!str_trim(SUBZONE_N) %in% str_trim(outer_islands))
-
-
-plot(mpsz3414)
 ```
 
-
 Then dissolve all the inner subzone boundaries using *st_union()* (if necessary).
+
 ```{r}
 sg_sf <- mpsz3414 %>% st_union()
 plot(sg_sf)
 ```
 
-Dissolve all the inner subzone boundaries using *st_union()*.
-
-```{f}
-sg_sf <- mpsz3414 %>% st_union()
-```
-
 ***OSM Singapore Roads***
 
-Read the Singapore Roads layer imported from [OSM](geofabrik.de) and convert it to the correct CRS.
+Get the roads layer from [OSM](geofabrik.de). Since the file is very large, I first used QGIS to select the roads in Singapore and saved the roads into a shape file. 
+
+Now, read the roads layer.
 
 ```{r}
-roads3414 <- st_read(dsn= "data/geospatial", layer="gis_osm_roads_free_1") %>%
-  st_transform(crs=3414)
+sg_roads <- st_read(dsn= "data/geospatial", layer="sg_roads")
+str(sg_roads)
+```
+Verify that `roadS` are in the correct in CRS
+
+```{r}
+st_crs(sg_roads) <- st_crs(3414)
 ```
 
-Verify that `roads3414` are in the correct in CRS
-```{r}
-summary(roads3414)
-```
+-   The CRS ID is 3414 which is correct.
+
 
 ## Data Size Management
 
 Before further data manipulation, save the files in **rds** format as the size of `roads3414` is very large.
 
 ```{r}
-write_rds(roads3414,"data/geospatial/rds/roads3414.rds")
-roads3414 <- read_rds("data/geospatial/rds/roads3414.rds")
+write_rds(sg_roads,"data/geospatial/rds/sg_roads.rds")
+sg_roads <- read_rds("data/geospatial/rds/sg_roads.rds")
 ```
-
 
 # Aspatial Data
 
@@ -158,6 +182,7 @@ roads3414 <- read_rds("data/geospatial/rds/roads3414.rds")
 Read all the Grab-Posisi using **arrow's** *read_parquet()* function to read the parquet files containing the ride trajectories.
 
 ```{r}
+# |eval: false
 df0 <- read_parquet("data/aspatial/part-00000-8bbff892-97d2-4011-9961-703e38972569.c000.snappy.parquet")
 df1 <- read_parquet("data/aspatial/part-00001-8bbff892-97d2-4011-9961-703e38972569.c000.snappy.parquet")
 df2 <- read_parquet("data/aspatial/part-00002-8bbff892-97d2-4011-9961-703e38972569.c000.snappy.parquet")
@@ -173,6 +198,7 @@ df9 <- read_parquet("data/aspatial/part-00009-8bbff892-97d2-4011-9961-703e389725
 Then combine the rows using the *bindrows* function in the **dplyr** package embedded in the **tidyverse** package.
 
 ```{r}
+# |eval: false
 df <- bind_rows(df0, df1, df2, df3, df4, df5, df6, df7, df8, df9)
 head(df)
 ```
@@ -180,17 +206,21 @@ head(df)
 The observed `pingtimestamp` is not easily comprehensible, thus it needs to be amended to a proper timestamp.
 
 ```{r}
+# |eval: false
 df$pingtimestamp <- as_datetime(df$pingtimestamp) ## $ to overwrite the variable in df
 head(df$pingtimestamp)
 ```
 
-The data can be further segmented to two groups: - `origin_df` representing the starting locations of trips taken - `dest_df` representing the end locations of trips taken
+The data can be further segmented to two groups:
 
-## Further Observation
+-   `origin_df` representing the starting locations of trips taken
+
+-   `dest_df` representing the end locations of trips taken
 
 ***Starting Locations***
 
 ```{r}
+# |eval: false
 origin_df <- df %>%
   group_by(trj_id) %>%
   arrange(pingtimestamp) %>% 
@@ -205,6 +235,7 @@ origin_df <- df %>%
 ***End Locations***
 
 ```{r}
+# |eval: false
 dest_df <- df %>%
   group_by(trj_id) %>%
   arrange(desc(pingtimestamp)) %>% 
@@ -218,11 +249,190 @@ dest_df <- df %>%
 
 ## Data Size Management
 
-Before further data manipulation, save the files in **rds** format as the size of df is very large. Running the whole tibble dataframe will not be practical and processing time will be very long.
+Before further data manipulation, save the files in **rds** format as the size of the data frames are very large. Running the whole tibble data frame will not be practical and the processing time will be very long.
 
 ```{r}
+# |eval: false
 write_rds(origin_df,"data/aspatial/rds/origin_df.rds")
-origin_df <- read_rds("data/aspatial/rds/origin_df.rds")
 write_rds(dest_df,"data/aspatial/rds/dest_df.rds")
+```
+
+```{r}
+origin_df <- read_rds("data/aspatial/rds/origin_df.rds")
 dest_df <- read_rds("data/aspatial/rds/dest_df.rds")
 ```
+
+## Further Observation
+
+Inspect the fields in `origin_df` and `dest_df`.
+
+```{r}
+list(origin_df)
+```
+
+## Creating a Simple Feature Data Frame from an Aspatial Data Frame
+
+Convert the data frames into simple features data frame such that the locations can be plotted.
+
+## Locations {.tabset}
+
+### ***Starting Locations***
+
+```{r}
+# |eval: false
+origin_sf <- origin_df %>% 
+  st_as_sf(coords=c("rawlng","rawlat"),
+           crs=4326) %>%
+  st_transform(crs = 3414)
+
+# reorder columns in mpsz3414 dataset
+mpsz3414 <- mpsz3414[, c("PLN_AREA_N", setdiff(names(mpsz3414), "PLN_AREA_N"))]
+
+tmap_mode("view")
+
+tmap_options(check.and.fix = TRUE)
+
+
+tm_shape(mpsz3414) +
+  tm_polygons(alpha=0.1, border.col = "red") +
+  tm_shape(origin_sf) +
+  tm_dots() +
+  tm_basemap(server = "OpenStreetMap") +
+  tm_layout(frame = FALSE, legend.show = FALSE)
+```
+
+### ***End Locations***
+
+```{r}
+# |eval: false
+dest_sf <- dest_df %>% 
+  st_as_sf(coords=c("rawlng","rawlat"),
+           crs=4326) %>%
+  st_transform(crs = 3414)
+
+tmap_options(check.and.fix = TRUE)
+
+tm_shape(mpsz3414) +
+  tm_polygons(alpha=0.1, border.col = "red") +
+  tm_shape(dest_sf) +
+  tm_dots() +
+  tm_basemap(server = "OpenStreetMap") +
+  tm_layout(frame = FALSE, legend.show = FALSE)
+```
+
+Remember to toggle out of the viewing mode.
+
+```{r}
+tmap_mode("plot")
+```
+
+##  {.unnumbered}
+
+# Preparation for Spatial Point Patterns Analysis
+
+## Converting sf Format into spatstat's ppp Format
+
+Use as.ppp() of ***spatstat*** to convert the sf object ppp format. ***Roads***
+
+```{r}
+roads_ppp <- as.ppp(st_coordinates(sg_roads), st_bbox(sg_roads))
+any(duplicated(sg_roads))
+```
+
+
+***Starting Locations***
+
+```{r}
+# |eval: false
+origin_ppp <- as.ppp(st_coordinates(origin_sf), st_bbox(origin_sf))
+plot(origin_ppp)
+```
+
+***Ending Locations***
+
+```{r}
+# |eval: false
+dest_ppp <- as.ppp(st_coordinates(dest_sf), st_bbox(dest_sf))
+plot(dest_ppp)
+```
+
+Look at summary statistics.
+
+***Starting Locations***
+
+```{r}
+summary(origin_ppp)
+```
+
+***Ending Locations***
+
+```{r}
+summary(dest_ppp)
+```
+
+```{r}
+any(duplicated(origin_ppp))
+any(duplicated(dest_ppp))
+```
+
+-   With no duplicated starting locations nor ending locations, we can proceed to set up for our spatial point patterns analysis.
+
+## Creating *owin* object
+
+```{r}
+# |eval: false
+sg_owin <- as.owin(sg_sf)
+plot(sg_owin)
+```
+
+## Combining point events object and *owin* object
+
+Extract points that are located within Singapore
+
+***Starting Locations***
+
+```{r}
+originSG_ppp = origin_ppp[sg_owin]
+```
+
+***Ending Locations***
+
+```{r}
+destSG_ppp = dest_ppp[sg_owin]
+```
+
+The output object contains the combination of the point and polygon feature into one ppp object class. ***Starting Locations***
+
+```{r}
+summary(originSG_ppp)
+```
+
+***Ending Locations***
+
+```{r}
+summary(destSG_ppp)
+```
+
+***Starting Locations***
+
+```{r}
+# |eval: false
+par(mfrow=c(1,2))
+par(mar = c(3,3,2,1))
+plot(origin_ppp)
+plot(originSG_ppp)
+```
+
+***Ending Locations***
+
+```{r}
+# |eval: false
+par(mfrow=c(1,2))
+par(mar = c(3,3,2,1))
+plot(dest_ppp)
+plot(destSG_ppp)
+```
+
+# First-order Spatial Point Patterns Analysis
+
+## Computing Kernel Density Estimation
