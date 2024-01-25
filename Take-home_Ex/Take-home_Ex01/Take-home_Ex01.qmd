@@ -49,7 +49,7 @@ The following R packages are used for this assignment:
 -   **raster**, reads, writes, manipulates, analyses and model of gridded spatial data (raster)
 
 ```{r}
-pacman::p_load(arrow, lubridate, tidyverse, tmap, sf, spatstat, raster, readr)
+pacman::p_load(arrow, lubridate, tidyverse, tmap, sf, spatstat, raster, readr,viridis)
 ```
 
 # Data
@@ -114,8 +114,11 @@ head(mpsz)
 
 
 ```{r}
-# |eval: false
+#| eval: false
 st_write(mpsz, "data/geospatial/mpsz.shp")
+```
+
+```{r}
 mpsz_sf <- st_read("data/geospatial/mpsz.shp")
 ```
 
@@ -133,6 +136,7 @@ No commercial ride hailing services are available in the outer islands of Singap
 Filter out the outer islands.
 
 ```{r}
+#| eval: false
 outer_islands <- c("SEMAKAU", "SUDONG", "NORTH-EASTERN ISLANDS", "SOUTHERN GROUP")
 
 # remove rows where 'SUBZONE_N' is in the list
@@ -149,18 +153,35 @@ plot(sg_sf)
 
 ***OSM Singapore Roads***
 
-Get the roads layer from [OSM](geofabrik.de). Since the file is very large, I first used QGIS to select the roads in Singapore and saved the roads into a shape file. 
-
-Now, read the roads layer.
+Get the roads layer from [OSM](geofabrik.de). Since the file is very large, it takes a long time to get the intersection between Singapore and roads (I took about 7 minutes to execute this step).
 
 ```{r}
+#| eval: false
+roads <- st_read(dsn="data/geospatial", layer="gis_osm_roads_free_1") %>%
+  st_transform(crs=3414)
+
+sg_roads <- st_intersection(roads,sg_sf)
+
+# plot(sg_roads) #uncomment to run and check
+```
+
+
+Alternatively you may use QGIS to select the roads in Singapore and save the roads into a shape file. 
+
+The following two code chunks can be uncommented if you are taking this approach.
+
+```{r}
+#| eval: false
 sg_roads <- st_read(dsn= "data/geospatial", layer="sg_roads")
 str(sg_roads)
 ```
-Verify that `roadS` are in the correct in CRS
+
+Verify that `roads` are in the correct in CRS
 
 ```{r}
+#| eval: false
 st_crs(sg_roads) <- st_crs(3414)
+st_crs(sg_roads)
 ```
 
 -   The CRS ID is 3414 which is correct.
@@ -170,8 +191,14 @@ st_crs(sg_roads) <- st_crs(3414)
 
 Before further data manipulation, save the files in **rds** format as the size of `roads3414` is very large.
 
+Uncomment the following line to run them. I have commented them to prevent a rendering issue on my end.
 ```{r}
+#| eval: false
 write_rds(sg_roads,"data/geospatial/rds/sg_roads.rds")
+```
+
+Read the written roads file.
+```{r}
 sg_roads <- read_rds("data/geospatial/rds/sg_roads.rds")
 ```
 
@@ -181,8 +208,9 @@ sg_roads <- read_rds("data/geospatial/rds/sg_roads.rds")
 
 Read all the Grab-Posisi using **arrow's** *read_parquet()* function to read the parquet files containing the ride trajectories.
 
+Uncomment the following lines to run them. I have commented them to prevent a rendering issue on my end.
 ```{r}
-# |eval: false
+#| eval: false
 df0 <- read_parquet("data/aspatial/part-00000-8bbff892-97d2-4011-9961-703e38972569.c000.snappy.parquet")
 df1 <- read_parquet("data/aspatial/part-00001-8bbff892-97d2-4011-9961-703e38972569.c000.snappy.parquet")
 df2 <- read_parquet("data/aspatial/part-00002-8bbff892-97d2-4011-9961-703e38972569.c000.snappy.parquet")
@@ -197,18 +225,20 @@ df9 <- read_parquet("data/aspatial/part-00009-8bbff892-97d2-4011-9961-703e389725
 
 Then combine the rows using the *bindrows* function in the **dplyr** package embedded in the **tidyverse** package.
 
+Uncomment the following lines to run them. I have commented them to prevent a rendering issue on my end.
 ```{r}
 # |eval: false
-df <- bind_rows(df0, df1, df2, df3, df4, df5, df6, df7, df8, df9)
-head(df)
+#df <- bind_rows(df0, df1, df2, df3, df4, df5, df6, df7, df8, df9)
+#head(df)
 ```
 
 The observed `pingtimestamp` is not easily comprehensible, thus it needs to be amended to a proper timestamp.
 
+Uncomment the following lines to run them. I have commented them to prevent a rendering issue on my end.
 ```{r}
 # |eval: false
-df$pingtimestamp <- as_datetime(df$pingtimestamp) ## $ to overwrite the variable in df
-head(df$pingtimestamp)
+#df$pingtimestamp <- as_datetime(df$pingtimestamp) ## $ to overwrite the variable in df
+#head(df$pingtimestamp)
 ```
 
 The data can be further segmented to two groups:
@@ -218,43 +248,44 @@ The data can be further segmented to two groups:
 -   `dest_df` representing the end locations of trips taken
 
 ***Starting Locations***
-
+Uncomment the following lines to run them. I have commented them to prevent a rendering issue on my end.
 ```{r}
 # |eval: false
-origin_df <- df %>%
-  group_by(trj_id) %>%
-  arrange(pingtimestamp) %>% 
-  filter(row_number()==1) %>% 
-  mutate(weekday = wday(pingtimestamp, 
-                        label=TRUE,
-                        abbr=TRUE), 
-         start_hr = factor(hour(pingtimestamp)), 
-         day = factor(mday(pingtimestamp)))
+#origin_df <- df %>%
+#  group_by(trj_id) %>%
+#  arrange(pingtimestamp) %>% 
+#  filter(row_number()==1) %>% 
+#  mutate(weekday = wday(pingtimestamp, 
+#                        label=TRUE,
+#                        abbr=TRUE), 
+#         start_hr = factor(hour(pingtimestamp)), 
+#         day = factor(mday(pingtimestamp)))
 ```
 
 ***End Locations***
 
 ```{r}
 # |eval: false
-dest_df <- df %>%
-  group_by(trj_id) %>%
-  arrange(desc(pingtimestamp)) %>% 
-  filter(row_number()==1) %>% 
-  mutate(weekday = wday(pingtimestamp, 
-                        label=TRUE,
-                        abbr=TRUE), 
-         end_hr = factor(hour(pingtimestamp)), 
-         day = factor(mday(pingtimestamp)))
+#dest_df <- df %>%
+#  group_by(trj_id) %>%
+#  arrange(desc(pingtimestamp)) %>% 
+#  filter(row_number()==1) %>% 
+#  mutate(weekday = wday(pingtimestamp, 
+#                        label=TRUE,
+#                        abbr=TRUE), 
+#       end_hr = factor(hour(pingtimestamp)), 
+#         day = factor(mday(pingtimestamp)))
 ```
 
 ## Data Size Management
 
 Before further data manipulation, save the files in **rds** format as the size of the data frames are very large. Running the whole tibble data frame will not be practical and the processing time will be very long.
 
+Uncomment the following lines to run them. I have commented them to prevent a rendering issue on my end.
 ```{r}
 # |eval: false
-write_rds(origin_df,"data/aspatial/rds/origin_df.rds")
-write_rds(dest_df,"data/aspatial/rds/dest_df.rds")
+#write_rds(origin_df,"data/aspatial/rds/origin_df.rds")
+#write_rds(dest_df,"data/aspatial/rds/dest_df.rds")
 ```
 
 ```{r}
@@ -268,6 +299,7 @@ Inspect the fields in `origin_df` and `dest_df`.
 
 ```{r}
 list(origin_df)
+list(dest_df)
 ```
 
 ## Creating a Simple Feature Data Frame from an Aspatial Data Frame
@@ -285,21 +317,8 @@ origin_sf <- origin_df %>%
            crs=4326) %>%
   st_transform(crs = 3414)
 
-# reorder columns in mpsz3414 dataset
-mpsz3414 <- mpsz3414[, c("PLN_AREA_N", setdiff(names(mpsz3414), "PLN_AREA_N"))]
-
-tmap_mode("view")
-
-tmap_options(check.and.fix = TRUE)
-
-
-tm_shape(mpsz3414) +
-  tm_polygons(alpha=0.1, border.col = "red") +
-  tm_shape(origin_sf) +
-  tm_dots() +
-  tm_basemap(server = "OpenStreetMap") +
-  tm_layout(frame = FALSE, legend.show = FALSE)
 ```
+
 
 ### ***End Locations***
 
@@ -309,35 +328,14 @@ dest_sf <- dest_df %>%
   st_as_sf(coords=c("rawlng","rawlat"),
            crs=4326) %>%
   st_transform(crs = 3414)
-
-tmap_options(check.and.fix = TRUE)
-
-tm_shape(mpsz3414) +
-  tm_polygons(alpha=0.1, border.col = "red") +
-  tm_shape(dest_sf) +
-  tm_dots() +
-  tm_basemap(server = "OpenStreetMap") +
-  tm_layout(frame = FALSE, legend.show = FALSE)
 ```
-
-Remember to toggle out of the viewing mode.
-
-```{r}
-tmap_mode("plot")
-```
-
 ##  {.unnumbered}
 
 # Preparation for Spatial Point Patterns Analysis
 
 ## Converting sf Format into spatstat's ppp Format
 
-Use as.ppp() of ***spatstat*** to convert the sf object ppp format. ***Roads***
-
-```{r}
-roads_ppp <- as.ppp(st_coordinates(sg_roads), st_bbox(sg_roads))
-any(duplicated(sg_roads))
-```
+Use as.ppp() of ***spatstat*** to convert the sf object ppp format. 
 
 
 ***Starting Locations***
@@ -401,7 +399,9 @@ originSG_ppp = origin_ppp[sg_owin]
 destSG_ppp = dest_ppp[sg_owin]
 ```
 
-The output object contains the combination of the point and polygon feature into one ppp object class. ***Starting Locations***
+The output object contains the combination of the point and polygon feature into one ppp object class. 
+
+***Starting Locations***
 
 ```{r}
 summary(originSG_ppp)
@@ -413,6 +413,7 @@ summary(originSG_ppp)
 summary(destSG_ppp)
 ```
 
+Plot the before and after to compare the outputs
 ***Starting Locations***
 
 ```{r}
@@ -433,6 +434,83 @@ plot(dest_ppp)
 plot(destSG_ppp)
 ```
 
+# Exploratory Data Analysis
+From the raster images, it is difficult to determine which parts of Singapore had higher demand for pick-up and drop-off.
+
+```{r}
+joined_origin <- st_join(origin_sf, mpsz3414)
+
+joined_origin <- joined_origin[, !names(joined_origin) %in% "geometry"]
+
+head(joined_origin)
+
+
+
+```
+```{r}
+joined_dest <- st_join(dest_sf, mpsz3414)
+head(joined_dest)
+```
+
+
+**Starting Locations**
+```{r}
+downtown_core <- mpsz3414[mpsz3414$PLN_AREA_N == 'DOWNTOWN CORE', ]
+
+roads_downtown_core <- sg_roads[st_intersection(sg_roads, downtown_core), ]
+
+origin_downtown_core <- joined_origin[st_intersection(joined_origin, downtown_core), ]
+
+
+tmap_mode("view")
+
+map  <-  
+  tm_basemap("OpenStreetMap")+
+    tm_shape(downtown_core) +
+      tm_borders(lwd=0.5) +
+    tm_shape(roads_downtown_core) +
+      tm_lines() 
+    tm_shape(origin_downtown_core) +
+      tm_dots()
+```
+
+
+
+To gain a better initial sensing, a choropleth map of the respective locations can be plotted.
+
+**Starting Locations**
+```{r}
+origin_prop <- tm_shape(mpsz_sf) +
+  tm_fill("prop_functional",
+          n=10,
+          title="Proportion",
+          style="equal",
+          palette="Blues") +
+  tm_borders(lwd=0.2,
+             alpha=1) +
+  tm_layout(main.title = "Distribution of Pick-up Locations",
+            legend.outside=FALSE,
+            main.title.size=1)
+```
+
+**Ending Locations***
+```{r}
+dest_prop <- tm_shape(mpsz_sf) +
+  tm_fill("prop_functional",
+          n=10,
+          title="Proportion",
+          style="equal",
+          palette="Blues") +
+  tm_borders(lwd=0.2,
+             alpha=1) +
+  tm_layout(main.title = "Distribution of Pick-up Locations",
+            legend.outside=FALSE,
+            main.title.size=1)
+```
+
+
 # First-order Spatial Point Patterns Analysis
+
+
 
 ## Computing Kernel Density Estimation
