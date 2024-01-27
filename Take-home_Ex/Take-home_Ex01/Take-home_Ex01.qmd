@@ -40,7 +40,7 @@ The following R packages are used for this assignment:
 
 -   **tidyverse**, for importing, wrangling and visualising data
 
--   **tmap,** to create thematic maps
+-   **tmap**, to create thematic maps
 
 -   **sf**, for importing, managing and processing geospatial data
 
@@ -48,8 +48,10 @@ The following R packages are used for this assignment:
 
 -   **raster**, reads, writes, manipulates, analyses and model of gridded spatial data (raster)
 
+-   **spNetwork**, to perform kernel density estimation and build spatial matrices to conduct spatial analysis on reticular distances
+
 ```{r}
-pacman::p_load(arrow, lubridate, tidyverse, tmap, sf, spatstat, raster, readr,viridis)
+pacman::p_load(arrow, lubridate, tidyverse, tmap, sf, spatstat, raster, spNetwork,sp)
 ```
 
 # Data
@@ -65,6 +67,7 @@ First, we want to get a clear Singapore boundary layer.
 Extracted from [data.gov.sg](https://beta.data.gov.sg/collections/1749/view), let's read the 2019 master plan subzone boundary layer.
 
 ```{r}
+#| eval: false
 mpsz <- st_read("data/geospatial/master-plan-2019-subzone-boundary-no-sea-kml.kml")
 summary(mpsz)
 ```
@@ -74,12 +77,14 @@ summary(mpsz)
 Convert `mpsz` to 2D geometry using *st_zm()* from **sf** and save the converted form as a shapefile.
 
 ```{r}
+#| eval: false
 mpsz <- st_zm(mpsz, drop = TRUE) # Convert 3D geometries to 2D
 ```
 
 Create a new column `SUBZONE_N` containing the subzone names.
 
 ```{r}
+#| eval: false
 # create a new column 'SUBZONE_N' and extract subzone names from 'Dscrptn' field
 mpsz <- mpsz %>%
   rowwise() %>%
@@ -92,8 +97,11 @@ mpsz$SUBZONE_N <- str_remove_all(mpsz$SUBZONE_N, "<.*?>|SUBZONE_N")
 # view the updated 'mpsz3414' dataframe
 head(mpsz$SUBZONE_N)
 ```
+
 Create a new column `PLN_AREA_N` containing the planning area names.
+
 ```{r}
+#| eval: false
 # create a new column 'PLN_AREA_N' and extract subzone names from 'Dscrptn' field
 mpsz <- mpsz %>%
   rowwise() %>%
@@ -103,31 +111,30 @@ mpsz <- mpsz %>%
 # remove HTML tags and 'PLN_AREA_N' from 'PLN_AREA_N' column
 mpsz$PLN_AREA_N <- str_remove_all(mpsz$PLN_AREA_N, "<.*?>|PLN_AREA_N")
 
-# view the updated 'mpsz3414' dataframe
-head(mpsz$PLN_AREA_N)
 ```
-```{r}
-# Remove the 'Description' column using the $ operator
-mpsz$Description <- NULL
-head(mpsz)
-```
-
 
 ```{r}
 #| eval: false
-st_write(mpsz, "data/geospatial/mpsz.shp")
+# remove the 'Description' column using the $ operator
+mpsz$Description <- NULL
+```
+
+```{r}
+#| eval: false
+#st_write(mpsz, "data/geospatial/mpsz.shp")
 ```
 
 ```{r}
 mpsz_sf <- st_read("data/geospatial/mpsz.shp")
+class(mpsz_sf)
 ```
 
 Then transform the CRS from WGS84 to SVY21.
 
 ```{r}
 mpsz3414 <- st_transform(mpsz_sf, 3414)
+class(mpsz3414)
 ```
-
 
 No commercial ride hailing services are available in the outer islands of Singapore. Let's identify them first.
 
@@ -136,12 +143,12 @@ No commercial ride hailing services are available in the outer islands of Singap
 Filter out the outer islands.
 
 ```{r}
-#| eval: false
 outer_islands <- c("SEMAKAU", "SUDONG", "NORTH-EASTERN ISLANDS", "SOUTHERN GROUP")
 
 # remove rows where 'SUBZONE_N' is in the list
 mpsz3414 <- mpsz3414 %>%
   filter(!str_trim(SUBZONE_N) %in% str_trim(outer_islands))
+class(mpsz3414)
 ```
 
 Then dissolve all the inner subzone boundaries using *st_union()* (if necessary).
@@ -162,11 +169,10 @@ roads <- st_read(dsn="data/geospatial", layer="gis_osm_roads_free_1") %>%
 
 sg_roads <- st_intersection(roads,sg_sf)
 
-# plot(sg_roads) #uncomment to run and check
+plot(sg_roads) 
 ```
 
-
-Alternatively you may use QGIS to select the roads in Singapore and save the roads into a shape file. 
+Alternatively you may use QGIS to select the roads in Singapore and save the roads into a shape file.
 
 The following two code chunks can be uncommented if you are taking this approach.
 
@@ -186,18 +192,17 @@ st_crs(sg_roads)
 
 -   The CRS ID is 3414 which is correct.
 
-
 ## Data Size Management
 
 Before further data manipulation, save the files in **rds** format as the size of `roads3414` is very large.
 
-Uncomment the following line to run them. I have commented them to prevent a rendering issue on my end.
 ```{r}
 #| eval: false
 write_rds(sg_roads,"data/geospatial/rds/sg_roads.rds")
 ```
 
 Read the written roads file.
+
 ```{r}
 sg_roads <- read_rds("data/geospatial/rds/sg_roads.rds")
 ```
@@ -208,7 +213,6 @@ sg_roads <- read_rds("data/geospatial/rds/sg_roads.rds")
 
 Read all the Grab-Posisi using **arrow's** *read_parquet()* function to read the parquet files containing the ride trajectories.
 
-Uncomment the following lines to run them. I have commented them to prevent a rendering issue on my end.
 ```{r}
 #| eval: false
 df0 <- read_parquet("data/aspatial/part-00000-8bbff892-97d2-4011-9961-703e38972569.c000.snappy.parquet")
@@ -225,20 +229,18 @@ df9 <- read_parquet("data/aspatial/part-00009-8bbff892-97d2-4011-9961-703e389725
 
 Then combine the rows using the *bindrows* function in the **dplyr** package embedded in the **tidyverse** package.
 
-Uncomment the following lines to run them. I have commented them to prevent a rendering issue on my end.
 ```{r}
-# |eval: false
-#df <- bind_rows(df0, df1, df2, df3, df4, df5, df6, df7, df8, df9)
-#head(df)
+#| eval: false
+df <- bind_rows(df0, df1, df2, df3, df4, df5, df6, df7, df8, df9)
+head(df)
 ```
 
 The observed `pingtimestamp` is not easily comprehensible, thus it needs to be amended to a proper timestamp.
 
-Uncomment the following lines to run them. I have commented them to prevent a rendering issue on my end.
 ```{r}
-# |eval: false
-#df$pingtimestamp <- as_datetime(df$pingtimestamp) ## $ to overwrite the variable in df
-#head(df$pingtimestamp)
+#| eval: false
+df$pingtimestamp <- as_datetime(df$pingtimestamp) ## $ to overwrite the variable in df
+head(df$pingtimestamp)
 ```
 
 The data can be further segmented to two groups:
@@ -248,44 +250,43 @@ The data can be further segmented to two groups:
 -   `dest_df` representing the end locations of trips taken
 
 ***Starting Locations***
-Uncomment the following lines to run them. I have commented them to prevent a rendering issue on my end.
+
 ```{r}
-# |eval: false
-#origin_df <- df %>%
-#  group_by(trj_id) %>%
-#  arrange(pingtimestamp) %>% 
-#  filter(row_number()==1) %>% 
-#  mutate(weekday = wday(pingtimestamp, 
-#                        label=TRUE,
-#                        abbr=TRUE), 
-#         start_hr = factor(hour(pingtimestamp)), 
-#         day = factor(mday(pingtimestamp)))
+#| eval: false
+origin_df <- df %>%
+  group_by(trj_id) %>%
+  arrange(pingtimestamp) %>% 
+  filter(row_number()==1) %>% 
+  mutate(weekday = wday(pingtimestamp, 
+                        label=TRUE,
+                        abbr=TRUE), 
+         start_hr = factor(hour(pingtimestamp)), 
+         day = factor(mday(pingtimestamp)))
 ```
 
 ***End Locations***
 
 ```{r}
-# |eval: false
-#dest_df <- df %>%
-#  group_by(trj_id) %>%
-#  arrange(desc(pingtimestamp)) %>% 
-#  filter(row_number()==1) %>% 
-#  mutate(weekday = wday(pingtimestamp, 
-#                        label=TRUE,
-#                        abbr=TRUE), 
-#       end_hr = factor(hour(pingtimestamp)), 
-#         day = factor(mday(pingtimestamp)))
+#| eval: false
+dest_df <- df %>%
+  group_by(trj_id) %>%
+  arrange(desc(pingtimestamp)) %>% 
+  filter(row_number()==1) %>% 
+  mutate(weekday = wday(pingtimestamp, 
+                        label=TRUE,
+                        abbr=TRUE), 
+       end_hr = factor(hour(pingtimestamp)), 
+         day = factor(mday(pingtimestamp)))
 ```
 
 ## Data Size Management
 
 Before further data manipulation, save the files in **rds** format as the size of the data frames are very large. Running the whole tibble data frame will not be practical and the processing time will be very long.
 
-Uncomment the following lines to run them. I have commented them to prevent a rendering issue on my end.
 ```{r}
-# |eval: false
-#write_rds(origin_df,"data/aspatial/rds/origin_df.rds")
-#write_rds(dest_df,"data/aspatial/rds/dest_df.rds")
+#| eval: false
+write_rds(origin_df,"data/aspatial/rds/origin_df.rds")
+write_rds(dest_df,"data/aspatial/rds/dest_df.rds")
 ```
 
 ```{r}
@@ -306,42 +307,35 @@ list(dest_df)
 
 Convert the data frames into simple features data frame such that the locations can be plotted.
 
-## Locations {.tabset}
+## Locations
 
 ### ***Starting Locations***
 
 ```{r}
-# |eval: false
 origin_sf <- origin_df %>% 
   st_as_sf(coords=c("rawlng","rawlat"),
            crs=4326) %>%
   st_transform(crs = 3414)
-
 ```
-
 
 ### ***End Locations***
 
 ```{r}
-# |eval: false
 dest_sf <- dest_df %>% 
   st_as_sf(coords=c("rawlng","rawlat"),
            crs=4326) %>%
   st_transform(crs = 3414)
 ```
-##  {.unnumbered}
 
 # Preparation for Spatial Point Patterns Analysis
 
 ## Converting sf Format into spatstat's ppp Format
 
-Use as.ppp() of ***spatstat*** to convert the sf object ppp format. 
-
+Use *as.ppp()* of ***spatstat*** to convert the sf object ppp format.
 
 ***Starting Locations***
 
 ```{r}
-# |eval: false
 origin_ppp <- as.ppp(st_coordinates(origin_sf), st_bbox(origin_sf))
 plot(origin_ppp)
 ```
@@ -349,7 +343,6 @@ plot(origin_ppp)
 ***Ending Locations***
 
 ```{r}
-# |eval: false
 dest_ppp <- as.ppp(st_coordinates(dest_sf), st_bbox(dest_sf))
 plot(dest_ppp)
 ```
@@ -378,9 +371,12 @@ any(duplicated(dest_ppp))
 ## Creating *owin* object
 
 ```{r}
-# |eval: false
 sg_owin <- as.owin(sg_sf)
 plot(sg_owin)
+```
+
+```{r}
+summary(sg_owin)
 ```
 
 ## Combining point events object and *owin* object
@@ -399,7 +395,7 @@ originSG_ppp = origin_ppp[sg_owin]
 destSG_ppp = dest_ppp[sg_owin]
 ```
 
-The output object contains the combination of the point and polygon feature into one ppp object class. 
+The output object contains the combination of the point and polygon feature into one ppp object class.
 
 ***Starting Locations***
 
@@ -413,11 +409,9 @@ summary(originSG_ppp)
 summary(destSG_ppp)
 ```
 
-Plot the before and after to compare the outputs
-***Starting Locations***
+Plot the before and after to compare the outputs ***Starting Locations***
 
 ```{r}
-# |eval: false
 par(mfrow=c(1,2))
 par(mar = c(3,3,2,1))
 plot(origin_ppp)
@@ -427,7 +421,6 @@ plot(originSG_ppp)
 ***Ending Locations***
 
 ```{r}
-# |eval: false
 par(mfrow=c(1,2))
 par(mar = c(3,3,2,1))
 plot(dest_ppp)
@@ -435,25 +428,244 @@ plot(destSG_ppp)
 ```
 
 # Exploratory Data Analysis
+
 From the raster images, it is difficult to determine which parts of Singapore had higher demand for pick-up and drop-off.
 
+## Additional Data Consolidation
+
+Add a count column for starting and ending locations in `mpsz3414`
+
 ```{r}
+
+# form common identifier by passing SUBZONE_N and PLN_AREA_N over
 joined_origin <- st_join(origin_sf, mpsz3414)
-
-joined_origin <- joined_origin[, !names(joined_origin) %in% "geometry"]
-
-head(joined_origin)
-
-
-
-```
-```{r}
 joined_dest <- st_join(dest_sf, mpsz3414)
-head(joined_dest)
+
+
+# create count number by subzone
+origin_counts <- joined_origin %>%
+  group_by(SUBZONE_N) %>%
+  summarise(total_origin = n())
+
+dest_counts <- joined_dest %>%
+  group_by(SUBZONE_N) %>%
+  summarise(total_dest = n())
+
+
+# insert the count columns into mpsz3414
+mpsz3414 <- st_join(mpsz3414, origin_counts, by = "SUBZONE_N")
+
+mpsz3414 <- st_join(mpsz3414, dest_counts, by = "SUBZONE_N")
+
+# remove the duplicated subzone columns
+mpsz3414 <- mpsz3414[, !names(mpsz3414) %in% c("SUBZONE_N.x", "SUBZONE_N.y")]
 ```
 
+First let's check for any null values.
+
+```{r}
+any(is.na(mpsz3414$total_origin))
+any(is.na(mpsz3414$total_dest))
+```
+
+Fill NA with zero using *coalesce()* from **dplyr**.
+
+```{r}
+mpsz3414 <- mpsz3414 %>%
+  mutate(total_origin = coalesce(total_origin, 0),
+         prop_origin = total_origin / sum(total_origin))
+
+mpsz3414 <- mpsz3414 %>%
+  mutate(total_dest = coalesce(total_dest, 0),
+         prop_dest = total_dest / sum(total_dest))
+```
+
+```{r}
+any(is.na(mpsz3414$total_origin))
+any(is.na(mpsz3414$total_dest))
+class(mpsz3414)
+```
+
+-   Now there are no null values.
+
+Since I have added critical data in `mpsz3414`, it is easier to plot the choropleth from the it. However, `mpsz3414` is missing the geometry attribute. So let's insert it from `mpsz_sf`.
+
+```{r}
+# reorder columns for readability
+mpsz3414 <- mpsz3414[c("SUBZONE_N", "PLN_AREA_N", "Name", "total_origin", "prop_origin", "total_dest", "prop_dest", "geometry")]
+```
+
+## Choropleth Maps
+
+Now, let's have a general overview of the distribution of pick-up and drop-off points.
 
 **Starting Locations**
+
+```{r}
+tmap_options(check.and.fix = TRUE)
+
+origin_choropleth <-
+tm_shape(mpsz3414) +
+  tm_fill("prop_origin",
+          n=10,
+          title="Proportion",
+          style="equal",
+          palette="YlOrRd") +
+  tm_borders(lwd=0.2,
+             alpha=1) +
+  tm_layout(main.title = "Distribution of Pick-up Points",
+            legend.outside=FALSE,
+            main.title.size=1)
+```
+
+**Ending Locations**
+
+```{r}
+dest_choropleth <-
+tm_shape(mpsz3414) +
+  tm_fill("prop_dest",
+          n=10,
+          title="Proportion",
+          style="equal",
+          palette="YlOrRd") +
+  tm_borders(lwd=0.2,
+             alpha=1) +
+  tm_layout(main.title = "Distribution of Drop-off Points",
+            legend.outside=FALSE,
+            main.title.size=1) 
+```
+
+**Comparing Starting and Ending Locations**
+
+```{r}
+tmap_mode("plot")
+tmap_arrange(origin_choropleth, dest_choropleth, nrow=1)
+```
+
+-   At a quick glance, we can observe that there are the most pick-up and drop-off locations at the Changi Airport subzone. The quick inference is that there are many travellers commuting to and from the airport via Grab ride-hailing services.
+
+## Locations with top proportions
+
+Sort `prop_origin` in descending order using *desc()*.
+
+```{r}
+origin_top <- mpsz3414 %>%
+  arrange(desc(prop_origin)) %>%
+  slice(1:10)
+
+origin_top <- origin_top[, c("SUBZONE_N", "PLN_AREA_N", "total_origin", "prop_origin")]
+
+origin_top
+```
+
+Sort `prop_dest` in descending order using *desc()*.
+
+```{r}
+dest_top <- mpsz3414 %>%
+  arrange(desc(prop_dest)) %>%
+  slice(1:10) 
+
+dest_top <- dest_top[, c("SUBZONE_N", "PLN_AREA_N", "total_dest", "prop_dest")]
+
+dest_top
+```
+
+-   After **Changi**, planning areas like **Tampines**- and **Woodlands**-related subzones are in the top 10 for the proportions of pick-up and drop-off locations.
+
+-   Interestingly, **Central Water Catchment** planning area is one of the top few drop-off locations.
+
+### Tampines
+
+The Tampines planning area has piqued my interest. Let's have a closer look.
+
+```{r}
+tampines <- mpsz3414[mpsz3414$PLN_AREA_N == 'TAMPINES', ]
+
+roads_tampines <- sg_roads[st_intersection(sg_roads, tampines), ]
+
+origin_tampines <- joined_origin[st_intersection(joined_origin, tampines), ]
+
+
+tmap_mode("view")
+
+tm_basemap("OpenStreetMap")+
+  tm_shape(tampines) +
+    tm_borders(lwd=0.5) +
+  tm_shape(roads_tampines) +
+    tm_lines() +
+  tm_shape(origin_tampines) +
+    tm_dots()
+```
+
+```{r}
+tmap_mode("plot")
+```
+
+### Woodlands
+
+```{r}
+woodlands <- mpsz3414[mpsz3414$PLN_AREA_N == 'WOODLANDS', ]
+
+roads_woodlands <- sg_roads[st_intersection(sg_roads, woodlands), ]
+
+origin_woodlands <- joined_origin[st_intersection(joined_origin, woodlands), ]
+
+
+tmap_mode("view")
+
+tm_basemap("OpenStreetMap")+
+  tm_shape(woodlands) +
+    tm_borders(lwd=0.5) +
+  tm_shape(roads_woodlands) +
+    tm_lines() +
+  tm_shape(origin_woodlands) +
+    tm_dots()
+```
+
+```{r}
+tmap_mode("plot")
+```
+
+### Central Water Catchement (CWC)
+
+Since CWC area popped up as one of the top ten drop off locations, we should specify `joined dest`.
+
+```{r}
+cwc <- mpsz3414[mpsz3414$PLN_AREA_N == 'CENTRAL WATER CATCHMENT', ]
+
+roads_cwc <- sg_roads[st_intersection(sg_roads, cwc), ]
+
+dest_cwc <- joined_dest[st_intersection(joined_dest, cwc), ]
+
+
+tmap_mode("view")
+
+
+tm_basemap("OpenStreetMap")+
+  tm_shape(cwc) +
+    tm_borders(lwd=0.5) +
+  tm_shape(roads_cwc) +
+    tm_lines() +
+  tm_shape(dest_cwc) +
+    tm_dots()
+```
+
+::: callout-tip
+## Interesting
+
+Many of the drop-off points are along the parameters of the CWC planning area!
+:::
+
+```{r}
+tmap_mode("plot")
+```
+
+### Downtown Core
+
+Let's explore other areas like CBD as my assumption is that office workers might use Grab to travel to their workplaces. From prior knowledge, CBD is within the planning area of Downtown Core.
+
+**Starting Locations**
+
 ```{r}
 downtown_core <- mpsz3414[mpsz3414$PLN_AREA_N == 'DOWNTOWN CORE', ]
 
@@ -464,53 +676,985 @@ origin_downtown_core <- joined_origin[st_intersection(joined_origin, downtown_co
 
 tmap_mode("view")
 
-map  <-  
-  tm_basemap("OpenStreetMap")+
-    tm_shape(downtown_core) +
-      tm_borders(lwd=0.5) +
-    tm_shape(roads_downtown_core) +
-      tm_lines() 
-    tm_shape(origin_downtown_core) +
-      tm_dots()
+
+tm_basemap("OpenStreetMap")+
+  tm_shape(downtown_core) +
+    tm_borders(lwd=0.5) +
+  tm_shape(roads_downtown_core) +
+    tm_lines() +
+  tm_shape(origin_downtown_core) +
+    tm_dots()
 ```
 
+::: callout-tip
+## Interesting
 
+Compared to the sparse distribution of points previously for CWC, the pick-up points seem to be distributed all over the roads in CBD.
+:::
 
-To gain a better initial sensing, a choropleth map of the respective locations can be plotted.
-
-**Starting Locations**
 ```{r}
-origin_prop <- tm_shape(mpsz_sf) +
-  tm_fill("prop_functional",
-          n=10,
-          title="Proportion",
-          style="equal",
-          palette="Blues") +
-  tm_borders(lwd=0.2,
-             alpha=1) +
-  tm_layout(main.title = "Distribution of Pick-up Locations",
-            legend.outside=FALSE,
-            main.title.size=1)
+tmap_mode("plot")
 ```
 
-**Ending Locations***
+# Kernel Density Estimation
+
+## Comparing Spatial Point Patterns using KDE
+
+Here, we shall compare the kernel density estimation of pick-up and drop-off points at the pre-selected planning areas.
+
+### Create ***owin*** object
+
+Convert the SpatialPolygons objects into owin objects as required by **spatstat**.
+
 ```{r}
-dest_prop <- tm_shape(mpsz_sf) +
-  tm_fill("prop_functional",
-          n=10,
-          title="Proportion",
-          style="equal",
-          palette="Blues") +
-  tm_borders(lwd=0.2,
-             alpha=1) +
-  tm_layout(main.title = "Distribution of Pick-up Locations",
-            legend.outside=FALSE,
-            main.title.size=1)
+tm_owin <- as.owin(tampines)
+wd_owin <- as.owin(woodlands)
+dt_owin <- as.owin(downtown_core)
+cwc_owin <- as.owin(cwc)
 ```
 
+### Combining points and the interested areas
 
-# First-order Spatial Point Patterns Analysis
+Extract the pick-up and drop-off points within each of the study planning areas.
 
+**Interested Starting Locations**
 
+```{r}
+origin_tm_ppp = origin_ppp[tm_owin]
+origin_wd_ppp = origin_ppp[wd_owin]
+origin_dt_ppp = origin_ppp[dt_owin]
+origin
+```
 
-## Computing Kernel Density Estimation
+::: callout-note
+## Note
+
+Using `origin_ppp` or `originSG_ppp` does not matter as the restriction to the various planning area object windows will extract the necessary points.
+:::
+
+Let's use *rescale()* to transform the unit of measurement from metres to kilometres.
+
+```{r}
+origin_tm_ppp.km = rescale(origin_tm_ppp, 1000, "km")
+origin_wd_ppp.km = rescale(origin_wd_ppp, 1000, "km")
+origin_dt_ppp.km = rescale(origin_dt_ppp, 1000, "km")
+```
+
+Then look at the output.
+
+```{r}
+par(mfrow=c(2,2))
+par(mar = c(3,3,2,1))
+plot(origin_tm_ppp.km, main= "Origin Tampines")
+plot(origin_wd_ppp.km, main= "Origin Woodlands")
+plot(origin_dt_ppp.km, main= "Origin Downtown Core")
+```
+
+Repeat the same steps for the interested ending locations!
+
+**Interested Ending Locations**
+
+```{r}
+dest_tm_ppp = dest_ppp[tm_owin]
+dest_wd_ppp = dest_ppp[wd_owin]
+dest_dt_ppp = dest_ppp[dt_owin]
+dest_cwc_ppp = dest_ppp[cwc_owin]
+```
+
+Let's use *rescale()* to transform the unit of measurement from metres to kilometres.
+
+```{r}
+dest_tm_ppp.km = rescale(dest_tm_ppp, 1000, "km")
+dest_wd_ppp.km = rescale(dest_wd_ppp, 1000, "km")
+dest_dt_ppp.km = rescale(dest_dt_ppp, 1000, "km")
+dest_cwc_ppp.km = rescale(dest_cwc_ppp, 1000, "km")
+```
+
+```{r}
+par(mfrow=c(2,2))
+par(mar = c(3,3,2,1))
+plot(dest_tm_ppp, main= "Dest Tampines")
+plot(dest_wd_ppp, main= "Dest Woodlands")
+plot(dest_dt_ppp, main= "Dest Downtown Core")
+plot(dest_cwc_ppp, main="Dest CWC")
+```
+
+## Bandwidth Methods
+
+There are multiple methods in determining the bandwidth type to use for kernel density. Here, let's experiment with the different bandwidth methods before proceeding further.
+
+### Automatic Bandwidth Selection
+
+The purpose for this project is to visualise where the pick-up and drop-off points are clustered. Let's observe the cluster visualisations produced by the various bandwidth functions.
+
+#### Interested Starting Locations
+
+**Tampines**
+
+::: {panel-tabset}
+##### bw.CvL
+
+```{r}
+plot(density(origin_tm_ppp.km,
+             sigma=bw.CvL,
+             edge=TRUE,
+             kernel="gaussian"),
+             main="Tamp Origin CvL")
+```
+
+##### bw.scott
+
+```{r}
+plot(density(origin_tm_ppp.km,
+             sigma=bw.scott,
+             edge=TRUE,
+             kernel="gaussian"),
+             main="Tamp Origin scott")
+```
+
+##### bw.diggle
+
+```{r}
+plot(density(origin_tm_ppp.km,
+             sigma=bw.diggle,
+             edge=TRUE,
+             kernel="gaussian"),
+             main="Tamp Origin diggle")
+```
+
+##### bw.ppl
+
+```{r}
+plot(density(origin_tm_ppp.km,
+             sigma=bw.ppl,
+             edge=TRUE,
+             kernel="gaussian"),
+             main="Tamp Origin ppl")
+```
+:::
+
+-   From the visualisations of Tampines, let's go ahead with bw.diggle for the Tampines starting locations.
+
+### **Woodlands**
+
+::: panel-tabset
+##### bw.CvL
+
+```{r}
+plot(density(origin_wd_ppp.km,
+             sigma=bw.CvL,
+             edge=TRUE,
+             kernel="gaussian"),
+             main="Woodlands Origin CvL")
+```
+
+##### bw.scott
+
+```{r}
+plot(density(origin_wd_ppp.km,
+             sigma=bw.scott,
+             edge=TRUE,
+             kernel="gaussian"),
+             main="Woodlands Origin scott")
+```
+
+##### bw.diggle
+
+```{r}
+plot(density(origin_wd_ppp.km,
+             sigma=bw.diggle,
+             edge=TRUE,
+             kernel="gaussian"),
+             main="Woodlands Origin diggle")
+```
+
+##### bw.ppl
+
+```{r}
+plot(density(origin_wd_ppp.km,
+             sigma=bw.ppl,
+             edge=TRUE,
+             kernel="gaussian"),
+             main="Woodlands Origin ppl")
+```
+:::
+
+-   The bw.ppl method can be used as it shows better visualisation of predominant tight clusters in Woodlands.
+
+### **Downtown Core**
+
+::: panel-tabset
+##### bw.CvL
+
+```{r}
+plot(density(origin_dt_ppp.km,
+        sigma=bw.CvL,
+        edge=TRUE,
+        kernel="gaussian"),
+        main="Downtown Origin CvL")
+```
+
+##### bw.scott
+
+```{r}
+plot(density(origin_dt_ppp.km,
+        sigma=bw.scott,
+        edge=TRUE,
+        kernel="gaussian"),
+        main="Downtown Origin scott")
+```
+
+##### bw.diggle
+
+```{r}
+plot(density(origin_dt_ppp.km,
+        sigma=bw.diggle,
+        edge=TRUE,
+        kernel="gaussian"),
+        main="Downtown Origin")
+```
+
+##### bw.ppl
+
+```{r}
+plot(density(origin_dt_ppp.km,
+        sigma=bw.ppl,
+        edge=TRUE,
+        kernel="gaussian"),
+        main="Downtown Origin ppl")
+```
+:::
+
+-   The bw.ppl method also seems to produce the best visualisation for CBD Downtown Core.
+
+#### Interested Ending Locations
+
+### **Tampines**
+
+::: panel-tabset
+##### bw.CvL
+
+```{r}
+plot(density(dest_tm_ppp.km,
+             sigma=bw.CvL,
+             edge=TRUE,
+             kernel="gaussian"),
+             main="Tampines Dest CvL")
+```
+
+##### bw.scott
+
+```{r}
+plot(density(dest_tm_ppp.km,
+             sigma=bw.scott,
+             edge=TRUE,
+             kernel="gaussian"),
+             main="Tampines Dest scott")
+```
+
+##### bw.diggle
+
+```{r}
+plot(density(dest_tm_ppp.km,
+             sigma=bw.diggle,
+             edge=TRUE,
+             kernel="gaussian"),
+             main="Tampines Dest diggle")
+```
+
+##### bw.ppl
+
+```{r}
+plot(density(dest_tm_ppp.km,
+             sigma=bw.ppl,
+             edge=TRUE,
+             kernel="gaussian"),
+             main="Tampines Dest ppl")
+```
+:::
+
+-   In my opinion, the bw.ppl method showcases tighter clusters better than bw.diggle. Hence the bw.diggle method will be used for the Tampines drop-off locations.
+
+### **Woodlands**
+
+::: panel-tabset
+##### bw.CvL
+
+```{r}
+plot(density(dest_wd_ppp.km,
+             sigma=bw.CvL,
+             edge=TRUE,
+             kernel="gaussian"),
+             main="Woodlands Dest CvL")
+```
+
+##### bw.scott
+
+```{r}
+plot(density(dest_wd_ppp.km,
+             sigma=bw.scott,
+             edge=TRUE,
+             kernel="gaussian"),
+             main="Woodlands Dest scott")
+```
+
+##### bw.diggle
+
+```{r}
+plot(density(dest_wd_ppp.km,
+             sigma=bw.diggle,
+             edge=TRUE,
+             kernel="gaussian"),
+             main="Woodlands Dest diggle")
+```
+
+##### bw.ppl
+
+```{r}
+plot(density(dest_wd_ppp.km,
+             sigma=bw.ppl,
+             edge=TRUE,
+             kernel="gaussian"),
+             main="Woodlands Dest ppl")
+```
+:::
+
+-   The bw.ppl method seems to work best for the Woodlands drop-off locations.
+
+**Central Water Catchment** :
+
+:: {.panel-tabset}
+
+##### bw.CvL
+
+```{r}
+plot(density(dest_cwc_ppp.km,
+             sigma=bw.CvL,
+             edge=TRUE,
+             kernel="gaussian"),
+             main="CWC Dest CvL")
+```
+
+##### bw.scott
+
+```{r}
+plot(density(dest_cwc_ppp.km,
+             sigma=bw.scott,
+             edge=TRUE,
+             kernel="gaussian"),
+             main="CWC Dest scott")
+```
+
+##### bw.diggle
+
+```{r}
+plot(density(dest_cwc_ppp.km,
+             sigma=bw.diggle,
+             edge=TRUE,
+             kernel="gaussian"),
+             main="CWC Dest diggle")
+```
+
+##### bw.ppl
+
+```{r}
+plot(density(dest_cwc_ppp.km,
+             sigma=bw.ppl,
+             edge=TRUE,
+             kernel="gaussian"),
+             main="CWC Dest ppl")
+```
+
+:::
+
+-   Again, the bw.ppl method seems to work best for the Central Water Catchment drop-off points.
+
+To summarise the automatic bandwidth selection process, the bw.ppl method is chosen for all areas of interest except for Tampines Pick-ups.
+
+Baddeley et al. (2016) suggested the use of bw.ppl() algorithm because in their experience, the algorithm tends to produce the more appropriate values when the pattern consists predominantly tight clusters.
+
+However, they also insist that if the purpose is to detect a single tight cluster in the midst of random noise then bw.diggle() is the best. Thus we can test for this using the Tampines Pick-ups.
+
+## Kernel Method
+
+The different kernel methods are demonstrated below.
+
+### Interested Starting Locations
+
+### **Tampines**
+
+::: panel-tabset
+##### Gaussian
+
+```{r}
+plot(density(origin_tm_ppp.km,
+             sigma=bw.diggle,
+             edge=TRUE,
+             kernel="gaussian"),
+     main="Gaussian")
+```
+
+##### Quadratic (Epanechnikov)
+
+```{r}
+plot(density(origin_tm_ppp.km,
+             sigma=bw.diggle,
+             edge=TRUE,
+             kernel="epanechnikov"),
+     main="Quadratic")
+```
+
+##### Quartic
+
+```{r}
+plot(density(origin_tm_ppp.km,
+             sigma=bw.diggle,
+             edge=TRUE,
+             kernel="quartic"),
+     main="Quartic")
+```
+
+##### Disc
+
+```{r}
+plot(density(origin_tm_ppp.km,
+             sigma=bw.diggle,
+             edge=TRUE,
+             kernel="disc"),
+     main="Disc")
+```
+:::
+
+-   There are no significant differences observed across the Tampines Origin kernels, so we will use the default which is Gaussian.
+
+### **Woodlands**
+
+::: panel-tabset
+#### Gaussian
+
+```{r}
+plot(density(origin_wd_ppp.km,
+             sigma=bw.ppl,
+             edge=TRUE,
+             kernel="gaussian"),
+     main="Gaussian")
+```
+
+#### Quadratic (Epanechnikov)
+
+```{r}
+plot(density(origin_wd_ppp.km,
+             sigma=bw.ppl,
+             edge=TRUE,
+             kernel="epanechnikov"),
+     main="Quadratic")
+```
+
+#### Quartic
+
+```{r}
+plot(density(origin_wd_ppp.km,
+             sigma=bw.ppl,
+             edge=TRUE,
+             kernel="quartic"),
+     main="Quartic")
+```
+
+#### Disc
+
+```{r}
+plot(density(origin_wd_ppp.km,
+             sigma=bw.ppl,
+             edge=TRUE,
+             kernel="disc"),
+     main="Disc")
+```
+:::
+
+-   For Woodlands pick-ups, the disc kernel method seems best for visualisation.
+
+### **Downtown Core (CBD)**
+
+:::{.panel-tabset}
+
+##### Gaussian
+
+```{r}
+plot(density(origin_dt_ppp.km,
+             sigma=bw.ppl,
+             edge=TRUE,
+             kernel="gaussian"),
+     main="Gaussian")
+```
+
+##### Quadratic (Epanechnikov)
+
+```{r}
+plot(density(origin_dt_ppp.km,
+             sigma=bw.ppl,
+             edge=TRUE,
+             kernel="epanechnikov"),
+     main="Quadratic")
+```
+
+##### Quartic
+
+```{r}
+plot(density(origin_dt_ppp.km,
+             sigma=bw.ppl,
+             edge=TRUE,
+             kernel="quartic"),
+     main="Quartic")
+```
+
+##### Disc
+
+```{r}
+plot(density(origin_dt_ppp.km,
+             sigma=bw.ppl,
+             edge=TRUE,
+             kernel="disc"),
+     main="Disc")
+```
+
+-   The visualisation outputs across the kernel methods are similar, hence we will adopt the default Gaussian kernel method for CBD pick-ups.
+
+### Interested Ending Locations
+
+### **Tampines**
+
+::: panel-tabset
+##### Gaussian
+
+```{r}
+plot(density(dest_tm_ppp.km,
+             sigma=bw.ppl,
+             edge=TRUE,
+             kernel="gaussian"),
+     main="Gaussian")
+```
+
+##### Quadratic (Epanechnikov)
+
+```{r}
+plot(density(dest_tm_ppp.km,
+             sigma=bw.ppl,
+             edge=TRUE,
+             kernel="epanechnikov"),
+     main="Epanechnikov")
+```
+
+##### Quartic
+
+```{r}
+plot(density(dest_tm_ppp.km,
+             sigma=bw.ppl,
+             edge=TRUE,
+             kernel="quartic"),
+     main="Quartic")
+```
+
+##### Disc
+
+```{r}
+plot(density(dest_tm_ppp.km,
+             sigma=bw.ppl,
+             edge=TRUE,
+             kernel="disc"),
+     main="Disc")
+```
+:::
+
+-   The visualisation outputs across the kernel methods are similar, hence we will adopt the default Gaussian kernel method for Tampines drop-offs.
+
+### **Woodlands**
+
+::: panel-tabset
+#### Gaussian
+
+```{r}
+plot(density(dest_wd_ppp.km,
+             sigma=bw.ppl,
+             edge=TRUE,
+             kernel="gaussian"),
+     main="Gaussian")
+```
+
+#### Quadratic (Epanechnikov)
+
+```{r}
+plot(density(dest_wd_ppp.km,
+             sigma=bw.ppl,
+             edge=TRUE,
+             kernel="epanechnikov"),
+     main="Epanechnikov")
+```
+
+#### Quartic
+
+```{r}
+plot(density(dest_wd_ppp.km,
+             sigma=bw.ppl,
+             edge=TRUE,
+             kernel="quartic"),
+     main="Quartic")
+```
+
+#### Disc
+
+```{r}
+plot(density(dest_wd_ppp.km,
+             sigma=bw.ppl,
+             edge=TRUE,
+             kernel="disc"),
+     main="Disc")
+```
+:::
+
+-   The visualisation outputs across the kernel methods are similar, hence we will adopt the default Gaussian kernel method for Woodlands drop-offs.
+
+**CWC**
+
+::: panel-tabset
+##### Gaussian
+
+```{r}
+plot(density(dest_cwc_ppp.km,
+             sigma=bw.ppl,
+             edge=TRUE,
+             kernel="gaussian"),
+     main="Gaussian")
+```
+
+##### Quadratic (Epanechnikov)
+
+```{r}
+plot(density(dest_cwc_ppp.km,
+             sigma=bw.ppl,
+             edge=TRUE,
+             kernel="epanechnikov"),
+     main="Epanechnikov")
+```
+
+##### Quartic
+
+```{r}
+plot(density(dest_cwc_ppp.km,
+             sigma=bw.ppl,
+             edge=TRUE,
+             kernel="quartic"),
+     main="Quartic")
+```
+
+##### Disc
+
+```{r}
+plot(density(dest_cwc_ppp.km,
+             sigma=bw.ppl,
+             edge=TRUE,
+             kernel="disc"),
+     main="Disc")
+```
+:::
+
+-   The visualisation outputs across the kernel methods are similar, hence we will adopt the default Gaussian kernel method for Woodlands drop-offs.
+
+A grand summary of what I have done so far:
+
+| Part        | Planning Area           | Automatic Bandwidth | Kernel Method |
+|-------------|-------------------------|---------------------|---------------|
+| Origin      | Tampines                | diggle              | Gaussian      |
+| Origin      | Woodlands               | ppl                 | Disc          |
+| Origin      | Downtown Core           | ppl                 | Gaussian      |
+| Destination | Tampines                | ppl                 | Gaussian      |
+| Destination | Woodlands               | ppl                 | Gaussian      |
+| Destination | Central Water Catchment | ppl                 | Gaussian      |
+
+### Final Kernel Density Estimation Maps
+
+::: panel-tabset
+#### Tampines Origin Diggle Bandwidth, Gaussian
+
+```{r}
+kde_origin_tm.bw <-
+density(origin_tm_ppp.km,
+             sigma=bw.diggle,
+             edge=TRUE,
+             kernel="gaussian")
+plot(kde_origin_tm.bw)
+```
+
+#### Woodlands Origin ppl Bandwidth, Disc
+
+```{r}
+kde_origin_wd.bw <- density(origin_wd_ppp.km,
+             sigma=bw.ppl,
+             edge=TRUE,
+             kernel="disc")
+plot(kde_origin_wd.bw)
+```
+
+#### Downtown Core Origin ppl Bandwidth, Gaussian
+
+```{r}
+kde_origin_dt.bw <-
+density(origin_dt_ppp.km,
+             sigma=bw.ppl,
+             edge=TRUE,
+             kernel="gaussian")
+plot(kde_origin_dt.bw)
+```
+
+#### Tampines Dest ppl Bandwidth, Gaussian
+
+```{r}
+kde_dest_tm.bw <- density(dest_tm_ppp.km,
+             sigma=bw.ppl,
+             edge=TRUE,
+             kernel="gaussian")
+plot(kde_dest_tm.bw)
+```
+
+#### Woodlands Dest ppl Bandwidth, Gaussian
+
+```{r}
+kde_dest_wd.bw <- density(dest_wd_ppp.km,
+             sigma=bw.ppl,
+             edge=TRUE,
+             kernel="gaussian")
+plot(kde_dest_wd.bw)
+```
+
+#### Central Water Catchment Dest ppl Bandwidth, Gaussian
+
+```{r}
+kde_dest_cwc.bw <- density(dest_cwc_ppp.km,
+             sigma=bw.ppl,
+             edge=TRUE,
+             kernel="gaussian")
+plot(kde_dest_cwc.bw)
+```
+:::
+
+# Converting Gridded Output into Raster
+
+To display KDE maps on tmap, the maps neeed to be converted to rasters.
+
+## Converting to Spatial Grid Data Frame
+
+First set the KDE maps into Spatial Grids.
+
+```{r}
+gridded_kde_origin_tm_bw <- as(kde_origin_tm.bw, "SpatialGridDataFrame")
+
+gridded_kde_origin_wd_bw <- as(kde_origin_wd.bw, "SpatialGridDataFrame")
+
+gridded_kde_origin_dt_bw <- as(kde_origin_dt.bw, "SpatialGridDataFrame")
+
+gridded_kde_dest_tm_bw <- as(kde_dest_tm.bw, "SpatialGridDataFrame")
+
+gridded_kde_dest_wd_bw <- as(kde_dest_wd.bw, "SpatialGridDataFrame")
+
+gridded_kde_dest_cwc_bw <- as(kde_dest_cwc.bw, "SpatialGridDataFrame")
+```
+
+View the gridded outputs.
+
+::: panel-tabset
+## Tampines Origin
+
+```{r}
+spplot(gridded_kde_origin_tm_bw)
+```
+
+## Woodlands Origin
+
+```{r}
+spplot(gridded_kde_origin_wd_bw)
+```
+
+## Downtown Core Origin
+
+```{r}
+spplot(gridded_kde_origin_dt_bw)
+```
+
+## Tampines Destination
+
+```{r}
+spplot(gridded_kde_dest_tm_bw)
+```
+
+## Woodlands Destination
+
+```{r}
+spplot(gridded_kde_dest_wd_bw)
+```
+
+## Central Water Catchment
+
+```{r}
+spplot(gridded_kde_dest_cwc_bw)
+```
+:::
+
+## Rasterisation of Grid Outputs
+
+Convert the gridded outputs into rasters.
+
+```{r}
+kde_origin_tm_bw_raster <- raster(gridded_kde_origin_tm_bw)
+
+kde_origin_wd_bw_raster <- raster(gridded_kde_origin_wd_bw)
+
+kde_origin_dt_bw_raster <- raster(gridded_kde_origin_dt_bw)
+
+kde_dest_tm_bw_raster <- raster(gridded_kde_dest_tm_bw)
+
+kde_dest_wd_bw_raster <- raster(gridded_kde_dest_wd_bw)
+
+kde_dest_cwc_bw_raster <- raster(gridded_kde_dest_cwc_bw)
+```
+
+## Assigning Projection Systems
+
+Now include the CRS information.
+
+```{r}
+projection(kde_origin_tm_bw_raster) <- CRS("+init=EPSG:3414")
+
+projection(kde_origin_wd_bw_raster) <- CRS("+init=EPSG:3414")
+
+projection(kde_origin_dt_bw_raster) <- CRS("+init=EPSG:3414")
+
+projection(kde_dest_tm_bw_raster) <- CRS("+init=EPSG:3414")
+
+projection(kde_dest_wd_bw_raster) <- CRS("+init=EPSG:3414")
+
+projection(kde_dest_cwc_bw_raster) <- CRS("+init=EPSG:3414")
+```
+
+## Visualise tmap Outputs
+
+::: panel-tabset
+## Tampines Origin
+
+```{r}
+tmap_mode("plot")
+tm_shape(kde_origin_tm_bw_raster) +
+  tm_raster("v") +
+  tm_layout(legend.position = c("left","bottom"),frame=FALSE)
+```
+
+## Woodlands Origin
+
+```{r}
+tmap_mode("plot")
+tm_shape(kde_origin_wd_bw_raster) +
+  tm_raster("v") +
+  tm_layout(legend.position = c("right","top"),frame=FALSE)
+```
+
+## Downtown Core Origin
+
+```{r}
+tmap_mode("plot")
+tm_shape(kde_origin_dt_bw_raster) +
+  tm_raster("v") +
+  tm_layout(legend.position = c("right","bottom"),frame=FALSE)
+```
+
+## Tampines Destination
+
+```{r}
+tmap_mode("plot")
+tm_shape(kde_dest_tm_bw_raster) +
+  tm_raster("v") +
+  tm_layout(legend.position = c("left","bottom"),frame=FALSE)
+```
+
+## Woodlands Destination
+
+```{r}
+tmap_mode("plot")
+tm_shape(kde_dest_wd_bw_raster) +
+  tm_raster("v") +
+  tm_layout(legend.position = c("left","top"),frame=FALSE)
+```
+
+## Central Water Catchment
+
+```{r}
+tmap_mode("plot")
+tm_shape(kde_dest_cwc_bw_raster) +
+  tm_raster("v") +
+  tm_layout(legend.position = c("left","bottom"),frame=FALSE)
+```
+:::
+
+# Network-Constrained Kernel Density Estimation (NKDE) & Analysis
+
+Previously, I have already extracted out the roads for Tampines (`roads_tampines`), Woodlands (`roads_woodlands`), Downtown Core (`roads_downtown_core`) and Central Water Catchment (`roads_cwc`).
+
+## Segmentation & Snapping
+
+To perform NKDE, events like pick-up and drop-off points need to be snapped onto the road network. This will enable the lines to gain the necessary spatial weights based on point events.
+
+[![Snapped events are shown in green (Credit: Jeremy Gelb, 2024)](images/snapped_events.png)](https://jeremygelb.github.io/spNetwork/articles/NKDE.html)
+
+Create the line segments for all the road networks of our areas of interest.
+
+```{r}
+unique_types <- unique(st_geometry_type(roads_tampines))
+
+# Filter roads_tampines to keep only linestrings
+if ("LINESTRING" %in% unique_types) {
+  roads_tampines <- st_cast(roads_tampines, "LINESTRING")
+} else {
+  # Handle the case when no linestrings are found
+  stop("No linestrings found in roads_tampines.")
+}
+lixels_tm <- lixelize_lines(roads_tampines,
+                         80,
+                         mindist=40)
+
+samples_tm <- lines_center(lixels_tm)
+
+densities_tm_origin <- nkde(roads_tampines, 
+                  events = origin_tampines,
+                  w = rep(1,nrow(origin_tampines)),
+                  samples = samples_tm,
+                  kernel_name = "quartic",
+                  bw = 300, 
+                  div= "bw", 
+                  method = "simple", 
+                  digits = 1, 
+                  tol = 1,
+                  grid_shape = c(1,1), 
+                  max_depth = 8,
+                  agg = 5, #we aggregate events within a 5m radius (faster calculation)
+                  sparse = TRUE,
+                  verbose = FALSE)
+
+samples_tm$density_origin <- densities_tm_origin
+lixels_tm$density_origin <- densities_tm_origin
+
+samples_tm$density_origin <- samples_tm$density_origin*1000
+lixels_tm$density_origin <- lixels_tm$density_origin*1000
+
+tmap_mode("view")
+tm_shape(lixels_tm)+
+  tm_lines(col="density_origin")+
+tm_shape(origin_tampines)+
+  tm_dots(alpha=0.1)
+```
+
+```{r}
+tmap_mode("plot")
+```
+
+::: callout-tip
+## Determining maximum distance
+
+Locals often walk up to [80 metres](https://qz.com/1481849/grab-southeast-asias-biggest-ride-hailing-firm-is-on-a-mapping-spree#:~:text=In%20Singapore%2C%20where%20Grab%20is%20headquartered%2C%20users%20might%20often%20walk%20up%20to%2080%20meters%20(260%20feet)%20to%20find%20their%20ride.) to hop onto their Grab vehicle.
+:::
