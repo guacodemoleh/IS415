@@ -22,13 +22,13 @@ Human mobility, the movement of people in space and time, reflects the spatial-t
 
 ## Data
 
-In 2020, an interesting human mobility data set called [Grab Posisi](https://engineering.grab.com/grab-posisi) was released by GRAB, one of the largest shared taxi operators in Southeast Asia. One of the two data sets released is focusing on Singapore only.
+In 2020, an interesting human mobility data set called [Grab Posisi](https://engineering.grab.com/grab-posisi) was released by Grab, one of the largest shared taxi operators in Southeast Asia. One of the two data sets released is soley focusing on Singapore!
 
 In Singapore, relevant human mobility data can be extracted from [Land Transport Authority (LTA) DataMall](https://datamall.lta.gov.sg/content/datamall/en.html). In particular, two data sets related to human mobility are provided by the portal: [Passenger Volume by Origin Destination Train Stations](https://datamall.lta.gov.sg/content/datamall/en/search_datasets.html?searchText=Passenger%20Volume%20by%20Origin%20Destinat#:~:text=Passenger%20Volume%20by%20Origin%20Destination%20Train%20Stations) and [Passenger Volume by Origin Destination Bus Stops](https://datamall.lta.gov.sg/content/datamall/en/search_datasets.html?searchText=Passenger%20Volume%20by%20Origin%20Destinat#:~:text=Passenger%20Volume%20by%20Origin%20Destination%20Bus%20Stops).
 
 ## Limitation
 
-A limitation of the LTA data sets is that their location is biased to either bus stops or MRT/LRT stations.
+A limitation of the LTA data sets is that their locations are biased to either bus stops or MRT/LRT stations. Hence, there will naturally be clusters of embarking and disembarking passengers at stops and stations, and other interesting clusters by other modes of transport are overlooked.
 
 # Importing Packages
 
@@ -247,7 +247,7 @@ The data can be further segmented to two groups:
 
 -   `origin_df` representing the starting locations of trips taken
 
--   `dest_df` representing the end locations of trips taken
+-   `dest_df` representing the ending locations of trips taken
 
 ***Starting Locations***
 
@@ -264,7 +264,7 @@ origin_df <- df %>%
          day = factor(mday(pingtimestamp)))
 ```
 
-***End Locations***
+***Ending Locations***
 
 ```{r}
 #| eval: false
@@ -318,7 +318,7 @@ origin_sf <- origin_df %>%
   st_transform(crs = 3414)
 ```
 
-### ***End Locations***
+### ***Ending Locations***
 
 ```{r}
 dest_sf <- dest_df %>% 
@@ -837,7 +837,7 @@ plot(density(origin_tm_ppp.km,
 
 ### **Woodlands**
 
-::: panel-tabset
+::: {.panel-tabset}
 ##### bw.CvL
 
 ```{r}
@@ -883,7 +883,8 @@ plot(density(origin_wd_ppp.km,
 
 ### **Downtown Core**
 
-::: panel-tabset
+::: {.panel-tabset}
+
 ##### bw.CvL
 
 ```{r}
@@ -931,7 +932,7 @@ plot(density(origin_dt_ppp.km,
 
 ### **Tampines**
 
-::: panel-tabset
+::: {.panel-tabset}
 ##### bw.CvL
 
 ```{r}
@@ -1023,7 +1024,7 @@ plot(density(dest_wd_ppp.km,
 
 **Central Water Catchment** :
 
-:: {.panel-tabset}
+::: {.panel-tabset}
 
 ##### bw.CvL
 
@@ -1359,6 +1360,8 @@ plot(density(dest_cwc_ppp.km,
 
 -   The visualisation outputs across the kernel methods are similar, hence we will adopt the default Gaussian kernel method for Woodlands drop-offs.
 
+### Summary of Kernel Method Selections
+
 A grand summary of what I have done so far:
 
 | Part        | Planning Area           | Automatic Bandwidth | Kernel Method |
@@ -1604,14 +1607,34 @@ To perform NKDE, events like pick-up and drop-off points need to be snapped onto
 
 Create the line segments for all the road networks of our areas of interest.
 
+::: callout-tip
+## Determining the maximum distance
+Locals often walk up to [80 metres](https://qz.com/1481849/grab-southeast-asias-biggest-ride-hailing-firm-is-on-a-mapping-spree#:~:text=In%20Singapore%2C%20where%20Grab%20is%20headquartered%2C%20users%20might%20often%20walk%20up%20to%2080%20meters%20(260%20feet)%20to%20find%20their%20ride.) to hop onto their Grab vehicle.
+:::
+
+
+Plot out the network densities
+
+**Tampines**
+
+::: panel-tabset
+## Origin KDE
+```{r}
+tmap_mode("plot")
+tm_shape(kde_origin_tm_bw_raster) +
+  tm_raster("v") +
+  tm_layout(legend.position = c("left","bottom"),frame=FALSE)
+```
+
+## Origin NKDE
 ```{r}
 unique_types <- unique(st_geometry_type(roads_tampines))
 
-# Filter roads_tampines to keep only linestrings
+# debugging: filter roads_tampines to keep only linestrings
 if ("LINESTRING" %in% unique_types) {
   roads_tampines <- st_cast(roads_tampines, "LINESTRING")
 } else {
-  # Handle the case when no linestrings are found
+  # handle the case when no linestrings are found
   stop("No linestrings found in roads_tampines.")
 }
 lixels_tm <- lixelize_lines(roads_tampines,
@@ -1646,15 +1669,73 @@ tmap_mode("view")
 tm_shape(lixels_tm)+
   tm_lines(col="density_origin")+
 tm_shape(origin_tampines)+
-  tm_dots(alpha=0.1)
+  tm_dots(alpha=0.1) +
+tm_basemap("OpenStreetMap")
 ```
+
+## Destination NKDE
+```{r}
+dest_tampines <- joined_dest[st_intersection(joined_dest, tampines), ]
+
+densities_tm_dest <- nkde(roads_tampines, 
+                  events = dest_tampines,
+                  w = rep(1,nrow(dest_tampines)),
+                  samples = samples_tm,
+                  kernel_name = "quartic",
+                  bw = 300, 
+                  div= "bw", 
+                  method = "simple", 
+                  digits = 1, 
+                  tol = 1,
+                  grid_shape = c(1,1), 
+                  max_depth = 8,
+                  agg = 5, #we aggregate events within a 5m radius (faster calculation)
+                  sparse = TRUE,
+                  verbose = FALSE)
+
+samples_tm$density_dest <- densities_tm_dest
+lixels_tm$density_dest <- densities_tm_dest
+
+samples_tm$density_dest <- samples_tm$density_dest*1000
+lixels_tm$density_dest <- lixels_tm$density_dest*1000
+
+tmap_mode("view")
+tm_shape(lixels_tm)+
+  tm_lines(col="density_dest")+
+tm_shape(origin_tampines)+
+  tm_dots(alpha=0.1) +
+tm_basemap("OpenStreetMap")
+```
+:::
 
 ```{r}
 tmap_mode("plot")
 ```
 
-::: callout-tip
-## Determining maximum distance
+## Analysis of Tampines 
+### Origin: KDE vs NKDE
+Based on the traditional KDE results, we can generally comment that the densest cluster of pick-up points amounting up to 12,000 is concentrated at the north-eastern ridge of Tampines, which in particular lies in Xilin Subzone (Simei). However, this most significant finding from the KDE result overlooks at the insights from the NKDE results featuring the varying intensities of road utility in Tampines.
 
-Locals often walk up to [80 metres](https://qz.com/1481849/grab-southeast-asias-biggest-ride-hailing-firm-is-on-a-mapping-spree#:~:text=In%20Singapore%2C%20where%20Grab%20is%20headquartered%2C%20users%20might%20often%20walk%20up%20to%2080%20meters%20(260%20feet)%20to%20find%20their%20ride.) to hop onto their Grab vehicle.
+For the Tampines pick-ups, it seems that there are a few more intense road networks. First, there is an intensity value of up to 0.8 at the cross junction of Xilin Avenue and Upper Changi Road East (i.e. southwestern ridge of **ITE College East**), and at the T-junction intersecting Simei St 3 and Simei Avenue providing values (i.e. Southeast of **Changi General Hospital**) of up to 0.8. Furthermore, there is an intensity value of up to 0.6 at the cross-junction of Sompah Road and Upper Changi Road East that is adjacent to the southwestern corner of **SUTD**. 
+
+::: callout-tip
+## Idea
+These highlighted areas can suggest that people leaving work or appointments utilise Grab services. We can try to verify this with Temporal Network Kernel Density Estimation later!
 :::
+
+The other prominent location is Tampines Ave 2, along the same side as Blk 302, as it has the highest NKDE value of up to 1.0. Given the high concentration of activity along this bus stop road, it may be advisable for Grab users to choose a different pick-up location since this road seems congested with just Grab data alone. The actual NKDE of this road stretch may be significantly higher if we considered the buses.
+
+::: callout-tip
+## Idea
+An interesting fact to note is that this road is always congested during peak morning hours. I experience this first-hand on a regular basis while waiting for a long time for my bus at Block 302! I hypothesise that there are more Grab pick-ups in the morning than at night, so we may explore any temporal differences later!
+:::
+
+### NKDE: Origin vs Destination
+A similarity across the pick-up and drop-offs is that the road along Blk 302 remains as one of the most intense and thus many Grab rides either start or end along this stretch. However, the intensity of drop-offs here is lower at 0.6, which shows that there is a comparatively lower drop-off occurrences here than pick-ups. 
+
+Nevertheless, the greatest NKDE value for drop-offs in Tampines is situated at the cross junction of Tampines Ave 2 and Simei Avenue, where neighbourhood hub spots like SAFRA Tampines and Tampines Round Market are at. When Grab users are going to Tampines, they could be intending to use recreational facilities or to eat at economical hawker food.
+
+
+(TBC possibly with NKDE analysis of other locations and TKDE.)
+
+
