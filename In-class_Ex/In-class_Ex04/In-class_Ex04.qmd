@@ -16,7 +16,7 @@ editor: visual
 
 #   Importing the packages
 ```{r}
-pacman::p_load(sf, spdep, tmap, tidyverse, knitr,dplyr)
+pacman::p_load(sf, spdep, tmap, tidyverse, knitr,dplyr, GWmodel)
 ```
 
 #   Importing data
@@ -110,17 +110,66 @@ k1 <- knn2nb(knearneigh(coords)) #setting a list
 k1dists <- unlist(nbdists(k1, coords, longlat = TRUE)) 
 summary(k1dists)
 ```
+-   Look at the max value. We do not want any entity to have zero neighbours. So the floor value for distance should be set to at least 62.
+
 -   Distance measurements are usually done in projected coordinate system.
 
 -   Grid distance projection is done here with using `longlat` = TRUE. The point coordinates must be in decimal degrees. The distances are calculated in [kilometres](https://rdrr.io/rforge/spdep/man/nbdists.html#:~:text=distances%20are%20measured%20in%20kilometers). 
 
 -   It may not be very accurate but the computed distances should be relatively close to the actual values. This is a good method if we are unsure of the country's projected coordinate system.
 
+# Fixed distance weight matrix
+```{r}
+wm_d62 <- dnearneigh(coords, 0, 62, longlat = TRUE)
+wm_d62
+```
+-   With an average number of 3.68 links, it means for each spatial entity, there is an average of about 4 neighbours identified based on distance.
+
+```{r}
+str(wm_d62)
+```
+
+# Visualisation of fixed distance
+```{r}
+plot(hunan$geometry, border="lightgrey")
+plot(wm_d62, coords, add=TRUE)
+plot(k1, coords, add=TRUE, col="red", length=0.08)
+```
+
+# Transforming weights to Inversed Distance
+Compute the distances between areas using *nbdists()*.
+
+```{r}
+dist <- nbdists(wm_q, coords, longlat = TRUE)
+ids <- lapply(dist, function(x) 1/(x))
+ids
+```
+
+# Applying distance matrices into GWmodel
+
+:::{callout-note}
+## FYI
+**GWmodel** has not migrated, so the data has to be defined as **sp** object class as mentioned in the [documentation, p. 81](https://cran.r-project.org/web/packages/GWmodel/GWmodel.pdf). 
+:::
+
+Convert the data to **sp**.
+```{r}
+hunan_sp <- hunan %>% 
+  as_Spatial()
+```
+
+```{r}
+gwstat <- gwss(data = hunan_sp,
+               vars = "GDPPC",
+               bw = 6, 
+               kernel = "bisquare",
+               adaptive = TRUE,
+               longlat = T)
+```
+
+-   `bw` is also applicable for distances. So if d=62, `bw` should be 62.
 
 
-
-
-
-
-
+Homework:
+Choropleth map using gwstat[["SDF]]@data
 
