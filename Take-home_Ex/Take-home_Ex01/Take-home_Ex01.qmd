@@ -22,7 +22,7 @@ Human mobility, the movement of people in space and time, reflects the spatial-t
 
 ## Data
 
-In 2020, an interesting human mobility data set called [Grab Posisi](https://engineering.grab.com/grab-posisi) was released by Grab, one of the largest shared taxi operators in Southeast Asia. One of the two data sets released is soley focusing on Singapore!
+In 2020, an interesting human mobility data set called [Grab Posisi](https://engineering.grab.com/grab-posisi) was released by Grab, one of the largest shared taxi operators in Southeast Asia. One of the two data sets released is soley focusing on Singapore!   
 
 In Singapore, relevant human mobility data can be extracted from [Land Transport Authority (LTA) DataMall](https://datamall.lta.gov.sg/content/datamall/en.html). In particular, two data sets related to human mobility are provided by the portal: [Passenger Volume by Origin Destination Train Stations](https://datamall.lta.gov.sg/content/datamall/en/search_datasets.html?searchText=Passenger%20Volume%20by%20Origin%20Destinat#:~:text=Passenger%20Volume%20by%20Origin%20Destination%20Train%20Stations) and [Passenger Volume by Origin Destination Bus Stops](https://datamall.lta.gov.sg/content/datamall/en/search_datasets.html?searchText=Passenger%20Volume%20by%20Origin%20Destinat#:~:text=Passenger%20Volume%20by%20Origin%20Destination%20Bus%20Stops).
 
