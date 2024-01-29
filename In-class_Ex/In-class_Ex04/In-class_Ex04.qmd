@@ -1,0 +1,126 @@
+---
+title: "In-class Exercise 4"
+author: "Victoria Grace ANN"
+execute: 
+  warning: false
+  eval: true
+  echo: true
+format:  
+  html: 
+    code-summary: "Show the code"
+    toc-depth: 4
+date: "29 January, 2024"
+date-modified: "last-modified"
+editor: visual
+---
+
+#   Importing the packages
+```{r}
+pacman::p_load(sf, spdep, tmap, tidyverse, knitr,dplyr)
+```
+
+#   Importing data
+
+```{r}
+hunan <- st_read(dsn="data/geospatial", layer="Hunan")
+```
+
+
+```{r}
+hunan2012 <- read_csv("data/aspatial/Hunan_2012.csv")
+```
+
+Our `County` variable can be our unique identifier. But if you inspect the dataset, there is exactly one unique `County` field each in both datasets. So we can just use the *left_join()* function without calling out the unique identifier.
+```{r}
+hunan <- left_join(hunan, hunan2012) %>% select(1:4, 7, 15)
+## do not rerun this cell!
+```
+
+# Visualisation of Choropleth Maps
+Present the map using *qtm()* from the **tmap** package.
+```{r}
+#| fig-width: 12
+#| fig-height: 8
+
+basemap <- tm_shape(hunan) + #placeholder
+  tm_polygons() + #plotting
+  tm_text("NAME_3", size=0.5)
+
+gdppc <- qtm(hunan, "GDPPC")
+tmap_arrange(basemap, gdppc, asp=1, ncol=2) # stitching them to be viewed together
+```
+
+-   qtm refers to quick thematic mapping. 
+-   To make detailed choropleth maps, it is better to do so using the usual **tmap** properties.
+-   More styling guides like *tm_facets()* from Prof. Kam Tin Seong can be referred to [here](https://r4gdsa.netlify.app/chap02)
+
+
+#   Contiguity Spatial Weights
+Using *polygon2nb()* from **spdep**.
+-   There is a `queen` argument, which is set to TRUE by default.
+```{r}
+wm_q <- poly2nb(hunan, queen=TRUE)
+summary(wm_q)
+```
+
+- If we want to use the Rook's case, set `queen` to be False.
+```{r}
+wm_r <- poly2nb(hunan, queen=FALSE)
+```
+
+
+# Visualisation of Contiguity Weights
+Let's establish the coordinates for all the spatial entities so that the centroids can be generated.
+```{r}
+longitude <- map_dbl(hunan$geometry, ~st_centroid(.x)[[1]])
+
+latitude <- map_dbl(hunan$geometry, ~st_centroid(.x)[[2]])
+
+coords <- cbind(longitude, latitude)
+
+coords <- cbind(longitude, latitude)
+
+head(coords)
+```
+-   Try not to sort the data else the referencing design will change.
+
+Then let's plot the Queen and Rook's cases side by side.
+
+```{r}
+par(mfrow=c(1,2))
+plot(hunan$geometry, border="lightgrey", main="Queen Contiguity")
+plot(wm_q, coords, pch = 19, cex = 0.6, add = TRUE, col= "gray")
+plot(hunan$geometry, border="lightgrey", main="Rook Contiguity")
+plot(wm_r, coords, pch = 19, cex = 0.6, add = TRUE, col = "gray")
+```
+
+- Notice that there are more neighbours established for Queen Contiguity than Rook Contiguity.
+
+
+# Distance based neighbours
+
+To derive distance-based weights, we will use **spdep**'s [*dnearneigh*](https://r-spatial.github.io/spdep/reference/dnearneigh.html) function.
+
+Let's get the list of the k-nearest number of neighbours.
+```{r}
+k1 <- knn2nb(knearneigh(coords)) #setting a list
+```
+
+```{r}
+k1dists <- unlist(nbdists(k1, coords, longlat = TRUE)) 
+summary(k1dists)
+```
+-   Distance measurements are usually done in projected coordinate system.
+
+-   Grid distance projection is done here with using `longlat` = TRUE. The point coordinates must be in decimal degrees. The distances are calculated in [kilometres](https://rdrr.io/rforge/spdep/man/nbdists.html#:~:text=distances%20are%20measured%20in%20kilometers). 
+
+-   It may not be very accurate but the computed distances should be relatively close to the actual values. This is a good method if we are unsure of the country's projected coordinate system.
+
+
+
+
+
+
+
+
+
