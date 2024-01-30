@@ -202,9 +202,8 @@ A similarity across the pick-up and drop-offs is that the road along Blk 302 rem
 
 Nevertheless, the greatest NKDE value for drop-offs in Tampines is situated at the cross junction of Tampines Ave 2 and Simei Avenue, where neighbourhood hub spots like SAFRA Tampines and Tampines Round Market are at. When Grab users are going to Tampines, they could be intending to use recreational facilities or to eat at economical hawker food.
 
-***Central Water Catchment***
 
-# Analysis 
+# Analysis of Water Catchment Area
 
 ## Destination NKDE
 
