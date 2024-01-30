@@ -37,8 +37,10 @@ website:
           - text: "In-class Exercise 8"
       - text: "Take-home Exercises"
         menu: 
-          - text: "Take-home Exercise 1"
-            href: "Take-home_Ex/Take-home_Ex01/Take-home_Ex01.html"    
+          - text: "Take-home Exercise 1: Technical Guide"
+            href: "Take-home_Ex/Take-home_Ex01/Take-home_Ex01.html"
+          - text: "Take-home Exercise 1: Report"
+            href: "Take-home_Ex/Take-home_Ex01a/Take-home_Ex01a.html"
     right:
       - href: index.qmd
         text: Home

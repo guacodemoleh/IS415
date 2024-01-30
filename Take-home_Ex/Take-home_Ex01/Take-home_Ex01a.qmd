@@ -1,0 +1,384 @@
+---
+title: "Take-home Exercise 1 Report"
+author: "Victoria Grace ANN"
+execute: 
+  warning: false
+  eval: true
+  echo: true
+format:  
+  html: 
+    code-summary: "Show the code"
+    toc-depth: 4
+date: "30 January, 2024"
+date-modified: "last-modified"
+editor: visual
+---
+
+# Importing necessary packages
+
+Since we are plotting histograms and interactive maps, we will need to import **tmap** and **ggplot2** respectively. The files I am importing also need to rely on **tidyverse**. Other geowrangling and plotting tools like **sf** and **spNetwork** are required too.
+
+```{r}
+pacman::p_load(tmap, ggplot2, tidyverse, sf, spNetwork)
+```
+
+# Network-Constrained Kernel Density Estimation (NKDE) & Analysis
+
+Previously, I have already extracted out the roads for Tampines (`roads_tampines`), Woodlands (`roads_woodlands`), Downtown Core (`roads_downtown_core`) and Central Water Catchment (`roads_cwc`). However, I am writing this in a separate document, so I will reimport and consolidate the roads and points data.
+
+## Importing data
+
+```{r}
+# import
+roads_tampines <- read_rds("data/analysis/roads_tampines.rds")
+origin_tampines <- read_rds("data/analysis/origin_tampines.rds")
+dest_tampines <- read_rds("data/analysis/dest_tampines.rds")
+
+roads_downtown_core <- read_rds("data/analysis/roads_downtown_core.rds")
+origin_downtown_core <- read_rds("data/analysis/origin_downtown_core.rds")
+
+roads_woodlands <- read_rds("data/analysis/roads_woodlands.rds")
+origin_woodlands <- read_rds("data/analysis/origin_woodlands.rds")
+
+roads_cwc <- read_rds("data/analysis/roads_cwc.rds")
+dest_cwc <- read_rds("data/analysis/dest_cwc.rds")
+
+mpsz3414 <- st_read("data/geospatial/mpsz.shp")
+```
+
+```{r}
+mpsz3414 <- st_transform(mpsz3414, 3414)
+summary(mpsz3414)
+```
+
+## Segmentation & Snapping
+
+To perform NKDE, events like pick-up and drop-off points need to be snapped onto the road network. This will enable the lines to gain the necessary spatial weights based on point events.
+
+[![Snapped events are shown in green (Credit: Jeremy Gelb, 2024)](images/snapped_events.png)](https://jeremygelb.github.io/spNetwork/articles/NKDE.html)
+
+Create the line segments for all the road networks of our areas of interest.
+
+::: callout-tip
+## Determining the maximum distance
+
+Locals often walk up to [80 metres](https://qz.com/1481849/grab-southeast-asias-biggest-ride-hailing-firm-is-on-a-mapping-spree#:~:text=In%20Singapore%2C%20where%20Grab%20is%20headquartered%2C%20users%20might%20often%20walk%20up%20to%2080%20meters%20(260%20feet)%20to%20find%20their%20ride.) to hop onto their Grab vehicle.
+:::
+
+Plot out the network densities
+
+***Tampines***
+
+## Origin KDE
+
+```{r}
+#| eval: false
+tmap_mode("plot")
+tm_shape(kde_origin_tm_bw_raster) +
+  tm_raster("v") +
+  tm_layout(legend.position = c("left","bottom"),frame=FALSE)
+```
+
+[![Map generated previously](images/origin_tm_kde.png)](https://is415-gaa-vic.netlify.app/take-home_ex/take-home_ex01/take-home_ex01#:~:text=EPSG%3A3414%22)-,Visualise%20tmap%20Outputs,-Tampines%20Origin)
+
+## Origin NKDE
+
+```{r}
+unique_types <- unique(st_geometry_type(roads_tampines))
+
+# debugging: filter roads_tampines to keep only linestrings
+if ("LINESTRING" %in% unique_types) {
+  roads_tampines <- st_cast(roads_tampines, "LINESTRING")
+} else {
+  # handle the case when no linestrings are found
+  stop("No linestrings found in roads_tampines.")
+}
+lixels_tm <- lixelize_lines(roads_tampines,
+                         80,
+                         mindist=40)
+
+samples_tm <- lines_center(lixels_tm)
+
+densities_tm_origin <- nkde(roads_tampines, 
+                  events = origin_tampines,
+                  w = rep(1,nrow(origin_tampines)),
+                  samples = samples_tm,
+                  kernel_name = "quartic",
+                  bw = 300, 
+                  div= "bw", 
+                  method = "simple", 
+                  digits = 1, 
+                  tol = 1,
+                  grid_shape = c(1,1), 
+                  max_depth = 8,
+                  agg = 5, #we aggregate events within a 5m radius (faster calculation)
+                  sparse = TRUE,
+                  verbose = FALSE)
+
+samples_tm$density_origin <- densities_tm_origin
+lixels_tm$density_origin <- densities_tm_origin
+
+samples_tm$density_origin <- samples_tm$density_origin*1000
+lixels_tm$density_origin <- lixels_tm$density_origin*1000
+
+tmap_mode("view")
+tm_shape(lixels_tm)+
+  tm_lines(col="density_origin")+
+tm_shape(origin_tampines)+
+  tm_dots(alpha=0.1) +
+tm_basemap("OpenStreetMap")
+```
+
+```{r}
+#| eval: false
+tmap_mode("plot")
+```
+
+## Destination NKDE
+
+```{r}
+#dest_tampines <- joined_dest[st_intersection(joined_dest, tampines), ]
+
+densities_tm_dest <- nkde(roads_tampines, 
+                  events = dest_tampines,
+                  w = rep(1,nrow(dest_tampines)),
+                  samples = samples_tm,
+                  kernel_name = "quartic",
+                  bw = 300, 
+                  div= "bw", 
+                  method = "simple", 
+                  digits = 1, 
+                  tol = 1,
+                  grid_shape = c(1,1), 
+                  max_depth = 8,
+                  agg = 5, #we aggregate events within a 5m radius (faster calculation)
+                  sparse = TRUE,
+                  verbose = FALSE)
+
+samples_tm$density_dest <- densities_tm_dest
+lixels_tm$density_dest <- densities_tm_dest
+
+samples_tm$density_dest <- samples_tm$density_dest*1000
+lixels_tm$density_dest <- lixels_tm$density_dest*1000
+
+tmap_mode("view")
+tm_shape(lixels_tm)+
+  tm_lines(col="density_dest")+
+tm_shape(origin_tampines)+
+  tm_dots(alpha=0.1) +
+tm_basemap("OpenStreetMap")
+```
+
+```{r}
+#| eval: false
+tmap_mode("plot")
+```
+
+# Analysis of Tampines
+
+### Origin: KDE vs NKDE
+
+Based on the traditional KDE results, we can generally comment that the densest cluster of pick-up points amounting up to 12,000 is concentrated at the north-eastern ridge of Tampines, which in particular lies in Xilin Subzone (Simei). However, this most significant finding from the KDE result overlooks at the insights from the NKDE results featuring the varying intensities of road utility in Tampines.
+
+For the Tampines pick-ups, it seems that there are a few more intense road networks. First, there is an intensity value of up to 0.8 at the cross junction of Xilin Avenue and Upper Changi Road East (i.e. southwestern ridge of **ITE College East**), and at the T-junction intersecting Simei St 3 and Simei Avenue providing values (i.e. Southeast of **Changi General Hospital**) of up to 0.8. Furthermore, there is an intensity value of up to 0.6 at the cross-junction of Sompah Road and Upper Changi Road East that is adjacent to the southwestern corner of **SUTD**.
+
+::: callout-tip
+## Idea
+
+These highlighted areas can suggest that people leaving work or appointments utilise Grab services.
+:::
+
+The other prominent location is Tampines Ave 2, along the same side as Blk 302, as it has the highest NKDE value of up to 1.0. Given the high concentration of activity along this bus stop road, it may be advisable for Grab users to choose a different pick-up location since this road seems congested with just Grab data alone. The actual NKDE of this road stretch may be significantly higher if we considered the buses.
+
+::: callout-tip
+## Idea
+
+An interesting fact to note is that this road is always congested during peak morning hours. I experience this first-hand on a regular basis while waiting for a long time for my bus at Block 302!
+:::
+
+### NKDE: Origin vs Destination
+
+A similarity across the pick-up and drop-offs is that the road along Blk 302 remains as one of the most intense and thus many Grab rides either start or end along this stretch. However, the intensity of drop-offs here is lower at 0.6, which shows that there is a comparatively lower drop-off occurrences here than pick-ups.
+
+Nevertheless, the greatest NKDE value for drop-offs in Tampines is situated at the cross junction of Tampines Ave 2 and Simei Avenue, where neighbourhood hub spots like SAFRA Tampines and Tampines Round Market are at. When Grab users are going to Tampines, they could be intending to use recreational facilities or to eat at economical hawker food.
+
+***Central Water Catchment***
+
+# Analysis 
+
+## Destination NKDE
+
+```{r}
+#dest_cwc <- joined_dest[st_intersection(joined_dest, cwc), ]
+
+unique_types <- unique(st_geometry_type(roads_cwc))
+
+# debugging: filter roads_cwc to keep only linestrings
+if ("LINESTRING" %in% unique_types) {
+  roads_cwc <- st_cast(roads_cwc, "LINESTRING")
+} else {
+  # handle the case when no linestrings are found
+  stop("No linestrings found in roads_cwc.")
+}
+lixels_cwc <- lixelize_lines(roads_cwc,
+                         80,
+                         mindist=40)
+
+samples_cwc <- lines_center(lixels_cwc)
+
+densities_cwc_dest <- nkde(roads_cwc, 
+                  events = dest_cwc,
+                  w = rep(1,nrow(dest_cwc)),
+                  samples = samples_cwc,
+                  kernel_name = "quartic",
+                  bw = 300, 
+                  div= "bw", 
+                  method = "simple", 
+                  digits = 1, 
+                  tol = 1,
+                  grid_shape = c(1,1), 
+                  max_depth = 8,
+                  agg = 5, #we aggregate events within a 5m radius (faster calculation)
+                  sparse = TRUE,
+                  verbose = FALSE)
+
+samples_cwc$density_dest <- densities_cwc_dest
+lixels_cwc$density_dest <- densities_cwc_dest
+
+samples_cwc$density_dest <- samples_cwc$density_dest*1000
+lixels_cwc$density_dest <- lixels_cwc$density_dest*1000
+
+tmap_mode("view")
+tm_shape(lixels_cwc)+
+  tm_lines(col="density_dest")+
+tm_shape(dest_cwc)+
+  tm_dots(alpha=0.1) +
+tm_basemap("OpenStreetMap") +
+tm_scale_bar()
+```
+
+There is a particular within the Central Water Catchment (CWC) area that caught my attention with respect to the drop-offs.
+
+At northern region, the T-junction of Mandai Road and Mandai Lake Road, adjacent to the Before Mandai Lake Road bus stop, and the tail-end of Mandai Lake Road captured the most intense density score of up to 0.30.
+
+I believe the above statistics may be explained by people visiting the *Rainforest Park* and the *Night Safari*, where the latter is not directly acessible by public transport.
+
+It is also worth mentioning that there is a relatively NKDE intensity score of 0.25 along the eateries at Bird Paradise, Mandai Lake Road compared to the whole CWC area.
+
+## Temporal Network Kernel Density Estimation (TNKDE)
+
+I assume there is only one main drop-off/pick-up area for the Singapore Zoo and Night Safari. At the same time, I am curious if there is much of a difference in the intensity of drop-offs at this particular area before and after 6pm.
+
+::: callout-tip
+The operating hours for Singapore Zoo and Night Safari are 8.30am-6pm and 7.15pm-12mn respectively.
+:::
+
+Let's have a look at the distribution of drop offs across the days in our dataset ([Source code](https://jeremygelb.github.io/spNetwork/articles/TNKDE.html) adapted from Jeremy Gelb.
+
+```{r}
+# convert to POSIXct type
+dest_cwc$pingtimestamp <- as.POSIXct(dest_cwc$pingtimestamp, format = "%Y%/m/%d %H:%M:%S")
+
+# create new column for date
+dest_cwc$date <- format(dest_cwc$pingtimestamp, "%d-%m")
+
+# group by date and weekday, and count the instances
+
+date_counts <- dest_cwc %>% 
+  group_by(date,weekday) %>%
+  summarise(count=n())
+
+# distribution histogram
+
+ggplot(date_counts, aes(x=date, y=count)) +
+   geom_bar(stat = "identity") + 
+   labs(x="Date", y="Count") +
+   ggtitle("Number of Drop-offs across dates") +
+   theme_minimal()
+```
+
+Across the two weeks in 2019, there seems to be quite an even distribution of drop-offs in CWC regardless which day of the week.
+
+Now let's visualise the TKNDE before and after 7pm.
+
+```{r}
+# filter dest_cwc to include instances where end_hr is < 19
+dest_cwc$end_hr <- as.numeric(as.character(dest_cwc$end_hr))
+
+dest_cwc_before_7pm <- dest_cwc[dest_cwc$end_hr < 19, ]
+
+densities_cwc_dest_before_7pm <- nkde(roads_cwc, 
+                           events = dest_cwc_before_7pm,  # replace dest_cwc with dest_cwc_before_7pm
+                           w = rep(1, nrow(dest_cwc_before_7pm)),  # replace dest_cwc with dest_cwc_before_7pm
+                           samples = samples_cwc,
+                           kernel_name = "quartic",
+                           bw = 300, 
+                           div = "bw", 
+                           method = "simple", 
+                           digits = 1, 
+                           tol = 1,
+                           grid_shape = c(1, 1), 
+                           max_depth = 8,
+                           agg = 5, 
+                           sparse = TRUE,
+                           verbose = FALSE)
+
+samples_cwc$density_dest_before_7pm <- densities_cwc_dest_before_7pm
+lixels_cwc$density_dest_before_7pm <- densities_cwc_dest_before_7pm
+
+samples_cwc$density_dest_before_7pm <- samples_cwc$density_dest_before_7pm * 1000
+lixels_cwc$density_dest_before_7pm <- lixels_cwc$density_dest_before_7pm * 1000
+
+tmap_mode("view")
+tm_shape(lixels_cwc) +
+  tm_lines(col = "density_dest_before_7pm") +
+tm_shape(dest_cwc_before_7pm) +  # Replace dest_cwc with dest_cwc_before_7pm
+  tm_dots(alpha = 0.1) +
+tm_basemap("OpenStreetMap") +
+tm_scale_bar()
+```
+
+```{r}
+# filter dest_cwc to include instances where end_hr is >= 19
+dest_cwc$end_hr <- as.numeric(as.character(dest_cwc$end_hr))
+
+dest_cwc_after_7pm <- dest_cwc[dest_cwc$end_hr >= 19, ]
+
+densities_cwc_dest_after_7pm <- nkde(roads_cwc, 
+                           events = dest_cwc_after_7pm,  # Replace dest_cwc with dest_cwc_after_7pm
+                           w = rep(1, nrow(dest_cwc_after_7pm)),  # Replace dest_cwc with dest_cwc_after_7pm
+                           samples = samples_cwc,
+                           kernel_name = "quartic",
+                           bw = 300, 
+                           div = "bw", 
+                           method = "simple", 
+                           digits = 1, 
+                           tol = 1,
+                           grid_shape = c(1, 1), 
+                           max_depth = 8,
+                           agg = 5, 
+                           sparse = TRUE,
+                           verbose = FALSE)
+
+samples_cwc$density_dest_after_7pm <- densities_cwc_dest_after_7pm
+lixels_cwc$density_dest_after_7pm <- densities_cwc_dest_after_7pm
+
+samples_cwc$density_dest_after_7pm <- samples_cwc$density_dest_after_7pm * 1000
+lixels_cwc$density_dest_after_7pm <- lixels_cwc$density_dest_after_7pm * 1000
+
+tmap_mode("view")
+tm_shape(lixels_cwc) +
+  tm_lines(col = "density_dest_after_7pm") +
+tm_shape(dest_cwc_after_7pm) +  # Replace dest_cwc with dest_cwc_after_7pm
+  tm_dots(alpha = 0.1) +
+tm_basemap("OpenStreetMap") +
+tm_scale_bar()
+```
+
+```{r}
+tmap_mode('plot')
+```
+
+Generally, there is TNKDE is denser during the day time than in the night. This is logical as the outstanding general hotspots for CWC drop-offs are of higher concentration at areas with recreational or tourist activities available during the day. Given the uniformly low NKDE scores throughout Central Catchment Area after 7pm, we can also conclude there are very few instances that people Grab from Night Safari.
+
+Interestingly, other hotspots have emerged after 7pm. Although the intensity scores are generally very low after 7pm, it seems that some passengers are dropped off at a section of Seletar Expressway next to Springleaf Garden. The other hotspot is at a 300m-long stretch along the PIE next to Singapore Island Country Club. Perhaps a couple of people go to the country club after work to golf.

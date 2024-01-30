@@ -586,7 +586,7 @@ roads_tampines <- sg_roads[st_intersection(sg_roads, tampines), ]
 origin_tampines <- joined_origin[st_intersection(joined_origin, tampines), ]
 
 
-tmap_mode("view")
+tmap_mode("plot")
 
 tm_basemap("OpenStreetMap")+
   tm_shape(tampines) +
@@ -611,7 +611,7 @@ roads_woodlands <- sg_roads[st_intersection(sg_roads, woodlands), ]
 origin_woodlands <- joined_origin[st_intersection(joined_origin, woodlands), ]
 
 
-tmap_mode("view")
+tmap_mode("plot")
 
 tm_basemap("OpenStreetMap")+
   tm_shape(woodlands) +
@@ -638,7 +638,7 @@ roads_cwc <- sg_roads[st_intersection(sg_roads, cwc), ]
 dest_cwc <- joined_dest[st_intersection(joined_dest, cwc), ]
 
 
-tmap_mode("view")
+tmap_mode("plot")
 
 
 tm_basemap("OpenStreetMap")+
@@ -674,7 +674,7 @@ roads_downtown_core <- sg_roads[st_intersection(sg_roads, downtown_core), ]
 origin_downtown_core <- joined_origin[st_intersection(joined_origin, downtown_core), ]
 
 
-tmap_mode("view")
+tmap_mode("plot")
 
 
 tm_basemap("OpenStreetMap")+
@@ -787,9 +787,9 @@ There are multiple methods in determining the bandwidth type to use for kernel d
 
 The purpose for this project is to visualise where the pick-up and drop-off points are clustered. Let's observe the cluster visualisations produced by the various bandwidth functions.
 
-#### Interested Starting Locations
+### Interested Starting Locations
 
-**Tampines**
+###**Tampines**
 
 ::: {panel-tabset}
 ##### bw.CvL
@@ -927,7 +927,7 @@ plot(density(origin_dt_ppp.km,
 
 -   The bw.ppl method also seems to produce the best visualisation for CBD Downtown Core.
 
-#### Interested Ending Locations
+### Interested Ending Locations
 
 ### **Tampines**
 
@@ -1357,7 +1357,7 @@ plot(density(dest_cwc_ppp.km,
 
 -   The visualisation outputs across the kernel methods are similar, hence we will adopt the default Gaussian kernel method for Woodlands drop-offs.
 
-### Summary of Kernel Method Selections
+# Summary of Kernel Method Selections
 
 A grand summary of what I have done so far:
 
@@ -1370,10 +1370,10 @@ A grand summary of what I have done so far:
 | Destination | Woodlands               | ppl                 | Gaussian      |
 | Destination | Central Water Catchment | ppl                 | Gaussian      |
 
-### Final Kernel Density Estimation Maps
+## Final Kernel Density Estimation Maps
 
 ::: panel-tabset
-#### Tampines Origin Diggle Bandwidth, Gaussian
+### Tampines Origin Diggle Bandwidth, Gaussian
 
 ```{r}
 kde_origin_tm.bw <-
@@ -1384,7 +1384,7 @@ density(origin_tm_ppp.km,
 plot(kde_origin_tm.bw)
 ```
 
-#### Woodlands Origin ppl Bandwidth, Disc
+### Woodlands Origin ppl Bandwidth, Disc
 
 ```{r}
 kde_origin_wd.bw <- density(origin_wd_ppp.km,
@@ -1394,7 +1394,7 @@ kde_origin_wd.bw <- density(origin_wd_ppp.km,
 plot(kde_origin_wd.bw)
 ```
 
-#### Downtown Core Origin ppl Bandwidth, Gaussian
+### Downtown Core Origin ppl Bandwidth, Gaussian
 
 ```{r}
 kde_origin_dt.bw <-
@@ -1405,7 +1405,7 @@ density(origin_dt_ppp.km,
 plot(kde_origin_dt.bw)
 ```
 
-#### Tampines Dest ppl Bandwidth, Gaussian
+### Tampines Dest ppl Bandwidth, Gaussian
 
 ```{r}
 kde_dest_tm.bw <- density(dest_tm_ppp.km,
@@ -1415,7 +1415,7 @@ kde_dest_tm.bw <- density(dest_tm_ppp.km,
 plot(kde_dest_tm.bw)
 ```
 
-#### Woodlands Dest ppl Bandwidth, Gaussian
+### Woodlands Dest ppl Bandwidth, Gaussian
 
 ```{r}
 kde_dest_wd.bw <- density(dest_wd_ppp.km,
@@ -1425,7 +1425,7 @@ kde_dest_wd.bw <- density(dest_wd_ppp.km,
 plot(kde_dest_wd.bw)
 ```
 
-#### Central Water Catchment Dest ppl Bandwidth, Gaussian
+### Central Water Catchment Dest ppl Bandwidth, Gaussian
 
 ```{r}
 kde_dest_cwc.bw <- density(dest_cwc_ppp.km,
@@ -1546,6 +1546,7 @@ tm_shape(kde_origin_tm_bw_raster) +
   tm_layout(legend.position = c("left","bottom"),frame=FALSE)
 ```
 
+
 ## Woodlands Origin
 
 ```{r}
@@ -1590,152 +1591,28 @@ tm_shape(kde_dest_cwc_bw_raster) +
   tm_raster("v") +
   tm_layout(legend.position = c("left","bottom"),frame=FALSE)
 ```
-:::
 
-# Network-Constrained Kernel Density Estimation (NKDE) & Analysis
-
-Previously, I have already extracted out the roads for Tampines (`roads_tampines`), Woodlands (`roads_woodlands`), Downtown Core (`roads_downtown_core`) and Central Water Catchment (`roads_cwc`).
-
-## Segmentation & Snapping
-
-To perform NKDE, events like pick-up and drop-off points need to be snapped onto the road network. This will enable the lines to gain the necessary spatial weights based on point events.
-
-[![Snapped events are shown in green (Credit: Jeremy Gelb, 2024)](images/snapped_events.png)](https://jeremygelb.github.io/spNetwork/articles/NKDE.html)
-
-Create the line segments for all the road networks of our areas of interest.
-
-::: callout-tip
-## Determining the maximum distance
-
-Locals often walk up to [80 metres](https://qz.com/1481849/grab-southeast-asias-biggest-ride-hailing-firm-is-on-a-mapping-spree#:~:text=In%20Singapore%2C%20where%20Grab%20is%20headquartered%2C%20users%20might%20often%20walk%20up%20to%2080%20meters%20(260%20feet)%20to%20find%20their%20ride.) to hop onto their Grab vehicle.
-:::
-
-Plot out the network densities
-
-**Tampines**
-
-## Origin KDE
-
-```{r}
-tmap_mode("plot")
-tm_shape(kde_origin_tm_bw_raster) +
-  tm_raster("v") +
-  tm_layout(legend.position = c("left","bottom"),frame=FALSE)
-```
-
-## Origin NKDE
-
-```{r}
-unique_types <- unique(st_geometry_type(roads_tampines))
-
-# debugging: filter roads_tampines to keep only linestrings
-if ("LINESTRING" %in% unique_types) {
-  roads_tampines <- st_cast(roads_tampines, "LINESTRING")
-} else {
-  # handle the case when no linestrings are found
-  stop("No linestrings found in roads_tampines.")
-}
-lixels_tm <- lixelize_lines(roads_tampines,
-                         80,
-                         mindist=40)
-
-samples_tm <- lines_center(lixels_tm)
-
-densities_tm_origin <- nkde(roads_tampines, 
-                  events = origin_tampines,
-                  w = rep(1,nrow(origin_tampines)),
-                  samples = samples_tm,
-                  kernel_name = "quartic",
-                  bw = 300, 
-                  div= "bw", 
-                  method = "simple", 
-                  digits = 1, 
-                  tol = 1,
-                  grid_shape = c(1,1), 
-                  max_depth = 8,
-                  agg = 5, #we aggregate events within a 5m radius (faster calculation)
-                  sparse = TRUE,
-                  verbose = FALSE)
-
-samples_tm$density_origin <- densities_tm_origin
-lixels_tm$density_origin <- densities_tm_origin
-
-samples_tm$density_origin <- samples_tm$density_origin*1000
-lixels_tm$density_origin <- lixels_tm$density_origin*1000
-
-tmap_mode("view")
-tm_shape(lixels_tm)+
-  tm_lines(col="density_origin")+
-tm_shape(origin_tampines)+
-  tm_dots(alpha=0.1) +
-tm_basemap("OpenStreetMap")
-```
-
-## Destination NKDE
-
+# Saving necessary items
+As there are many map outputs, let's save the files that we need before proceeding to the analysis segment. I have created a placeholder folder called 'analysis' to store all these files.
 ```{r}
 dest_tampines <- joined_dest[st_intersection(joined_dest, tampines), ]
-
-densities_tm_dest <- nkde(roads_tampines, 
-                  events = dest_tampines,
-                  w = rep(1,nrow(dest_tampines)),
-                  samples = samples_tm,
-                  kernel_name = "quartic",
-                  bw = 300, 
-                  div= "bw", 
-                  method = "simple", 
-                  digits = 1, 
-                  tol = 1,
-                  grid_shape = c(1,1), 
-                  max_depth = 8,
-                  agg = 5, #we aggregate events within a 5m radius (faster calculation)
-                  sparse = TRUE,
-                  verbose = FALSE)
-
-samples_tm$density_dest <- densities_tm_dest
-lixels_tm$density_dest <- densities_tm_dest
-
-samples_tm$density_dest <- samples_tm$density_dest*1000
-lixels_tm$density_dest <- lixels_tm$density_dest*1000
-
-tmap_mode("view")
-tm_shape(lixels_tm)+
-  tm_lines(col="density_dest")+
-tm_shape(origin_tampines)+
-  tm_dots(alpha=0.1) +
-tm_basemap("OpenStreetMap")
 ```
 
 ```{r}
-tmap_mode("plot")
+#| eval: false
+write_rds(roads_tampines,"data/analysis/roads_tampines.rds")
+write_rds(origin_tampines,"data/analysis/origin_tampines.rds")
+write_rds(dest_tampines,"data/analysis/dest_tampines.rds")
+
+write_rds(roads_downtown_core,"data/analysis/roads_downtown_core.rds")
+write_rds(origin_downtown_core, "data/analysis/origin_downtown_core.rds")
+
+write_rds(roads_woodlands,"data/analysis/roads_woodlands.rds")
+write_rds(origin_woodlands, "data/analysis/origin_woodlands.rds")
+
+write_rds(roads_cwc,"data/analysis/roads_cwc.rds")
+write_rds(dest_cwc, "data/analysis/dest_cwc.rds")
 ```
 
-## Analysis of Tampines
 
-### Origin: KDE vs NKDE
 
-Based on the traditional KDE results, we can generally comment that the densest cluster of pick-up points amounting up to 12,000 is concentrated at the north-eastern ridge of Tampines, which in particular lies in Xilin Subzone (Simei). However, this most significant finding from the KDE result overlooks at the insights from the NKDE results featuring the varying intensities of road utility in Tampines.
-
-For the Tampines pick-ups, it seems that there are a few more intense road networks. First, there is an intensity value of up to 0.8 at the cross junction of Xilin Avenue and Upper Changi Road East (i.e. southwestern ridge of **ITE College East**), and at the T-junction intersecting Simei St 3 and Simei Avenue providing values (i.e. Southeast of **Changi General Hospital**) of up to 0.8. Furthermore, there is an intensity value of up to 0.6 at the cross-junction of Sompah Road and Upper Changi Road East that is adjacent to the southwestern corner of **SUTD**.
-
-::: callout-tip
-## Idea
-
-These highlighted areas can suggest that people leaving work or appointments utilise Grab services. We can try to verify this with Temporal Network Kernel Density Estimation later!
-:::
-
-The other prominent location is Tampines Ave 2, along the same side as Blk 302, as it has the highest NKDE value of up to 1.0. Given the high concentration of activity along this bus stop road, it may be advisable for Grab users to choose a different pick-up location since this road seems congested with just Grab data alone. The actual NKDE of this road stretch may be significantly higher if we considered the buses.
-
-::: callout-tip
-## Idea
-
-An interesting fact to note is that this road is always congested during peak morning hours. I experience this first-hand on a regular basis while waiting for a long time for my bus at Block 302! I hypothesise that there are more Grab pick-ups in the morning than at night, so we may explore any temporal differences later!
-:::
-
-### NKDE: Origin vs Destination
-
-A similarity across the pick-up and drop-offs is that the road along Blk 302 remains as one of the most intense and thus many Grab rides either start or end along this stretch. However, the intensity of drop-offs here is lower at 0.6, which shows that there is a comparatively lower drop-off occurrences here than pick-ups.
-
-Nevertheless, the greatest NKDE value for drop-offs in Tampines is situated at the cross junction of Tampines Ave 2 and Simei Avenue, where neighbourhood hub spots like SAFRA Tampines and Tampines Round Market are at. When Grab users are going to Tampines, they could be intending to use recreational facilities or to eat at economical hawker food.
-
-(TBC possibly with NKDE analysis of other locations and TKDE.)
