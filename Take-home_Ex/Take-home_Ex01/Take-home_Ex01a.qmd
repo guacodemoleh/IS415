@@ -79,7 +79,7 @@ tm_shape(kde_origin_tm_bw_raster) +
   tm_layout(legend.position = c("left","bottom"),frame=FALSE)
 ```
 
-[![Map generated previously](images/origin_tm_kde.png)](https://is415-gaa-vic.netlify.app/take-home_ex/take-home_ex01/take-home_ex01#:~:text=EPSG%3A3414%22)-,Visualise%20tmap%20Outputs,-Tampines%20Origin)
+[![Map generated previously](images/origin_tm_kde.png)](https://is415-gaa-vic.netlify.app/take-home_ex/take-home_ex01/take-home_ex01#:~:text=EPSG%3A3414%22))
 
 ## Origin NKDE
 
@@ -272,7 +272,7 @@ I assume there is only one main drop-off/pick-up area for the Singapore Zoo and 
 The operating hours for Singapore Zoo and Night Safari are 8.30am-6pm and 7.15pm-12mn respectively.
 :::
 
-Let's have a look at the distribution of drop offs across the days in our dataset ([Source code](https://jeremygelb.github.io/spNetwork/articles/TNKDE.html) adapted from Jeremy Gelb.
+Let's have a look at the distribution of drop offs across the days in our dataset ([Source code](https://jeremygelb.github.io/spNetwork/articles/TNKDE.html) adapted from Jeremy Gelb.)
 
 ```{r}
 # convert to POSIXct type
