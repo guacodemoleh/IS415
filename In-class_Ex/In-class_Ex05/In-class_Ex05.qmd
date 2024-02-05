@@ -1,0 +1,17 @@
+---
+title: "In-class Exercise 5"
+author: "Victoria Grace ANN"
+execute: 
+  warning: false
+  eval: true
+  echo: true
+format:  
+  html: 
+    code-summary: "Show the code"
+    toc-depth: 4
+date: "5 February, 2024"
+date-modified: "last-modified"
+editor: visual
+---
+
+
