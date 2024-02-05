@@ -15,3 +15,88 @@ editor: visual
 ---
 
 
+# Installing and Loading Packages
+-   [**sfdep**](https://sfdep.josiahparry.com/) creates a sf and tidyverse friendly interface to the package. 
+```{r}
+pacman::p_load(sf, tmap, sfdep, tidyverse, dplyr)
+```
+
+# Data
+The two data sets we will use are:
+-   Hunan, a geospatial data in ESRI shape file format
+-   Hunan_2012, aspatial attribute data in csv format
+
+## Import geospatial data
+```{r}
+hunan <- st_read(dsn="data/geospatial", layer="Hunan")
+```
+## Importing aspatial data
+```{r}
+hunan2012 <- read_csv("data/aspatial/Hunan_2012.csv")
+```
+
+### Combining aspatial fields to geospatil data
+```{r}
+hunan_GDPPC <- left_join(hunan,hunan2012) %>%
+  select(1:4, 7, 15)
+```
+### Plotting Choropleth Map
+```{r}
+tmap_mode("plot")
+tm_shape(hunan_GDPPC) +
+  tm_fill(col="GDPPC",
+          style = "quantile",
+          palette = "Blues",
+          title = "GDPPC") +
+  tm_layout(main.title = "Distribution of GDP per capita by County",
+            main.title.position = "center",
+            main.title.size =1.2,
+            legend.height = 0.45,
+            legend.width = 0.35,
+            frame = TRUE) +
+  tm_borders(alpha = 0.5) +
+  tm_compass(type="8star", size = 2) +
+  tm_scale_bar() +
+  tm_grid(alpha = 0.2)
+```
+
+#   Global Measures of Spatial Association
+The queen method is used to derive the contiguity weights
+```{r}
+wm_q <- hunan_GDPPC %>%
+  mutate(nb = st_contiguity(geometry),
+         wt = st_weights(nb,
+                         style = "W"),
+         .before = 1)
+```
+
+##    Computing Global Moran's I
+```{r}
+moranI <- global_moran(wm_q$GDPPC,
+                       wm_q$nb,
+                       wm_q$wt)
+glimpse(moranI)
+```
+
+```{r}
+global_moran_test(wm_q$GDPPC,
+                       wm_q$nb,
+                       wm_q$wt)
+```
+
+###   Performing Global Moran's I permutation test
+It is better to conduct permutation tests.
+
+```{r}
+set.seed(1234)
+```
+
+```{r}
+global_moran_perm(wm_q$GDPPC,
+                  wm_q$nb,
+                  wm_q$wt,
+                  nsim = 99) 
+```
+-   `nsim` refers to the number of simulations
+-   Since the p-value is < 0.05, there is sufficient evidence to reject the null hypothesis that the spatial distribution of GDP per capita resembles a random distribution, or rather the distribution is independent from spatial. Since Moran's I statistic is > 0, we can infer that the spatial distribution shows signs of clustering.
+
