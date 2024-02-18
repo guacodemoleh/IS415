@@ -228,7 +228,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#import-geospatial-data" id="toc-import-geospatial-data" class="nav-link" data-scroll-target="#import-geospatial-data">Import geospatial data</a></li>
   <li><a href="#importing-aspatial-data" id="toc-importing-aspatial-data" class="nav-link" data-scroll-target="#importing-aspatial-data">Importing aspatial data</a>
   <ul class="collapse">
-  <li><a href="#combining-aspatial-fields-to-geospatil-data" id="toc-combining-aspatial-fields-to-geospatil-data" class="nav-link" data-scroll-target="#combining-aspatial-fields-to-geospatil-data">Combining aspatial fields to geospatil data</a></li>
+  <li><a href="#combining-aspatial-fields-to-geospatial-data" id="toc-combining-aspatial-fields-to-geospatial-data" class="nav-link" data-scroll-target="#combining-aspatial-fields-to-geospatial-data">Combining aspatial fields to geospatial data</a></li>
   <li><a href="#plotting-choropleth-map" id="toc-plotting-choropleth-map" class="nav-link" data-scroll-target="#plotting-choropleth-map">Plotting Choropleth Map</a></li>
   </ul></li>
   </ul></li>
@@ -271,7 +271,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <div>
     <div class="quarto-title-meta-heading">Modified</div>
     <div class="quarto-title-meta-contents">
-      <p class="date-modified">February 5, 2024</p>
+      <p class="date-modified">February 18, 2024</p>
     </div>
   </div>
     
@@ -313,8 +313,8 @@ Geodetic CRS:  WGS 84</code></pre>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>hunan2012 <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">"data/aspatial/Hunan_2012.csv"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<section id="combining-aspatial-fields-to-geospatil-data" class="level3">
-<h3 class="anchored" data-anchor-id="combining-aspatial-fields-to-geospatil-data">Combining aspatial fields to geospatil data</h3>
+<section id="combining-aspatial-fields-to-geospatial-data" class="level3">
+<h3 class="anchored" data-anchor-id="combining-aspatial-fields-to-geospatial-data">Combining aspatial fields to geospatial data</h3>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>hunan_GDPPC <span class="ot">&lt;-</span> <span class="fu">left_join</span>(hunan,hunan2012) <span class="sc">%&gt;%</span></span>
 <span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="dv">1</span><span class="sc">:</span><span class="dv">4</span>, <span class="dv">7</span>, <span class="dv">15</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>

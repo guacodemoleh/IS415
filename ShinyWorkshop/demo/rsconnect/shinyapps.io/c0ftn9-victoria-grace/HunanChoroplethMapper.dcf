@@ -1,0 +1,12 @@
+name: HunanChoroplethMapper
+title: HunanChoroplethMapper
+username: c0ftn9-victoria-grace
+account: c0ftn9-victoria-grace
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 11223766
+bundleId: 8254865
+url: https://c0ftn9-victoria-grace.shinyapps.io/HunanChoroplethMapper/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE

@@ -1,0 +1,138 @@
+---
+title: "R Series <br>"
+subtitle: "Creating Awesome Web Slides in Quarto with Revealjs (Conducted by Dr. Kam Tin Seong)"
+author: "Victoria Grace ANN"
+institute: "School of Computing and Information Systems, <br/> Singapore Management University"
+format: 
+  revealjs:
+    theme: simple
+    width: 1600
+    height: 900
+    incremental: false
+date: "14 February 2024"
+execute: 
+  eval: true
+  echo: true
+  warning: false
+  message: false
+editor: visual
+---
+
+## Why am I attending this workshop?
+
+:::{.incremental}
+Because I am:
+
+-   I am interested to creating slides in a different way apart from using PowerPoint slides
+-   Interested to create awesome web slides using R
+
+:::
+
+## Hello Plot
+
+```{r}
+#| echo: false
+pacman::p_load(tidyverse)
+
+exam_data <- read_csv("C:/guacodemoleh/IS415-GAA/data/revealjs/Exam_data.csv")
+
+ggplot(data = exam_data,aes(x=MATHS)) +
+  geom_histogram(bins=10,
+                 boundary=100,
+                 color='black',
+                 fill="light blue") +
+  ggtitle("Distribution of Maths Scores")
+```
+
+---
+
+### Dual columns slide
+::: columns
+
+::: {.column width="50%"}
+The code chunk.
+
+::: {style="font-size: 1.2em"}
+```{r}
+#| eval: false
+pacman::p_load(tidyverse)
+
+exam_data <- read_csv("C:/guacodemoleh/IS415-GAA/data/revealjs/Exam_data.csv")
+
+ggplot(data = exam_data,aes(x=MATHS)) +
+  geom_histogram(bins=10,
+                 boundary=100,
+                 color='black',
+                 fill="light blue") +
+  ggtitle("Distribution of Maths Scores")
+```
+:::
+:::
+
+::: {.column width="50%"}
+The plot
+```{r}
+#| echo: false
+#| fig-height: 8
+pacman::p_load(tidyverse)
+
+exam_data <- read_csv("C:/guacodemoleh/IS415-GAA/data/revealjs/Exam_data.csv")
+
+ggplot(data = exam_data,aes(x=MATHS)) +
+  geom_histogram(bins=10,
+                 boundary=100,
+                 color='black',
+                 fill="light blue") +
+  ggtitle("Distribution of Maths Scores")
+```
+:::
+
+:::
+
+## Working with tabsets
+
+::: panel-tabset
+## The code chunk
+
+::: {style="font-size: 1.35em"}
+```{r}
+#| eval: false
+#| code-line-numbers: "6,7,8,9"
+pacman::p_load(tidyverse)
+
+exam_data <- read_csv("C:/guacodemoleh/IS415-GAA/data/revealjs/Exam_data.csv")
+
+ggplot(data = exam_data,aes(x=MATHS)) +
+  geom_histogram(bins=10,
+                 boundary=100,
+                 color='black',
+                 fill="light blue") +
+  ggtitle("Distribution of Maths Scores")
+```
+:::
+
+## The plot
+```{r}
+#| echo: false
+#| fig-height: 6
+pacman::p_load(tidyverse)
+
+exam_data <- read_csv("C:/guacodemoleh/IS415-GAA/data/revealjs/Exam_data.csv")
+
+ggplot(data = exam_data,aes(x=MATHS)) +
+  geom_histogram(bins=10,
+                 boundary=100,
+                 color='black',
+                 fill="light blue") +
+  ggtitle("Distribution of Maths Scores")
+```
+:::
+
+## Adding a Static Table
+```{r}
+#| echo: false
+head(exam_data, n=8) %>%
+  knitr::kable(format="html")
+```
+
+
