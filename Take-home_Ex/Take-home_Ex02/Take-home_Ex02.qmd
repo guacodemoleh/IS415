@@ -1,0 +1,740 @@
+---
+title: "Take-home Exercise 2: Application of Spatial and Spatio-temporal Analysis Methods to Discover the Distribution of Dengue Fever in Tainan City, Taiwan"
+author: "Victoria Grace ANN"
+execute: 
+  warning: false
+  eval: true
+  echo: true
+  freeze: true
+format:  
+  html: 
+    code-summary: "Show the code"
+    toc-depth: 4
+date: "14 February, 2024"
+date-modified: "last-modified"
+editor: visual
+---
+
+# Overview
+
+Dengue fever is a ubiquitous condition in tropical areas characterised by humid weather induced by warm temperatures and abundant rainfall. Taiwan is a subtropical region and its weather conditions cause it to be a favourable breeding ground for female Aedes aegypti and Aedes albopictus mosquitoes.
+
+In 2015, Taiwan In 2015, Taiwan had recorded the most severe dengue fever outbreak with more than 43,000 dengue cases and 228 deaths. Since then, the annual reported dengue fever cases were maintained at the level of not more than 200 cases. However, in 2023, Taiwan recorded 26703 dengue fever cases (Kam, 2024).
+
+# Getting Started
+
+## Loading necessary packages
+
+```{r}
+pacman::p_load(tidyverse, lubridate, dplyr, sf, tmap, sfdep)
+```
+
+## Importing data
+
+### Aspatial
+```{r}
+dengue <- read_csv("data/aspatial/Dengue_Daily.csv")
+```
+
+### Geospatial
+```{r}
+tn_sf <- st_read("data/geospatial/TAINAN_VILLAGE.shp")
+```
+:::{callout-note}
+The coordinates are employing the TWD97 geodetic system. 
+:::
+
+# Aspatial Data Preparation
+
+For a quick glace of the dengue data set, we can use *head()*.
+
+```{r}
+head(dengue)
+```
+
+Since all the column names are in Traditional Chinese, have a closer look at them.
+
+First, use *colnames()* to list all the attribute titles.
+
+```{r}
+colnames(dengue)
+```
+
+## Glossary
+
+For our convenience, here is the table of translations for all the attributes:
+
++--------------------+-----------------------------------------------+
+| Attribute          | Translation                                   |
++====================+===============================================+
+|                    | Onset date                                    |
+| 發病日             |                                               |
+|                    |                                               |
++--------------------+-----------------------------------------------+
+|                    | Assessed date                                 |
+| 個案研判日         |                                               |
+|                    |                                               |
++--------------------+-----------------------------------------------+
+|                    | Notification date                             |
+| 通報日             |                                               |
+|                    |                                               |
++--------------------+-----------------------------------------------+
+|                    | Gender                                        |
+| 性別               |                                               |
+|                    |                                               |
++--------------------+-----------------------------------------------+
+|                    | Age group                                     |
+| 年齡層             |                                               |
+|                    |                                               |
++--------------------+-----------------------------------------------+
+|                    | Residential city                              |
+| 居住縣市           |                                               |
+|                    |                                               |
++--------------------+-----------------------------------------------+
+|                    | Residential township                          |
+| 居住鄉鎮           |                                               |
+|                    |                                               |
++--------------------+-----------------------------------------------+
+|                    | Residential village                           |
+| 居住村里           |                                               |
+|                    |                                               |
++--------------------+-----------------------------------------------+
+|                    | Smallest statistical area                     |
+| 最小統計區         |                                               |
+|                    |                                               |
++--------------------+-----------------------------------------------+
+|                    | X-coordinate of the smallest statistical area |
+| 最小統計區中心點X  |                                               |
+|                    |                                               |
++--------------------+-----------------------------------------------+
+|                    | Y-coordinate of the smallest statistical area |
+| 最小統計區中心點Y  |                                               |
+|                    |                                               |
++--------------------+-----------------------------------------------+
+|                    | Level 1 statistical area                      |
+| 一級統計區         |                                               |
+|                    |                                               |
++--------------------+-----------------------------------------------+
+|                    | Level 2 statistical area                      |
+| 二級統計區         |                                               |
+|                    |                                               |
++--------------------+-----------------------------------------------+
+|                    | Infected city                                 |
+| 感染縣市           |                                               |
+|                    |                                               |
++--------------------+-----------------------------------------------+
+|                    | Infected township                             |
+| 感染鄉鎮           |                                               |
+|                    |                                               |
++--------------------+-----------------------------------------------+
+|                    | Infected village                              |
+| 感染村里           |                                               |
+|                    |                                               |
++--------------------+-----------------------------------------------+
+|                    | Imported case?                                |
+| 是否境外移入       |                                               |
+|                    |                                               |
++--------------------+-----------------------------------------------+
+|                    | Imported country origin                       |
+| 感染國家           |                                               |
+|                    |                                               |
++--------------------+-----------------------------------------------+
+|                    | Confirmed case count                          |
+| 確定病例數         |                                               |
+|                    |                                               |
++--------------------+-----------------------------------------------+
+|                    | Residential village code                      |
+| 居住村里代碼       |                                               |
+|                    |                                               |
++--------------------+-----------------------------------------------+
+|                    | Infected village code                         |
+| 感染村里代碼       |                                               |
+|                    |                                               |
++--------------------+-----------------------------------------------+
+|                    | Serotype                                      |
+| 血清型             |                                               |
+|                    |                                               |
++--------------------+-----------------------------------------------+
+|                    | Residential city (Internal Affairs)           |
+| 內政部居住縣市代碼 |                                               |
+|                    |                                               |
++--------------------+-----------------------------------------------+
+|                    | Residential township (Internal Affairs)       |
+| 內政部居住鄉鎮代碼 |                                               |
+|                    |                                               |
++--------------------+-----------------------------------------------+
+|                    | Infected city code (Internal Affairs)         |
+| 內政部感染縣市代碼 |                                               |
+|                    |                                               |
++--------------------+-----------------------------------------------+
+|                    | Infected township code (Internal Affairs)     |
+| 內政部感染鄉鎮代碼 |                                               |
+|                    |                                               |
++--------------------+-----------------------------------------------+
+
+*The above might not be translated accurately but it should suffice for this project.*
+
+## Focus
+
+### Study Area: Tainan City
+
+Since the data includes recorded cases across Taiwan, it needs to be narrowed to Tainan first.
+
+Filter for Tainan City (台南市).
+
+```{r}
+tainan_dengue <- dengue %>%
+  filter(居住縣市=="台南市")
+
+nrow(tainan_dengue)
+nrow(dengue)
+```
+
+### Study Period
+
+The dengue fever cases are to be confined to epidemiology weeks 31 to 50 in 2023.
+
+First, extract all the year 2023 cases. The *subset()* function can be used, where the first four characters of the string value in the onset date, "發病日", represent the year.
+
+```{r}
+tainan_dengue_2023 <- subset(tainan_dengue, substr(發病日, 1, 4) == "2023")
+
+nrow(tainan_dengue_2023)
+```
+
+Next, create a column to store the epidemiology week number for the respective dates. We can use a function called *epiweek()* from the [**lubridate**](https://lubridate.tidyverse.org/reference/week.html) package to carry this task out.
+
+```{r}
+tainan_dengue_2023$epi_week <- epiweek(tainan_dengue_2023$發病日)
+```
+
+
+Filter for epidemiology weeks 31 to 50.
+
+```{r}
+tainan_dengue_2023 <- tainan_dengue_2023 %>%
+  filter(epi_week >= 31 & epi_week <= 50)
+
+nrow(tainan_dengue_2023)
+```
+
+According to (Health Protection Surveillance Centre)[https://www.hpsc.ie/notifiablediseases/resources/epidemiologicalweeks/], epidemiology weeks 31 to 50 are from 2023-07-30 to 2023-12-16.
+
+Check that the earliest and latest date in **tainan_dengue_2023** are 2023-07-30 and 2023-12-16 respectively.
+
+```{r}
+earliest_date <- min(tainan_dengue_2023$發病日)
+latest_date <- max(tainan_dengue_2023$發病日)
+
+earliest_date == "2023-07-30"
+latest_date == "2023-12-16"
+```
+:::{.callout-note}
+#### Important
+Since it is my first time using the *epiweek()* function, I felt it was important to refer to an official medical source explicitly stating the start and end dates of our interested study period. Hence, I performed a quick test to check if there was any mistake in the usage of this unfamiliar function.
+:::
+
+### Distribution of Cases over Time
+
+Plot a histogram to observe the number of dengue fever cases over time for the entire Tainan City.
+
+
+:::panel-tabset
+#### ggplot()
+Using the **ggplot2** package,
+```{r}
+ggplot(tainan_dengue_2023, aes(x = epi_week, y = 確定病例數)) +
+  geom_bar(stat = "identity", fill = "blue") +
+  labs(x = "Epidemiology Week", y = "Count", title = "Distribution of Cases over Time (2023)") +
+  theme_minimal()
+```
+
+#### hist()
+Alternatively, using *hist()*,
+```{r}
+epi_week_numeric <- as.numeric(as.character(tainan_dengue_2023$epi_week))
+
+hist(epi_week_numeric, xlab = "Epidemiology Week", ylab = "Frequency", main = "Distribution of Cases over Time (2023)", col = "blue")
+```
+:::
+
+Personally, using *ggplot()* is easier since the gridlines are generated. 
+
+Visually, the dengue cases seem to be normally distributed across the 20 weeks of the study period.
+
+
+# Geospatial Data Preparation
+
+Check if there are any missing values.
+
+```{r}
+dengue_long_na <- any(is.na(tainan_dengue_2023$最小統計區中心點X))
+dengue_long_na
+
+dengue_lat_na <- any(is.na(tainan_dengue_2023$最小統計區中心點Y))
+dengue_lat_na
+```
+
+
+## Tainan Administrative Boundary Layer
+
+Let's have a look at the Tainan boundary.
+
+```{r}
+plot(st_geometry(tn_sf))
+```
+
+```{r}
+head(tn_sf)
+```
+
+Rename `TOWNNAME` and `VILLNAME` to `居住鄉鎮` and `居住村里` respectively.
+
+```{r}
+tn_sf$居住鄉鎮 <- tn_sf$TOWNNAME
+tn_sf$居住村里 <- tn_sf$VILLNAME
+```
+
+:::{.callout-note}
+### Why create new columns in Traditional Chinese?
+My rationale is that since most of the data columns in `tainan_dengue_2023` are already written in Traditional Chinese, it is easier to perform a left join later with `tn_sf`.
+:::
+
+## Spatial Consolidated Dengue Fever Data Set 
+
+### Common Unique Identifier for Geospatial & Aspatial Data
+
+Check the number of unique village codes `VILLCODE` and test if the attribute is a unique identifier for **tn_sf**.
+
+```{r}
+n_rows <- nrow(tn_sf)
+
+n_villcode <- tn_sf %>%
+  distinct(VILLCODE) %>%
+  n_distinct()
+
+n_rows == n_villcode
+```
+The village code attribute `VILLCODE` can be the unique identifier for **tn_sf**.
+
+:::{.callout-warning}
+#### Common Unique Identifier
+However, the common unique identifier between **tn_sf** and **tainan_dengue_2023** cannot be `VILLCODE` as the former does not have such an attribute.
+:::
+
+There are multiple village codes that hold the same town name (居住鄉鎮) and/or village name (居住村里).
+```{r}
+unique_townname <- tn_sf %>% 
+  distinct(居住鄉鎮) %>%
+  nrow()
+
+unique_villname <- tn_sf %>% 
+  distinct(居住村里) %>%
+  nrow()
+
+n_rows > unique_townname
+n_rows > unique_villname
+```
+
+I suspect that the common unique identifiers between the two data are the town name (居住鄉鎮) and the village name (居住村里). Hence, the total number of this hypothesised pair of unique identifiers should be equal to the total number of rows in **tn_sf**.
+
+```{r}
+unique_pair <- tn_sf %>%
+  distinct(居住鄉鎮, 居住村里) %>%
+  nrow()
+
+unique_pair == n_rows
+```
+Since the evaluation turns out to be true, the town name and village name are indeed unique identifiers.
+
+
+To perform exploratory data analysis using choropleth maps later, the dengue fever cases should be first organised according to their common unique identifiers.
+
+```{r}
+tainan_dengue_consolidated <- tainan_dengue_2023 %>%
+  group_by(居住鄉鎮, 居住村里) %>%
+  summarise(count=n())
+
+head(tainan_dengue_consolidated)
+```
+
+Combine the consolidated attributes to the geospatial *tn_sf* layer.
+
+```{r}
+tainan_spatial <- left_join(tn_sf,tainan_dengue_consolidated)
+
+any(is.na(tainan_spatial$count))
+```
+
+Replace the NA count values with zero to prevent errors later.
+
+```{r}
+tainan_spatial <- tainan_spatial %>% 
+  mutate(count = ifelse(is.na(count), 0, count))
+
+any(is.na(tainan_spatial$count))
+```
+
+### Study Area Layer of Areas of Interest 
+
+We are only interested in TOWNIDs D01, D02, D04, D06, D07, D08, D32 and D39.
+
+Filter for these AOIs.
+
+```{r}
+tainan_aoi <- tainan_spatial %>%
+  filter(TOWNID %in% c("D01", "D02", "D04", "D06", "D07", "D08", "D32", "D39"))
+
+sum(tainan_aoi$count)
+class(tainan_aoi)
+colnames(tainan_dengue_2023)
+```
+
+## Spatio-Temporal Consolidated Dengue Fever Data Set 
+
+```{r}
+class(tainan_dengue_2023)
+
+coordinates <- c("最小統計區中心點X", "最小統計區中心點Y")
+
+tainan_dengue_2023 <-  tainan_dengue_2023 %>% 
+  filter(最小統計區中心點X != "None" & 最小統計區中心點Y != "None")
+ 
+tainan_dengue_sf <- st_as_sf(tainan_dengue_2023, coords = coordinates, crs = st_crs(tainan_aoi))
+```
+
+
+```{r}
+aoi_dengue_2023 <- st_join(tainan_dengue_sf, tainan_aoi)
+
+aoi_dengue_2023 <- aoi_dengue_2023 %>%
+  mutate(location = paste(TOWNNAME, VILLNAME, sep = ", "))
+
+tainan_aoi <- tainan_aoi %>%
+  mutate(location = paste(TOWNNAME, VILLNAME, sep = ", "))
+
+aoi_dengue <- aoi_dengue_2023 %>%
+  group_by(epi_week, location) %>%
+  summarize(count = sum(確定病例數))
+```
+```{r}
+aoi_dengue <- aoi_dengue %>%
+  filter(location != "NA, NA")
+
+tainan_aoi <- tainan_aoi %>%
+  filter(location != "NA, NA")
+```
+
+
+### Time-series Cube
+```{r}
+num_distinct_locations_aoi_dengue <- n_distinct(aoi_dengue$location)
+num_distinct_locations_tainan_aoi <- n_distinct(tainan_aoi$location)
+
+num_distinct_locations_aoi_dengue < num_distinct_locations_tainan_aoi
+
+matching_locations <- intersect(tainan_aoi$location, aoi_dengue$location)
+tainan_aoi_filtered <- tainan_aoi[tainan_aoi$location %in% matching_locations, ]
+```
+
+```{r}
+aoi_dengue <- aoi_dengue %>%
+  filter(location != "NA, NA")
+
+tainan_aoi <- tainan_aoi %>% select(-count)
+```
+
+```{r}
+dengue_st <- spacetime(.data = aoi_dengue,
+                       .geometry = tainan_aoi,
+                       .loc_col = "location",
+                       .time_col = "epi_week",
+                       active = "data")
+
+validate_spacetime(dengue_st)
+```
+```{r}
+write.csv(aoi_dengue, "aoi_dengue.csv", row.names = FALSE)
+
+write.csv(tainan_aoi, "tainan_aoi.csv", row.names = FALSE)
+
+write.csv(dengue_st, "dengue_st.csv", row.names = FALSE)
+```
+
+# Exploratory Data Analysis
+
+## Visualising Choropleth Map
+
+```{r}
+tainan_D01 <- tainan_aoi %>% 
+  filter(TOWNID == "D01")
+
+tainan_D02 <- tainan_aoi %>% 
+  filter(TOWNID == "D02")
+
+tainan_D04 <- tainan_aoi %>% 
+  filter(TOWNID == "D04")
+
+tainan_D06 <- tainan_aoi %>% 
+  filter(TOWNID == "D06")
+
+tainan_D07 <- tainan_aoi %>% 
+  filter(TOWNID == "D07")
+
+tainan_D08 <- tainan_aoi %>% 
+  filter(TOWNID == "D08")
+
+tainan_D32 <- tainan_aoi %>% 
+  filter(TOWNID == "D32")
+
+tainan_D39 <- tainan_aoi %>% 
+  filter(TOWNID == "D39")
+```
+
+To have a quick view of the distribution of dengue fever cases, *qtm()* from the **tmap** package can be used.
+
+Let's have an overview of the interested towns.
+
+:::panel-tabset
+#### Choropleth Map
+```{r}
+tm_shape(tainan_aoi) +
+  tm_polygons("count") +
+  tm_fill("count",
+          n=5,
+          title="count",
+          style="equal",
+          palette="YlOrRd") +
+  tm_borders(lwd=0.2,
+             alpha=1) +
+  tm_layout(main.title = "Dengue Fever Cases Distribution in AOI", legend.outside=FALSE, main.title.size=1) +
+  tm_scale_bar()
+```
+I have an initial assumption that the distribution of the dengue fever onset is spatially random.
+
+#### Histogram (TOWNID)
+
+```{r}
+ggplot(tainan_aoi, aes(x = TOWNID, y = count)) +
+  geom_bar(stat = "identity", fill = "blue") +
+  geom_text(aes(label = count), vjust = -0.5, color = "black", size = 3) +
+  labs(x = "TOWNID", y = "Count", title = "Distribution of Cases over Areas of Interest (2023)") +
+  theme_minimal()
+```
+The top three districts in terms of the number of dengue fever cases are, in ascending order, D01, D06 followed by D39.
+:::
+
+Colour-code interested towns for familiarity.
+
+```{r}
+townid_map <-tm_shape(tainan_aoi) +
+  tm_polygons("TOWNID", title = "TOWNID") +
+  tm_layout(title = "Distinct Towns within AOI")
+
+townname_map <- tm_shape(tainan_aoi) + tm_polygons("TOWNNAME", title = "TOWNNAME") +
+  tm_layout(title = "Distinct Towns within AOI")
+
+tmap_arrange(townid_map, townname_map, asp=1, ncol=2)
+```
+In summary,
+
+-   D01:東區 (East District)
+
+-   D02:南區 (South District)
+
+-   D04:北區 (North District)
+
+-   D06:安南區 (An'nan District)
+
+-   D07:安平區 (An'ping District)
+
+-   D08:中西區 (West Central District)
+
+-   D32:仁德區 (Ren'de District)
+
+-   D39:永康區 (Yong'kang District)
+
+
+### District Level Observations
+
+::: panel-tabset
+## D01 East District
+
+```{r}
+basemap_D01 <- tm_shape(tainan_D01) +
+  tm_polygons() +
+  tm_text("VILLENG", size=0.5) +
+  tm_layout(main.title = "East District", legend.outside=FALSE, main.title.size=1)
+
+view_tainan_D01 <- 
+  tm_shape(tainan_D01) +
+  tm_fill("count",
+          n=5,
+          title = "count",
+          style = "jenks") +
+  tm_borders(lwd=0.2,
+             alpha=1) +
+  tm_layout(main.title = "Dengue Cases Distribution in East District", legend.outside=FALSE, main.title.size=1) +
+  tm_scale_bar()
+  
+tmap_arrange(basemap_D01, view_tainan_D01, asp=1, ncol=2) 
+```
+
+
+## D02 South District
+
+```{r}
+basemap_D02 <- tm_shape(tainan_D02) +
+  tm_polygons() +
+  tm_text("VILLENG", size=0.5) +
+  tm_layout(main.title = "South District", legend.outside=FALSE, main.title.size=1)
+
+view_tainan_D02 <- 
+  tm_shape(tainan_D02) +
+  tm_fill("count",
+          n=5,
+          title = "count",
+          style = "jenks") +
+  tm_borders(lwd=0.2,
+             alpha=1) +
+  tm_layout(main.title = "Dengue Cases Distribution in South District", legend.outside=FALSE, main.title.size=1) +
+  tm_scale_bar()
+
+tmap_arrange(basemap_D02, view_tainan_D02, asp=1, ncol=2) 
+```
+
+## D04 North District
+
+```{r}
+basemap_D04 <- tm_shape(tainan_D04) +
+  tm_polygons() +
+  tm_text("VILLENG", size=0.5) +
+  tm_layout(main.title = "North District", legend.outside=FALSE, main.title.size=1)
+
+view_tainan_D04 <- 
+  tm_shape(tainan_D04) +
+  tm_fill("count",
+          n=5,
+          title = "count",
+          style = "jenks") +
+  tm_borders(lwd=0.2,
+             alpha=1) +
+  tm_layout(main.title = "Dengue Cases Distribution in North District", legend.outside=FALSE, main.title.size=1) +
+  tm_scale_bar()
+
+tmap_arrange(basemap_D04, view_tainan_D04, asp=1, ncol=2) 
+```
+
+## D06 An'nan District
+
+```{r}
+basemap_D06 <- tm_shape(tainan_D06) +
+  tm_polygons() +
+  tm_text("VILLENG", size=0.5)  +
+  tm_layout(main.title = "An'nan District", legend.outside=FALSE, main.title.size=1)
+
+view_tainan_D06 <- 
+  tm_shape(tainan_D06) +
+  tm_fill("count",
+          n=5,
+          title = "count",
+          style = "jenks") +
+  tm_borders(lwd=0.2,
+             alpha=1) +
+  tm_layout(main.title = "Dengue Cases Distribution in An'nan District", legend.outside=FALSE, main.title.size=1) +
+  tm_scale_bar()
+
+tmap_arrange(basemap_D06, view_tainan_D06, asp=1, ncol=2) 
+```
+
+## D07 An'ping District
+
+```{r}
+basemap_D07 <- tm_shape(tainan_D07) +
+  tm_polygons() +
+  tm_text("VILLENG", size=0.5)  +
+  tm_layout(main.title = "An'ping District", legend.outside=FALSE, main.title.size=1)
+
+view_tainan_D07 <- 
+  tm_shape(tainan_D07) +
+  tm_fill("count",
+          n=5,
+          title = "count",
+          style = "jenks") +
+  tm_borders(lwd=0.2,
+             alpha=1) +
+  tm_layout(main.title = "Dengue Cases Distribution in An'ping District",legend.outside=FALSE, main.title.size=1) +
+  tm_scale_bar()
+
+tmap_arrange(basemap_D07, view_tainan_D07, asp=1, ncol=2) 
+```
+
+## D08 West Central District
+
+```{r}
+basemap_D08 <- tm_shape(tainan_D08) +
+  tm_polygons() +
+  tm_text("VILLENG", size=0.5)  +
+  tm_layout(main.title = "West Central District", legend.outside=FALSE, main.title.size=1)
+
+view_tainan_D08 <- 
+  tm_shape(tainan_D08) +
+  tm_fill("count",
+          n=5,
+          title = "count",
+          style = "jenks") +
+  tm_borders(lwd=0.2,
+             alpha=1) +
+  tm_layout(main.title = "Dengue Cases Distribution in West Central District", legend.outside=FALSE, main.title.size=1) +
+  tm_scale_bar()
+
+tmap_arrange(basemap_D08, view_tainan_D08, asp=1, ncol=2) 
+```
+
+## D32 Ren'de District
+
+```{r}
+basemap_D32 <- tm_shape(tainan_D32) +
+  tm_polygons() +
+  tm_text("VILLENG", size=0.5) +
+  tm_layout(main.title = "Ren'de District", legend.outside=FALSE, main.title.size=1)
+
+view_tainan_D32 <- 
+  tm_shape(tainan_D32) +
+  tm_fill("count",
+          n=5,
+          title = "count",
+          style = "jenks") +
+  tm_borders(lwd=0.2,
+             alpha=1) +
+  tm_layout(main.title = "Dengue Cases Distribution in Ren'de District",legend.outside=FALSE, main.title.size=1) +
+  tm_scale_bar()
+
+tmap_arrange(basemap_D32, view_tainan_D32, asp=1, ncol=2) 
+```
+
+## D39 Yong'kang District
+
+```{r}
+basemap_D39 <- tm_shape(tainan_D39) +
+  tm_polygons() +
+  tm_text("VILLENG", size=0.5)  +
+  tm_layout(main.title = "Yong'kang District", legend.outside=FALSE, main.title.size=1)
+
+view_tainan_D39 <- 
+  tm_shape(tainan_D39) +
+  tm_fill("count",
+          n=5,
+          title = "count",
+          style = "jenks") +
+  tm_borders(lwd=0.2,
+             alpha=1) +
+  tm_layout(main.title = "Dengue Cases Distribution in Yong'kang District", legend.outside=FALSE, main.title.size=1) +
+  tm_scale_bar()
+
+tmap_arrange(basemap_D39, view_tainan_D39, asp=1, ncol=2) 
+```
+:::
+
+
+
