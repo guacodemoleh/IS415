@@ -41,7 +41,6 @@ Read the Tainan boundary layer.
 tn_sf <- st_read("data/geospatial/TAINAN_VILLAGE.shp")
 ```
 
-
 ```{r}
 tn_sf <- st_transform(tn_sf, crs = 3824)
 plot(st_geometry(tn_sf))
@@ -123,7 +122,7 @@ head(dengue)
 The data is in Traditional Chinese? No problem! The following table is a rough guide on all the attributes:
 
 | Attribute             | Translation                                       |
-|-----------------------|------------------------------------------------|
+|------------------------|------------------------------------------------|
 | **發病日**            | **Onset date**                                    |
 | 個案研判日            | Assessed date                                     |
 | 通報日                | Notification date                                 |
@@ -238,7 +237,6 @@ dengue.sf <- st_as_sf(dengue_study,
                       crs=3824)
 ```
 
-
 Confine `dengue.sf` into dengue cases recorded in just Tainan City, i.e. 台南市.
 
 ```{r}
@@ -254,7 +252,7 @@ aoi_dengue.sf <- aoi_dengue.sf %>%
   select(發病日, 性別, 年齡層, 感染國家, 確定病例數, epi_week, geometry)
 ```
 
-Finally, an intersection between `tainan_aoi` and `aoi_dengue.sf` to confine the dengue cases to the study area can be performed using `*st_intersection()*
+Finally, an intersection between `tainan_aoi` and `aoi_dengue.sf` to confine the dengue cases to the study area can be performed using \`*st_intersection()*
 
 ```{r}
 #| eval: false
@@ -385,11 +383,9 @@ dengue_anim
 tmap_animation(dengue_anim, filename = "dengue.gif", delay = 100, width = 1280, height = 720, scale = 2)
 ```
 
-
 ```{r}
 knitr::include_graphics("dengue.gif")
 ```
-
 
 # Global Spatial Autocorrelation
 
@@ -403,7 +399,6 @@ dengue.wm_q <- v_dengue.sf %>%
          wt = st_weights(nb, style="W"),
          .before = 1)
 ```
-
 
 ```{r}
 dengue.wm_q
@@ -419,8 +414,8 @@ global_moran_perm(dengue.wm_q$count,
                   dengue.wm_q$wt,
                   nsim = 99)
 ```
-There is sufficient statistical evidence to reject the null hypothesis that the spatial distribution of dengue cases in our areas of interest in Tainan city resembles random spatial distribution. Evidently, the Moran's I test statistic is greater than 0 and we can infer that the spatial distribution resembles signs of clustering.
 
+There is sufficient statistical evidence to reject the null hypothesis that the spatial distribution of dengue cases in our areas of interest in Tainan city resembles random spatial distribution. Evidently, the Moran's I test statistic is greater than 0 and we can infer that the spatial distribution resembles signs of clustering.
 
 # Local Spatial Autocorrelation
 
@@ -434,7 +429,6 @@ lisa <- dengue.wm_q %>%
          .before = 1) %>%
   unnest(local_moran)
 ```
-
 
 ### Visualising local Moran's I
 
@@ -450,9 +444,7 @@ map1 <- tm_shape(lisa) +
 map1
 ```
 
-
 ### Visualising local Moran's I
-
 
 ```{r}
 tmap_mode("plot")
@@ -474,6 +466,7 @@ tmap_arrange(map1, map2, ncol = 2)
 <Analysis here>
 
 ### Visualising LISA map
+
 ```{r}
 lisa_sig <- lisa  %>%
   filter(p_ii < 0.05)
@@ -496,12 +489,11 @@ The northwest and central-southeast villages of our Tainan area of interest have
 
 Interestingly, high-high clusters are found along the most part of a radial perimeter 3km away from the centre of the study area. These high-high clusters lie in Towns D06, D39, D01 and D02.
 
-
-## Computing Local Gi* Values Across Time
+## Computing Local Gi\* Values Across Time
 
 ### Creating Time Series Cube
 
-Use *spacetime() of **sfdep** package to create a spatio-temporal cube.
+Use \*spacetime() of **sfdep** package to create a spatio-temporal cube.
 
 ```{r}
 tn_st <- spacetime(vw_dengue, tainan_aoi, 
@@ -513,7 +505,8 @@ is_spacetime_cube(tn_st)
 ```
 
 ## Deriving Spatial Weights
-Compute spatial weights by deriving inverse distance weights to compute the Gi* statistics
+
+Compute spatial weights by deriving inverse distance weights to compute the Gi\* statistics
 
 ```{r}
 tn_nb <- tn_st %>%
@@ -528,15 +521,16 @@ tn_nb <- tn_st %>%
 ```
 
 Now each time-sliced village has neighbours and weights.
+
 ```{r}
 head(tn_nb)
 ```
 
 The neighbour `nb` and weights `wt` have been calculated
 
-## Computation of Gi*
+## Computation of Gi\*
 
-Use *local_gstar_perm()* of **sfdep** package and group by `epi_week` to manually calculate the local GI* statistic for each village `VILLCODE`. After which, use unnest() to unnest the gi_star column of the new dataframe.
+Use *local_gstar_perm()* of **sfdep** package and group by `epi_week` to manually calculate the local GI\* statistic for each village `VILLCODE`. After which, use unnest() to unnest the gi_star column of the new dataframe.
 
 ```{r}
 gistars <- tn_nb %>%
@@ -545,18 +539,17 @@ gistars <- tn_nb %>%
   unnest(gi_star)
 ```
 
-With the statistic, we can merge our geometry to plot and see the statistical trends of the local GI* statistic
+With the statistic, we can merge our geometry to plot and see the statistical trends of the local GI\* statistic
 
 ```{r}
 gistar_map <- left_join(tainan_aoi, gistars,
                           by = c("VILLCODE" = "VILLCODE"))
 ```
 
+Create the tmap plot for the `gi_star` statistic.
 
-Create the tmap plot for the `gi_star` statistic. 
-
-:::{callout-note}
-Use p_sim to use the simulated values and use fixed style and breaks to plot the values that were P < 0.05 which are areas that are significant.
+::: {callout-note}
+Use p_sim to use the simulated values and use fixed style and breaks to plot the values that were P \< 0.05 which are areas that are significant.
 :::
 
 ```{r}
@@ -569,7 +562,6 @@ gistar_tmap <-
     tm_facets(along = "epi_week", free.coords = FALSE) + 
   tm_scale_bar()
 ```
-
 
 ```{r}
 #| eval: false
@@ -588,12 +580,12 @@ The north western region of our study area in Tainan appears to be significant f
 
 To have a closer analysis on the significant areas, an emerging hot spot analysis can further conclude the observations.
 
-
 # Emerging Hot Spot and Cold Spot Area Analysis
 
-Hot spot analysis utilises Getis-Ord or Gi* statistics where they are, by extension, local indicators of spatial association. More information can be found from Josiah Parry's succinct explanation on the fundamentals of hot spot analysis (here)[https://www.youtube.com/watch?v=sjLyJW95fHM]. (He is also the author of the sfdep pacakge!)
+Hot spot analysis utilises Getis-Ord or Gi\* statistics where they are, by extension, local indicators of spatial association. More information can be found from Josiah Parry's succinct explanation on the fundamentals of hot spot analysis (here)\[https://www.youtube.com/watch?v=sjLyJW95fHM\]. (He is also the author of the sfdep pacakge!)
 
-## Mann-Kendall Test and Gi*
+## Mann-Kendall Test and Gi\*
+
 First, locations can be evaluated through the Mann-Kendall test. This non-parametric test assesses if a set of data values is increasing or decreasing over time and also if the direction of the trend is statistically significant.
 
 The *MannKendall()* function is to identify whether the dengue cases are growing or decreasing with time.
@@ -611,7 +603,8 @@ ehsa <- gistars %>%
 gistars_merged <- merge(gistars, tainan_aoi[c("VILLCODE", "VILLENG", "TOWNID", "TOWNNAME")], by = "VILLCODE", all.x = TRUE)
 ```
 
-To have a look at all the Gi* statistics across all the villages, the following function can be used.
+To have a look at all the Gi\* statistics across all the villages, the following function can be used.
+
 ```{r}
 #| eval: false
 unique_villeng <- unique(gistars_merged$VILLENG)
@@ -640,11 +633,12 @@ write_rds(plots_list, "gistars_plots")
 plots_list <- read_rds("gistars_plots")
 ```
 
-::: {.callout-warning}
+::: callout-warning
 Since the above two code chunks requires a lot of computation time, I have saved `plots_list` as a rds file.
 :::
 
-There are some Gi* graphs of some villages that caught my attention. So let's plot them out.
+There are some Gi\* graphs of some villages that caught my attention. So let's plot them out.
+
 ```{r}
 interested_vills <- c("Fuqian Vil.", "Nanhua Vil.", "Shenggong Vil.")
 
@@ -660,15 +654,17 @@ tm_shape(vills_filtered) +
   tm_scale_bar()
 ```
 
-
-::: {.callout-note}
+::: callout-note
 ### What is a Census Block Group?
-It is a unit of census geography that is a combination of census blocks typically used in the (United States)[https://support.esri.com/en-us/gis-dictionary/block-group]. However, another such of a unit of measurement is not available globally, hence I employ census block group for easier reference.
+
+It is a unit of census geography that is a combination of census blocks typically used in the (United States)\[https://support.esri.com/en-us/gis-dictionary/block-group\]. However, another such of a unit of measurement is not available globally, hence I employ census block group for easier reference.
 :::
 
 ### Initial census block groups.
+
 ::: panel-tabset
 #### Shenggong Village
+
 ```{r}
 cbg_sg <- gistars_merged %>%
   ungroup() %>%
@@ -677,6 +673,7 @@ cbg_sg <- gistars_merged %>%
 ```
 
 #### Nanhua Village
+
 ```{r}
 cbg_nh <- gistars_merged %>%
   ungroup() %>%
@@ -685,6 +682,7 @@ cbg_nh <- gistars_merged %>%
 ```
 
 #### Fuqian Village
+
 ```{r}
 cbg_fq <- gistars_merged %>%
   ungroup() %>%
@@ -693,7 +691,7 @@ cbg_fq <- gistars_merged %>%
 ```
 :::
 
-### Gi* Temporal Trends
+### Gi\* Temporal Trends
 
 Hypothesis:
 
@@ -714,8 +712,8 @@ ggplot() +
 Let's check these villages and the significance of the local dengue cases over time.
 
 ::: panel-tabset
-
 #### Shenggong Village
+
 ```{r}
 cbg_sg %>%
   summarise(mk = list(
@@ -725,6 +723,7 @@ cbg_sg %>%
 ```
 
 #### Nanhua Village
+
 ```{r}
 cbg_nh %>%
   summarise(mk = list(
@@ -734,6 +733,7 @@ cbg_nh %>%
 ```
 
 #### Fuqian Village
+
 ```{r}
 cbg_fq %>%
   summarise(mk = list(
@@ -743,11 +743,9 @@ cbg_fq %>%
 ```
 :::
 
-
 All the villages that caught my attention with my naked eye have insignificant time-series trends for their dengue cases.
 
-
-Let's check out where are the locations with significant time-series trends! 
+Let's check out where are the locations with significant time-series trends!
 
 ```{r}
 filter_vill <- function(data) {
@@ -767,17 +765,16 @@ sig_vills <- filter_vill(gistars_merged)
 #| echo: false
 sig_vills %>% arrange(tau)
 ```
+
 From the results above, we can observe that about 8.43% of all the villages (21 of 249) in the study area only possess significant trends denoted by a p-value (sl) of less than 0.05.
 
-
 The greatest downward and upward trends in dengue cases were exhibited in Huaping Village and Chenggong Village respectively according to their tau values.
-
 
 ### Significant Census Block Groups
 
 ::: panel-tabset
-
 #### Huaping Village
+
 ```{r}
 cbg_hp <- gistars_merged %>%
   ungroup() %>%
@@ -794,6 +791,7 @@ ggplot() +
 ```
 
 #### Jiading Village
+
 ```{r}
 cbg_jd <- gistars_merged %>%
   ungroup() %>%
@@ -810,6 +808,7 @@ ggplot() +
 ```
 
 #### Chenggong Village
+
 ```{r}
 cbg_cg <- gistars_merged %>%
   ungroup() %>%
@@ -826,6 +825,7 @@ ggplot() +
 ```
 
 #### Xidong Village
+
 ```{r}
 cbg_xd <- gistars_merged %>%
   ungroup() %>%
@@ -840,7 +840,9 @@ ggplot() +
        title = "Gi* over time for Xidong Village",
        color = "Village")
 ```
+
 #### Ren'ai Village
+
 ```{r}
 cbg_ra <- gistars_merged %>%
   ungroup() %>%
@@ -857,6 +859,7 @@ ggplot() +
 ```
 
 #### Xiaoximen Village
+
 ```{r}
 cbg_xm <- gistars_merged %>%
   ungroup() %>%
@@ -873,15 +876,13 @@ ggplot() +
 ```
 :::
 
+Xiaoximen increased the most from epidemiology week 31 to 50 in Gi\* value. This similar increasing trend was also observed by Huaping. By interpretation and looking at its graph, Xiaoximen village and Xiaoximen village were initially a coldspot area associated with relatively low dengue cases in its surrounding villages. However, the villages became a hotspot associated with relatively high dengue cases in its surrounding villages.In essence, Xiaoximen and its neighbours were more infected as a cluster over time.
 
-Xiaoximen increased the most from epidemiology week 31 to 50 in Gi* value. This similar increasing trend was also observed by Huaping. By interpretation and looking at its graph, Xiaoximen village and Xiaoximen village were initially a coldspot area associated with relatively low dengue cases in its surrounding villages. However, the villages became a hotspot associated with relatively high dengue cases in its surrounding villages.In essence, Xiaoximen and its neighbours were more infected as a cluster over time.
-
-Chenggong and Ren'ai villages were seen to be oscillating coldspots across the weeks, where their Gi* values were oscillating within the negative range of Gi*.
-
+Chenggong and Ren'ai villages were seen to be oscillating coldspots across the weeks, where their Gi\* values were oscillating within the negative range of Gi\*.
 
 ## Emerging Hotspot Analysis
 
-From the **sfdep** package, *emerging_hotspot_analysis()* can be used.  
+From the **sfdep** package, *emerging_hotspot_analysis()* can be used.
 
 ```{r}
 ehsa <- emerging_hotspot_analysis(
@@ -892,9 +893,10 @@ ehsa <- emerging_hotspot_analysis(
 )
 ```
 
--   The k argument is used to specify the number of time lags which is set to 1 by default. 
+-   The k argument is used to specify the number of time lags which is set to 1 by default.
 
 To view the distribution of EHSA classes, we can use *ggplot()*.
+
 ```{r}
 ggplot(data = ehsa,
        aes(x = classification)) +
@@ -911,8 +913,8 @@ tn_ehsa <- tainan_aoi %>%
             by = join_by(VILLCODE == location))
 ```
 
-
 Filter for significant locations.
+
 ```{r}
 ehsa_sig <- tn_ehsa %>%
   filter(p_value < 0.05)
@@ -931,18 +933,17 @@ ehsa_sig_map
 In general, most of the study area is characterised by hotspots rather than coldspots. There are a significant number of oscilating hotspots in the study area.
 
 In total, eight villages had no detected patterns.
+
 ```{r}
 filter(tn_ehsa, classification == "no pattern detected")$VILLENG
 ```
 
 Two new hotspots were detected.
+
 ```{r}
 filter(tn_ehsa, classification == "new hotspot")$VILLENG
 ```
 
-
 # Conclusion
 
-There is spatial randomness in the dengue cases across the study area of Tainan and the epidemiology weeks. 
-
-
+There is spatial randomness in the dengue cases across the study area of Tainan and the epidemiology weeks.
