@@ -5,7 +5,6 @@ author: "Victoria Grace ANN"
 institute: "School of Computing and Information Systems, <br/> Singapore Management University"
 format: 
   revealjs:
-    theme: simple
     width: 1600
     height: 900
     incremental: false
@@ -20,12 +19,11 @@ editor: visual
 
 ## Why am I attending this workshop?
 
-:::{.incremental}
+::: incremental
 Because I am:
 
 -   I am interested to creating slides in a different way apart from using PowerPoint slides
 -   Interested to create awesome web slides using R
-
 :::
 
 ## Hello Plot
@@ -44,11 +42,11 @@ ggplot(data = exam_data,aes(x=MATHS)) +
   ggtitle("Distribution of Maths Scores")
 ```
 
----
+------------------------------------------------------------------------
 
 ### Dual columns slide
-::: columns
 
+::: columns
 ::: {.column width="50%"}
 The code chunk.
 
@@ -71,6 +69,7 @@ ggplot(data = exam_data,aes(x=MATHS)) +
 
 ::: {.column width="50%"}
 The plot
+
 ```{r}
 #| echo: false
 #| fig-height: 8
@@ -86,7 +85,6 @@ ggplot(data = exam_data,aes(x=MATHS)) +
   ggtitle("Distribution of Maths Scores")
 ```
 :::
-
 :::
 
 ## Working with tabsets
@@ -112,6 +110,7 @@ ggplot(data = exam_data,aes(x=MATHS)) +
 :::
 
 ## The plot
+
 ```{r}
 #| echo: false
 #| fig-height: 6
@@ -129,10 +128,9 @@ ggplot(data = exam_data,aes(x=MATHS)) +
 :::
 
 ## Adding a Static Table
+
 ```{r}
 #| echo: false
 head(exam_data, n=8) %>%
   knitr::kable(format="html")
 ```
-
-
