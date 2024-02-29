@@ -21,720 +21,1241 @@ Dengue fever is a ubiquitous condition in tropical areas characterised by humid 
 
 In 2015, Taiwan In 2015, Taiwan had recorded the most severe dengue fever outbreak with more than 43,000 dengue cases and 228 deaths. Since then, the annual reported dengue fever cases were maintained at the level of not more than 200 cases. However, in 2023, Taiwan recorded 26703 dengue fever cases (Kam, 2024).
 
+For this project, the study area focuses on Southwest Tainan, and epidemiology weeks 31 through 50 in 2023.
+
 # Getting Started
 
 ## Loading necessary packages
 
 ```{r}
-pacman::p_load(tidyverse, lubridate, dplyr, sf, tmap, sfdep)
+pacman::p_load(tidyverse, lubridate, dplyr, sf, tmap, sfdep, gifski, Kendall, cowplot)
 ```
 
 ## Importing data
 
+### Geospatial
+
+Read the Tainan boundary layer.
+
+```{r}
+tn_sf <- st_read("data/geospatial/TAINAN_VILLAGE.shp")
+```
+
+```{r}
+tn_sf <- st_transform(tn_sf, crs = 3824)
+plot(st_geometry(tn_sf))
+```
+
+::: {callout-note}
+The coordinates are employing the TWD97 geodetic system, which translates to EPSG ID 3824.
+:::
+
+```{r}
+#| echo: false
+summary(tn_sf)
+```
+
 ### Aspatial
+
 ```{r}
 dengue <- read_csv("data/aspatial/Dengue_Daily.csv")
 ```
 
-### Geospatial
+# Confining Data to Study Area and Time Period
+
+## Tainan Geospatial Data
+
+This project will focus towns with IDs D01, D02, D04, D06, D07, D08, D36, D39.
+
+Hence, confine the geospatial data to the study area,
+
 ```{r}
-tn_sf <- st_read("data/geospatial/TAINAN_VILLAGE.shp")
+tainan_aoi <- tn_sf %>%
+  filter(TOWNID %in% c("D01", "D02", "D04", "D06", "D07", "D08", "D32", "D39"))
+
+summary(tainan_aoi)
 ```
-:::{callout-note}
-The coordinates are employing the TWD97 geodetic system. 
-:::
 
-# Aspatial Data Preparation
+View how the different towns are located geographically by using a choropleth map via **tmap**.
 
-For a quick glace of the dengue data set, we can use *head()*.
+```{r}
+study_townids <- c("D01", "D02", "D04", "D06", "D07", "D08", "D32", "D39")
+
+tn_sf_filtered <- tn_sf %>%
+  mutate(highlight = ifelse(TOWNID %in% study_townids, "Study", "Not Study"))
+```
+
+```{r}
+main_map <- tm_shape(tn_sf_filtered) +
+  tm_polygons("highlight", palette = c("grey", "red")) +
+  tm_borders(lwd = 0.2, alpha = 1) +
+  tm_layout(main.title = "Overview of Tainan", main.title.size = 1) +
+  tm_scale_bar()
+
+secondary_map <- tm_shape(tainan_aoi) +
+  tm_polygons(col = "TOWNID") +
+  tm_layout(legend.show = TRUE, main.title = "Overview of Dengue Study Area", main.title.size = 1) +
+  tm_scale_bar()
+
+tm_layout(legend.show = FALSE)
+
+tmap_arrange(main_map, secondary_map, ncol = 2)
+```
+
+## Dengue Data
+
+First, let's find out more about our dengue data.
+
+Check the *class* type of the dengue data set.
+
+```{r}
+class(dengue)
+```
+
+-   Currently, the dengue data set is a tibble data frame.
+
+Browse through the first few rows.
 
 ```{r}
 head(dengue)
 ```
 
-Since all the column names are in Traditional Chinese, have a closer look at them.
+The data is in Traditional Chinese? No problem! The following table is a rough guide on all the attributes:
 
-First, use *colnames()* to list all the attribute titles.
+| Attribute             | Translation                                       |
+|-------------------------|-----------------------------------------------|
+| **發病日**            | **Onset date**                                    |
+| 個案研判日            | Assessed date                                     |
+| 通報日                | Notification date                                 |
+| 性別                  | Gender                                            |
+| 年齡層                | Age group                                         |
+| 居住縣市              | Residential city                                  |
+| 居住鄉鎮              | Residential township                              |
+| 居住村里              | Residential village                               |
+| 最小統計區            | Smallest statistical area                         |
+| **最小統計區中心點X** | **X-coordinate** of the smallest statistical area |
+| **最小統計區中心點Y** | **Y-coordinate** of the smallest statistical area |
+| 一級統計區            | Level 1 statistical area                          |
+| 二級統計區            | Level 2 statistical area                          |
+| 感染縣市              | Infected city                                     |
+| 感染鄉鎮              | Infected township                                 |
+| 感染村里              | Infected village                                  |
+| 是否境外移入          | Imported case?                                    |
+| 感染國家              | Imported country origin                           |
+| **確定病例數**        | **Confirmed case count**                          |
+| 居住村里代碼          | Residential village code                          |
+| 感染村里代碼          | Infected village code                             |
+| 血清型                | Serotype                                          |
+| 內政部居住縣市代碼    | Residential city (Internal Affairs)               |
+| 內政部居住鄉鎮代碼    | Residential township (Internal Affairs)           |
+| 內政部感染縣市代碼    | Infected city code (Internal Affairs)             |
+| 內政部感染鄉鎮代碼    | Infected township code (Internal Affairs)         |
 
-```{r}
-colnames(dengue)
-```
+Since the data includes all of Taiwan's confirmed dengue cases from 1998 to January 2024, the data needs to be further confined to year 2023, epidemiology weeks 31 to 50.
 
-## Glossary
-
-For our convenience, here is the table of translations for all the attributes:
-
-+--------------------+-----------------------------------------------+
-| Attribute          | Translation                                   |
-+====================+===============================================+
-|                    | Onset date                                    |
-| 發病日             |                                               |
-|                    |                                               |
-+--------------------+-----------------------------------------------+
-|                    | Assessed date                                 |
-| 個案研判日         |                                               |
-|                    |                                               |
-+--------------------+-----------------------------------------------+
-|                    | Notification date                             |
-| 通報日             |                                               |
-|                    |                                               |
-+--------------------+-----------------------------------------------+
-|                    | Gender                                        |
-| 性別               |                                               |
-|                    |                                               |
-+--------------------+-----------------------------------------------+
-|                    | Age group                                     |
-| 年齡層             |                                               |
-|                    |                                               |
-+--------------------+-----------------------------------------------+
-|                    | Residential city                              |
-| 居住縣市           |                                               |
-|                    |                                               |
-+--------------------+-----------------------------------------------+
-|                    | Residential township                          |
-| 居住鄉鎮           |                                               |
-|                    |                                               |
-+--------------------+-----------------------------------------------+
-|                    | Residential village                           |
-| 居住村里           |                                               |
-|                    |                                               |
-+--------------------+-----------------------------------------------+
-|                    | Smallest statistical area                     |
-| 最小統計區         |                                               |
-|                    |                                               |
-+--------------------+-----------------------------------------------+
-|                    | X-coordinate of the smallest statistical area |
-| 最小統計區中心點X  |                                               |
-|                    |                                               |
-+--------------------+-----------------------------------------------+
-|                    | Y-coordinate of the smallest statistical area |
-| 最小統計區中心點Y  |                                               |
-|                    |                                               |
-+--------------------+-----------------------------------------------+
-|                    | Level 1 statistical area                      |
-| 一級統計區         |                                               |
-|                    |                                               |
-+--------------------+-----------------------------------------------+
-|                    | Level 2 statistical area                      |
-| 二級統計區         |                                               |
-|                    |                                               |
-+--------------------+-----------------------------------------------+
-|                    | Infected city                                 |
-| 感染縣市           |                                               |
-|                    |                                               |
-+--------------------+-----------------------------------------------+
-|                    | Infected township                             |
-| 感染鄉鎮           |                                               |
-|                    |                                               |
-+--------------------+-----------------------------------------------+
-|                    | Infected village                              |
-| 感染村里           |                                               |
-|                    |                                               |
-+--------------------+-----------------------------------------------+
-|                    | Imported case?                                |
-| 是否境外移入       |                                               |
-|                    |                                               |
-+--------------------+-----------------------------------------------+
-|                    | Imported country origin                       |
-| 感染國家           |                                               |
-|                    |                                               |
-+--------------------+-----------------------------------------------+
-|                    | Confirmed case count                          |
-| 確定病例數         |                                               |
-|                    |                                               |
-+--------------------+-----------------------------------------------+
-|                    | Residential village code                      |
-| 居住村里代碼       |                                               |
-|                    |                                               |
-+--------------------+-----------------------------------------------+
-|                    | Infected village code                         |
-| 感染村里代碼       |                                               |
-|                    |                                               |
-+--------------------+-----------------------------------------------+
-|                    | Serotype                                      |
-| 血清型             |                                               |
-|                    |                                               |
-+--------------------+-----------------------------------------------+
-|                    | Residential city (Internal Affairs)           |
-| 內政部居住縣市代碼 |                                               |
-|                    |                                               |
-+--------------------+-----------------------------------------------+
-|                    | Residential township (Internal Affairs)       |
-| 內政部居住鄉鎮代碼 |                                               |
-|                    |                                               |
-+--------------------+-----------------------------------------------+
-|                    | Infected city code (Internal Affairs)         |
-| 內政部感染縣市代碼 |                                               |
-|                    |                                               |
-+--------------------+-----------------------------------------------+
-|                    | Infected township code (Internal Affairs)     |
-| 內政部感染鄉鎮代碼 |                                               |
-|                    |                                               |
-+--------------------+-----------------------------------------------+
-
-*The above might not be translated accurately but it should suffice for this project.*
-
-## Focus
-
-### Study Area: Tainan City
-
-Since the data includes recorded cases across Taiwan, it needs to be narrowed to Tainan first.
-
-Filter for Tainan City (台南市).
+Extract all the 2023 dengue cases.
 
 ```{r}
-tainan_dengue <- dengue %>%
-  filter(居住縣市=="台南市")
-
-nrow(tainan_dengue)
-nrow(dengue)
+dengue_2023 <- subset(dengue, substr(發病日, 1, 4) == "2023")
 ```
 
-### Study Period
-
-The dengue fever cases are to be confined to epidemiology weeks 31 to 50 in 2023.
-
-First, extract all the year 2023 cases. The *subset()* function can be used, where the first four characters of the string value in the onset date, "發病日", represent the year.
+Create a column to store the epidemiology week number for the respective dates. We can use a function called *epiweek()* from the [**lubridate**](https://lubridate.tidyverse.org/reference/week.html) package to carry this task out.
 
 ```{r}
-tainan_dengue_2023 <- subset(tainan_dengue, substr(發病日, 1, 4) == "2023")
-
-nrow(tainan_dengue_2023)
+dengue_2023$epi_week <- epiweek(dengue_2023$發病日)
 ```
-
-Next, create a column to store the epidemiology week number for the respective dates. We can use a function called *epiweek()* from the [**lubridate**](https://lubridate.tidyverse.org/reference/week.html) package to carry this task out.
-
-```{r}
-tainan_dengue_2023$epi_week <- epiweek(tainan_dengue_2023$發病日)
-```
-
 
 Filter for epidemiology weeks 31 to 50.
 
 ```{r}
-tainan_dengue_2023 <- tainan_dengue_2023 %>%
+dengue_study <- dengue_2023 %>%
   filter(epi_week >= 31 & epi_week <= 50)
-
-nrow(tainan_dengue_2023)
 ```
 
-According to (Health Protection Surveillance Centre)[https://www.hpsc.ie/notifiablediseases/resources/epidemiologicalweeks/], epidemiology weeks 31 to 50 are from 2023-07-30 to 2023-12-16.
+According to (Health Protection Surveillance Centre)\[https://www.hpsc.ie/notifiablediseases/resources/epidemiologicalweeks/\], epidemiology weeks 31 to 50 are from 2023-07-30 to 2023-12-16.
 
-Check that the earliest and latest date in **tainan_dengue_2023** are 2023-07-30 and 2023-12-16 respectively.
+Then verify that the earliest and latest date in **tainan_dengue_2023** are 2023-07-30 and 2023-12-16 respectively.
 
 ```{r}
-earliest_date <- min(tainan_dengue_2023$發病日)
-latest_date <- max(tainan_dengue_2023$發病日)
+earliest_date <- min(dengue_study$發病日)
+latest_date <- max(dengue_study$發病日)
 
 earliest_date == "2023-07-30"
 latest_date == "2023-12-16"
 ```
-:::{.callout-note}
+
+::: callout-note
 #### Important
+
 Since it is my first time using the *epiweek()* function, I felt it was important to refer to an official medical source explicitly stating the start and end dates of our interested study period. Hence, I performed a quick test to check if there was any mistake in the usage of this unfamiliar function.
 :::
 
-### Distribution of Cases over Time
-
-Plot a histogram to observe the number of dengue fever cases over time for the entire Tainan City.
-
-
-:::panel-tabset
-#### ggplot()
-Using the **ggplot2** package,
-```{r}
-ggplot(tainan_dengue_2023, aes(x = epi_week, y = 確定病例數)) +
-  geom_bar(stat = "identity", fill = "blue") +
-  labs(x = "Epidemiology Week", y = "Count", title = "Distribution of Cases over Time (2023)") +
-  theme_minimal()
-```
-
-#### hist()
-Alternatively, using *hist()*,
-```{r}
-epi_week_numeric <- as.numeric(as.character(tainan_dengue_2023$epi_week))
-
-hist(epi_week_numeric, xlab = "Epidemiology Week", ylab = "Frequency", main = "Distribution of Cases over Time (2023)", col = "blue")
-```
-:::
-
-Personally, using *ggplot()* is easier since the gridlines are generated. 
-
-Visually, the dengue cases seem to be normally distributed across the 20 weeks of the study period.
-
-
-# Geospatial Data Preparation
-
-Check if there are any missing values.
+Earlier, the dengue data type identified was tibble data frame. To perform an intersection between the study area boundary and our dengue study data, `dengue_study` needs to be converted to sf data frame format since `tainan_aoi` is in that format.
 
 ```{r}
-dengue_long_na <- any(is.na(tainan_dengue_2023$最小統計區中心點X))
-dengue_long_na
-
-dengue_lat_na <- any(is.na(tainan_dengue_2023$最小統計區中心點Y))
-dengue_lat_na
-```
-
-
-## Tainan Administrative Boundary Layer
-
-Let's have a look at the Tainan boundary.
-
-```{r}
-plot(st_geometry(tn_sf))
-```
-
-```{r}
-head(tn_sf)
-```
-
-Rename `TOWNNAME` and `VILLNAME` to `居住鄉鎮` and `居住村里` respectively.
-
-```{r}
-tn_sf$居住鄉鎮 <- tn_sf$TOWNNAME
-tn_sf$居住村里 <- tn_sf$VILLNAME
-```
-
-:::{.callout-note}
-### Why create new columns in Traditional Chinese?
-My rationale is that since most of the data columns in `tainan_dengue_2023` are already written in Traditional Chinese, it is easier to perform a left join later with `tn_sf`.
-:::
-
-## Spatial Consolidated Dengue Fever Data Set 
-
-### Common Unique Identifier for Geospatial & Aspatial Data
-
-Check the number of unique village codes `VILLCODE` and test if the attribute is a unique identifier for **tn_sf**.
-
-```{r}
-n_rows <- nrow(tn_sf)
-
-n_villcode <- tn_sf %>%
-  distinct(VILLCODE) %>%
-  n_distinct()
-
-n_rows == n_villcode
-```
-The village code attribute `VILLCODE` can be the unique identifier for **tn_sf**.
-
-:::{.callout-warning}
-#### Common Unique Identifier
-However, the common unique identifier between **tn_sf** and **tainan_dengue_2023** cannot be `VILLCODE` as the former does not have such an attribute.
-:::
-
-There are multiple village codes that hold the same town name (居住鄉鎮) and/or village name (居住村里).
-```{r}
-unique_townname <- tn_sf %>% 
-  distinct(居住鄉鎮) %>%
-  nrow()
-
-unique_villname <- tn_sf %>% 
-  distinct(居住村里) %>%
-  nrow()
-
-n_rows > unique_townname
-n_rows > unique_villname
-```
-
-I suspect that the common unique identifiers between the two data are the town name (居住鄉鎮) and the village name (居住村里). Hence, the total number of this hypothesised pair of unique identifiers should be equal to the total number of rows in **tn_sf**.
-
-```{r}
-unique_pair <- tn_sf %>%
-  distinct(居住鄉鎮, 居住村里) %>%
-  nrow()
-
-unique_pair == n_rows
-```
-Since the evaluation turns out to be true, the town name and village name are indeed unique identifiers.
-
-
-To perform exploratory data analysis using choropleth maps later, the dengue fever cases should be first organised according to their common unique identifiers.
-
-```{r}
-tainan_dengue_consolidated <- tainan_dengue_2023 %>%
-  group_by(居住鄉鎮, 居住村里) %>%
-  summarise(count=n())
-
-head(tainan_dengue_consolidated)
-```
-
-Combine the consolidated attributes to the geospatial *tn_sf* layer.
-
-```{r}
-tainan_spatial <- left_join(tn_sf,tainan_dengue_consolidated)
-
-any(is.na(tainan_spatial$count))
-```
-
-Replace the NA count values with zero to prevent errors later.
-
-```{r}
-tainan_spatial <- tainan_spatial %>% 
-  mutate(count = ifelse(is.na(count), 0, count))
-
-any(is.na(tainan_spatial$count))
-```
-
-### Study Area Layer of Areas of Interest 
-
-We are only interested in TOWNIDs D01, D02, D04, D06, D07, D08, D32 and D39.
-
-Filter for these AOIs.
-
-```{r}
-tainan_aoi <- tainan_spatial %>%
-  filter(TOWNID %in% c("D01", "D02", "D04", "D06", "D07", "D08", "D32", "D39"))
-
-sum(tainan_aoi$count)
 class(tainan_aoi)
-colnames(tainan_dengue_2023)
 ```
 
-## Spatio-Temporal Consolidated Dengue Fever Data Set 
+Ensure coordinates are numeric. If not, convert them to numeric.
 
 ```{r}
-class(tainan_dengue_2023)
+#| echo: false
+class(dengue_study$最小統計區中心點X)
+class(dengue_study$最小統計區中心點Y)
 
-coordinates <- c("最小統計區中心點X", "最小統計區中心點Y")
+dengue_study$最小統計區中心點X <- as.numeric(dengue_study$最小統計區中心點X)
+dengue_study$最小統計區中心點Y <- as.numeric(dengue_study$最小統計區中心點Y)
 
-tainan_dengue_2023 <-  tainan_dengue_2023 %>% 
-  filter(最小統計區中心點X != "None" & 最小統計區中心點Y != "None")
- 
-tainan_dengue_sf <- st_as_sf(tainan_dengue_2023, coords = coordinates, crs = st_crs(tainan_aoi))
-```
-
-
-```{r}
-aoi_dengue_2023 <- st_join(tainan_dengue_sf, tainan_aoi)
-
-aoi_dengue_2023 <- aoi_dengue_2023 %>%
-  mutate(location = paste(TOWNNAME, VILLNAME, sep = ", "))
-
-tainan_aoi <- tainan_aoi %>%
-  mutate(location = paste(TOWNNAME, VILLNAME, sep = ", "))
-
-aoi_dengue <- aoi_dengue_2023 %>%
-  group_by(epi_week, location) %>%
-  summarize(count = sum(確定病例數))
-```
-```{r}
-aoi_dengue <- aoi_dengue %>%
-  filter(location != "NA, NA")
-
-tainan_aoi <- tainan_aoi %>%
-  filter(location != "NA, NA")
-```
-
-
-### Time-series Cube
-```{r}
-num_distinct_locations_aoi_dengue <- n_distinct(aoi_dengue$location)
-num_distinct_locations_tainan_aoi <- n_distinct(tainan_aoi$location)
-
-num_distinct_locations_aoi_dengue < num_distinct_locations_tainan_aoi
-
-matching_locations <- intersect(tainan_aoi$location, aoi_dengue$location)
-tainan_aoi_filtered <- tainan_aoi[tainan_aoi$location %in% matching_locations, ]
+class(dengue_study$最小統計區中心點X)
+class(dengue_study$最小統計區中心點Y)
 ```
 
 ```{r}
-aoi_dengue <- aoi_dengue %>%
-  filter(location != "NA, NA")
+dengue_study_clean  <- dengue_study %>%
+  filter(is.numeric(最小統計區中心點X) & is.numeric(最小統計區中心點Y))
 
-tainan_aoi <- tainan_aoi %>% select(-count)
+nrow(dengue_study) == nrow(dengue_study_clean)
+```
+
+::: callout-tip
+#### Learning Point
+
+When performing the *as.numeric()* on `dengue_study`, there were no changes in rows. On second thought, the function will not include rows that do not contain numeric characters!
+:::
+
+Remove missing coordinates.
+
+```{r}
+dengue_study <- dengue_study %>% 
+  filter(!is.na(最小統計區中心點X), !is.na(最小統計區中心點Y))
+```
+
+Now, `dengue_study` can be converted to sf data frame.
+
+```{r}
+dengue.sf <- st_as_sf(dengue_study, 
+                      coords = c("最小統計區中心點X","最小統計區中心點Y"),
+                      crs=3824)
+```
+
+Confine `dengue.sf` into dengue cases recorded in just Tainan City, i.e. 台南市.
+
+```{r}
+aoi_dengue.sf <- subset(dengue.sf, 居住縣市 == "台南市")
+```
+
+Consolidate `dengue.sf` and keep the columns that are needed only.
+
+```{r}
+colnames(aoi_dengue.sf)
+
+aoi_dengue.sf <- aoi_dengue.sf %>%
+  select(發病日, 性別, 年齡層, 感染國家, 確定病例數, epi_week, geometry)
+```
+
+Finally, an intersection between `tainan_aoi` and `aoi_dengue.sf` to confine the dengue cases to the study area can be performed using \`*st_intersection()*
+
+```{r}
+#| eval: false
+st_crs(tainan_aoi)
+st_crs(aoi_dengue.sf)
+aoi_dengue <- st_intersection(tainan_aoi, aoi_dengue.sf)
 ```
 
 ```{r}
-dengue_st <- spacetime(.data = aoi_dengue,
-                       .geometry = tainan_aoi,
-                       .loc_col = "location",
-                       .time_col = "epi_week",
-                       active = "data")
-
-validate_spacetime(dengue_st)
+#| eval: false
+write_rds(aoi_dengue, "data/geospatial/aoi_dengue.rds")
 ```
+
 ```{r}
-write.csv(aoi_dengue, "aoi_dengue.csv", row.names = FALSE)
+aoi_dengue <- readRDS("data/geospatial/aoi_dengue.rds")
+class(aoi_dengue)
+nrow(aoi_dengue)
+```
 
-write.csv(tainan_aoi, "tainan_aoi.csv", row.names = FALSE)
+## Aggregating Dengue Data
 
-write.csv(dengue_st, "dengue_st.csv", row.names = FALSE)
+Get a proper consolidated data set where the dengue cases are sorted by their unique village codes.
+
+```{r}
+v_dengue <- aoi_dengue %>%
+  group_by(VILLCODE) %>%
+  summarise(count = n()) %>%
+  st_drop_geometry()
+
+v_dengue.sf <- left_join(tainan_aoi,v_dengue) %>%
+  select(1, tail(names(.), 2)) %>%
+  complete(VILLCODE, fill = list(count = 0)) %>%
+  st_as_sf()
+```
+
+Get a proper consolidated data set where the dengue cases are sorted by their unique village codes and epidemiology weeks.
+
+```{r}
+vw_dengue <- aoi_dengue %>%
+  group_by(VILLCODE, epi_week) %>%
+  summarise(count = n()) %>%
+  st_drop_geometry()
+
+vw_dengue <- left_join(tainan_aoi,vw_dengue) %>%
+  select(1, tail(names(.), 3)) %>%
+  complete(VILLCODE, epi_week = 31:50, fill = list(count = 0)) %>%
+  st_drop_geometry() %>%
+  select(1:3) %>%
+  drop_na()
+```
+
+```{r}
+#| eval: false
+vw_dengue.sf <- left_join(tainan_aoi, vw_dengue) %>%
+  select(1, tail(names(.), 3)) %>%
+  complete(VILLCODE, epi_week = 31:50, fill = list(count = 0)) %>%
+  st_as_sf()
+
+vw_dengue.sf <- vw_dengue.sf[!is.na(vw_dengue.sf$epi_week), ]
+
+write_rds(vw_dengue.sf, "data/geospatial/vw_dengue.sf")
+```
+
+::: callout-note
+### Note
+
+In the data, there are some villages that do not have cases or have no recorded cases for some weeks. Using *complete()*, we can iterate through our study period weeks and *fill* them with the `count` value of 0
+:::
+
+```{r}
+vw_dengue.sf <- read_rds("data/geospatial/vw_dengue.sf")
 ```
 
 # Exploratory Data Analysis
 
-## Visualising Choropleth Map
+I am interested how the dengue cases are distributed across space and time.
 
-```{r}
-tainan_D01 <- tainan_aoi %>% 
-  filter(TOWNID == "D01")
+In general, here is the distribution of dengue cases across ...
 
-tainan_D02 <- tainan_aoi %>% 
-  filter(TOWNID == "D02")
-
-tainan_D04 <- tainan_aoi %>% 
-  filter(TOWNID == "D04")
-
-tainan_D06 <- tainan_aoi %>% 
-  filter(TOWNID == "D06")
-
-tainan_D07 <- tainan_aoi %>% 
-  filter(TOWNID == "D07")
-
-tainan_D08 <- tainan_aoi %>% 
-  filter(TOWNID == "D08")
-
-tainan_D32 <- tainan_aoi %>% 
-  filter(TOWNID == "D32")
-
-tainan_D39 <- tainan_aoi %>% 
-  filter(TOWNID == "D39")
-```
-
-To have a quick view of the distribution of dengue fever cases, *qtm()* from the **tmap** package can be used.
-
-Let's have an overview of the interested towns.
-
-:::panel-tabset
-#### Choropleth Map
-```{r}
-tm_shape(tainan_aoi) +
-  tm_polygons("count") +
-  tm_fill("count",
-          n=5,
-          title="count",
-          style="equal",
-          palette="YlOrRd") +
-  tm_borders(lwd=0.2,
-             alpha=1) +
-  tm_layout(main.title = "Dengue Fever Cases Distribution in AOI", legend.outside=FALSE, main.title.size=1) +
-  tm_scale_bar()
-```
-I have an initial assumption that the distribution of the dengue fever onset is spatially random.
-
-#### Histogram (TOWNID)
-
-```{r}
-ggplot(tainan_aoi, aes(x = TOWNID, y = count)) +
-  geom_bar(stat = "identity", fill = "blue") +
-  geom_text(aes(label = count), vjust = -0.5, color = "black", size = 3) +
-  labs(x = "TOWNID", y = "Count", title = "Distribution of Cases over Areas of Interest (2023)") +
-  theme_minimal()
-```
-The top three districts in terms of the number of dengue fever cases are, in ascending order, D01, D06 followed by D39.
-:::
-
-Colour-code interested towns for familiarity.
-
-```{r}
-townid_map <-tm_shape(tainan_aoi) +
-  tm_polygons("TOWNID", title = "TOWNID") +
-  tm_layout(title = "Distinct Towns within AOI")
-
-townname_map <- tm_shape(tainan_aoi) + tm_polygons("TOWNNAME", title = "TOWNNAME") +
-  tm_layout(title = "Distinct Towns within AOI")
-
-tmap_arrange(townid_map, townname_map, asp=1, ncol=2)
-```
-In summary,
-
--   D01:東區 (East District)
-
--   D02:南區 (South District)
-
--   D04:北區 (North District)
-
--   D06:安南區 (An'nan District)
-
--   D07:安平區 (An'ping District)
-
--   D08:中西區 (West Central District)
-
--   D32:仁德區 (Ren'de District)
-
--   D39:永康區 (Yong'kang District)
-
-
-### District Level Observations
+## Across Space
 
 ::: panel-tabset
-## D01 East District
+### Barplot
 
 ```{r}
-basemap_D01 <- tm_shape(tainan_D01) +
-  tm_polygons() +
-  tm_text("VILLENG", size=0.5) +
-  tm_layout(main.title = "East District", legend.outside=FALSE, main.title.size=1)
-
-view_tainan_D01 <- 
-  tm_shape(tainan_D01) +
-  tm_fill("count",
-          n=5,
-          title = "count",
-          style = "jenks") +
-  tm_borders(lwd=0.2,
-             alpha=1) +
-  tm_layout(main.title = "Dengue Cases Distribution in East District", legend.outside=FALSE, main.title.size=1) +
-  tm_scale_bar()
-  
-tmap_arrange(basemap_D01, view_tainan_D01, asp=1, ncol=2) 
+ggplot(aoi_dengue, aes(x = TOWNID)) +
+  geom_bar(fill = "steelblue", color = "black", bins = 20) +
+  geom_text(stat = "count", aes(label = ..count..), vjust = -0.5)
+  labs(x = "TOWNID", y = "Number of Dengue Cases", Title = "Histogram of Dengue cases by District Town") 
 ```
 
-
-## D02 South District
-
-```{r}
-basemap_D02 <- tm_shape(tainan_D02) +
-  tm_polygons() +
-  tm_text("VILLENG", size=0.5) +
-  tm_layout(main.title = "South District", legend.outside=FALSE, main.title.size=1)
-
-view_tainan_D02 <- 
-  tm_shape(tainan_D02) +
-  tm_fill("count",
-          n=5,
-          title = "count",
-          style = "jenks") +
-  tm_borders(lwd=0.2,
-             alpha=1) +
-  tm_layout(main.title = "Dengue Cases Distribution in South District", legend.outside=FALSE, main.title.size=1) +
-  tm_scale_bar()
-
-tmap_arrange(basemap_D02, view_tainan_D02, asp=1, ncol=2) 
-```
-
-## D04 North District
+### Choropleth Map
 
 ```{r}
-basemap_D04 <- tm_shape(tainan_D04) +
-  tm_polygons() +
-  tm_text("VILLENG", size=0.5) +
-  tm_layout(main.title = "North District", legend.outside=FALSE, main.title.size=1)
-
-view_tainan_D04 <- 
-  tm_shape(tainan_D04) +
+tmap_mode("plot")
+tm_shape(v_dengue.sf) +
   tm_fill("count",
-          n=5,
-          title = "count",
-          style = "jenks") +
-  tm_borders(lwd=0.2,
-             alpha=1) +
-  tm_layout(main.title = "Dengue Cases Distribution in North District", legend.outside=FALSE, main.title.size=1) +
-  tm_scale_bar()
-
-tmap_arrange(basemap_D04, view_tainan_D04, asp=1, ncol=2) 
-```
-
-## D06 An'nan District
-
-```{r}
-basemap_D06 <- tm_shape(tainan_D06) +
-  tm_polygons() +
-  tm_text("VILLENG", size=0.5)  +
-  tm_layout(main.title = "An'nan District", legend.outside=FALSE, main.title.size=1)
-
-view_tainan_D06 <- 
-  tm_shape(tainan_D06) +
-  tm_fill("count",
-          n=5,
-          title = "count",
-          style = "jenks") +
-  tm_borders(lwd=0.2,
-             alpha=1) +
-  tm_layout(main.title = "Dengue Cases Distribution in An'nan District", legend.outside=FALSE, main.title.size=1) +
-  tm_scale_bar()
-
-tmap_arrange(basemap_D06, view_tainan_D06, asp=1, ncol=2) 
-```
-
-## D07 An'ping District
-
-```{r}
-basemap_D07 <- tm_shape(tainan_D07) +
-  tm_polygons() +
-  tm_text("VILLENG", size=0.5)  +
-  tm_layout(main.title = "An'ping District", legend.outside=FALSE, main.title.size=1)
-
-view_tainan_D07 <- 
-  tm_shape(tainan_D07) +
-  tm_fill("count",
-          n=5,
-          title = "count",
-          style = "jenks") +
-  tm_borders(lwd=0.2,
-             alpha=1) +
-  tm_layout(main.title = "Dengue Cases Distribution in An'ping District",legend.outside=FALSE, main.title.size=1) +
-  tm_scale_bar()
-
-tmap_arrange(basemap_D07, view_tainan_D07, asp=1, ncol=2) 
-```
-
-## D08 West Central District
-
-```{r}
-basemap_D08 <- tm_shape(tainan_D08) +
-  tm_polygons() +
-  tm_text("VILLENG", size=0.5)  +
-  tm_layout(main.title = "West Central District", legend.outside=FALSE, main.title.size=1)
-
-view_tainan_D08 <- 
-  tm_shape(tainan_D08) +
-  tm_fill("count",
-          n=5,
-          title = "count",
-          style = "jenks") +
-  tm_borders(lwd=0.2,
-             alpha=1) +
-  tm_layout(main.title = "Dengue Cases Distribution in West Central District", legend.outside=FALSE, main.title.size=1) +
-  tm_scale_bar()
-
-tmap_arrange(basemap_D08, view_tainan_D08, asp=1, ncol=2) 
-```
-
-## D32 Ren'de District
-
-```{r}
-basemap_D32 <- tm_shape(tainan_D32) +
-  tm_polygons() +
-  tm_text("VILLENG", size=0.5) +
-  tm_layout(main.title = "Ren'de District", legend.outside=FALSE, main.title.size=1)
-
-view_tainan_D32 <- 
-  tm_shape(tainan_D32) +
-  tm_fill("count",
-          n=5,
-          title = "count",
-          style = "jenks") +
-  tm_borders(lwd=0.2,
-             alpha=1) +
-  tm_layout(main.title = "Dengue Cases Distribution in Ren'de District",legend.outside=FALSE, main.title.size=1) +
-  tm_scale_bar()
-
-tmap_arrange(basemap_D32, view_tainan_D32, asp=1, ncol=2) 
-```
-
-## D39 Yong'kang District
-
-```{r}
-basemap_D39 <- tm_shape(tainan_D39) +
-  tm_polygons() +
-  tm_text("VILLENG", size=0.5)  +
-  tm_layout(main.title = "Yong'kang District", legend.outside=FALSE, main.title.size=1)
-
-view_tainan_D39 <- 
-  tm_shape(tainan_D39) +
-  tm_fill("count",
-          n=5,
-          title = "count",
-          style = "jenks") +
-  tm_borders(lwd=0.2,
-             alpha=1) +
-  tm_layout(main.title = "Dengue Cases Distribution in Yong'kang District", legend.outside=FALSE, main.title.size=1) +
-  tm_scale_bar()
-
-tmap_arrange(basemap_D39, view_tainan_D39, asp=1, ncol=2) 
+          style = "jenks",
+          title = "count") +
+  tm_layout(main.title = "Distribution of Dengue Cases per Village",
+            main.title.position = "center",
+            main.title.size = 1.2,
+            legend.height = 0.45,
+            legend.width = 0.35,
+            frame = TRUE) +
+  tm_borders(alpha = 0.5) +
+  tm_compass(type="8star", size = 2) +
+  tm_scale_bar() +
+  tm_grid(alpha = 0.2)
 ```
 :::
 
+### Across Time
 
+```{r}
+ggplot(aoi_dengue, aes(x = epi_week)) +
+  geom_bar(fill = "blue", color = "black") +
+ labs(x = "Epidemiology Week", y = "Count", title = "Barplot of Dengue Cases across EWeeks")
+```
 
+From **tmap**, *tm_facets()* can be used to split our maps according to epidemiology week.
+
+```{r}
+dengue_anim <- tm_shape(vw_dengue.sf) +
+  tm_fill("count", palette = "Blues") +
+  tm_borders(lwd = 0.1) +
+  tm_facets(along = "epi_week", free.coords = FALSE)
+
+dengue_anim
+```
+
+```{r}
+#| eval: false
+tmap_animation(dengue_anim, filename = "dengue.gif", delay = 100, width = 1280, height = 720, scale = 2)
+```
+
+```{r}
+knitr::include_graphics("dengue.gif")
+```
+
+# Global Spatial Autocorrelation
+
+## Deriving contiguity weights
+
+Each geometry is defined by a unique village. In order to test for any spatial autocorrelation, spatial weights must be assigned to each of the villages. In a more theoretical context, these villages are neighbours.
+
+```{r}
+dengue.wm_q <- v_dengue.sf %>%
+  mutate(nb = st_contiguity(geometry),
+         wt = st_weights(nb, style="W"),
+         .before = 1)
+```
+
+```{r}
+glimpse(dengue.wm_q)
+```
+
+## Global Moran's I Test
+
+```{r}
+global_moran_test(dengue.wm_q$count,
+                  dengue.wm_q$nb,
+                  dengue.wm_q$wt)
+```
+
+The Moran I statistic standard deviate is 12.869, indicating that there is high spatial autocorrelation.
+
+The low p-value reveals that the spatial correlation is statistically significant.
+
+## Global Moran I's Permutation Test
+
+To perform a simulation of Moran's I test via \`*global_moran_perm()*, use *set.seed()* to ensure that the results generated are consistent.
+
+```{r}
+set.seed(1234)
+
+global_moran_perm(dengue.wm_q$count,
+                  dengue.wm_q$nb,
+                  dengue.wm_q$wt,
+                  nsim = 99)
+```
+
+There is sufficient statistical evidence to reject the null hypothesis that the spatial distribution of dengue cases in our areas of interest in Tainan city resembles random spatial distribution. Evidently, the Moran's I test statistic is greater than 0 and we can infer that the spatial distribution resembles signs of clustering.
+
+# Local Spatial Autocorrelation
+
+## Computing Local Moran's I
+
+Local Moran's I is the most popular spatial statistical method to detect for spatial clusters and outliers.
+
+```{r}
+lisa <- dengue.wm_q %>%
+  mutate(local_moran = local_moran(count, nb, wt, nsim = 99),
+         .before = 1) %>%
+  unnest(local_moran)
+```
+
+### Visualising local Moran's I
+
+```{r}
+tmap_mode("plot")
+map1 <- tm_shape(lisa) +
+  tm_fill("ii") + 
+  tm_borders(alpha = 0.5) +
+  tm_view(set.zoom.limits = c(6,8)) +
+  tm_layout(main.title = "local Moran's I of Dengue Cases",
+            main.title.size = 0.8)
+
+map1
+```
+
+### Visualising local Moran's I
+
+```{r}
+tmap_mode("plot")
+tm_shape(lisa) +
+  tm_fill("p_ii_sim") + 
+  tm_borders(alpha = 0.5) +
+   tm_layout(main.title = "p-value of local Moran's I",
+            main.title.size = 0.8)
+```
+
+-   Villages with a darker orange have values closer to 1 which signify that they have significant clustering and their neighbouring areas exhibit similar values. These villages seem to mostly gather at the centre of our study area.
+
+```{r}
+tmap_mode("plot")
+
+map2 <- tm_shape(lisa) +
+  tm_fill("p_ii_sim", breaks = c(0, 0.001, 0.01, 0.05, 1),
+          labels = c("0.001", "0.01", "0.05", "Not sig")) + 
+  tm_borders(alpha = 0.5) +
+   tm_layout(main.title = "p-value of local Moran's I",
+            main.title.size = 0.8)
+
+tmap_arrange(map1, map2, ncol = 2)
+```
+
+::: callout-warning
+#### Warning
+
+The appropriate classification for p-values should be 0.001, 0.01, 0.05 and not significant.
+:::
+
+### Visualising LISA map
+
+```{r}
+lisa_sig <- lisa  %>%
+  filter(p_ii < 0.05)
+
+lisa_map <- 
+tm_shape(lisa) +
+  tm_polygons() +
+  tm_borders(alpha = 0.5) +
+tm_shape(lisa_sig) +
+  tm_fill("mean") + 
+  tm_borders(alpha = 0.4) +
+  tm_scale_bar() +
+  tm_layout(legend.show = TRUE, main.title = "Overview of Outliers and Clusters", main.title.size = 1)
+
+tmap_mode("plot")
+tmap_arrange(lisa_map, secondary_map, ncol = 2)
+```
+
+The northwest and central-southeast villages of our Tainan area of interest have been identified as low-low clusters, thus their neighbours have had low-values or cases in general across the weeks.
+
+Interestingly, high-high clusters are found along the most part of a radial perimeter 3km away from the centre of the study area. These high-high clusters lie in Towns D06, D39, D01 and D02.
+
+# Hot Spot and Cold Spot Area Analysis
+
+## Computation of local Gi\*
+
+```{r}
+wm_idw <- v_dengue.sf %>%
+  mutate(nb = st_contiguity(geometry),
+         wts = st_inverse_distance(nb, geometry,
+         scale = 1,
+         alpha = 1),
+.before = 1)
+```
+
+```{r}
+HCSA <- wm_idw %>% 
+  mutate(local_Gi = local_gstar_perm(
+    count, nb, wt, nsim = 99),
+         .before = 1) %>%
+  unnest(local_Gi)
+HCSA
+```
+
+## Visualising Gi\*
+
+```{r}
+tmap_mode("plot")
+tm_shape(HCSA) +
+  tm_fill("gi_star") + 
+  tm_borders(alpha = 0.5) +
+  tm_view(set.zoom.limits = c(6,8))
+```
+
+Beginning from the epicentre of the study area, the values of Gi\* seems to decrease radially in general. Closer to the centre, the higher Gi\* values indicate a higher number of dengue cases whilst the lower Gi\* values indicate more randomness in the distribution of dengue cases in the villages.
+
+### Visualising p-value of HCSA
+
+```{r}
+tmap_mode("plot")
+tm_shape(HCSA) +
+  tm_fill("p_sim") + 
+  tm_borders(alpha = 0.5)
+```
+
+### Visualising General Local HCSA
+
+Implement the correct p-value classification in the p-value map visualisation.
+
+```{r}
+tmap_mode("plot")
+map3 <- tm_shape(HCSA) +
+  tm_fill("gi_star") + 
+  tm_borders(alpha = 0.5) +
+  tm_view(set.zoom.limits = c(6,8)) +
+  tm_layout(main.title = "Gi* of Dengue Case Count",
+            main.title.size = 0.8)
+
+map4 <- tm_shape(HCSA) +
+  tm_fill("p_value",
+          breaks = c(0, 0.001, 0.01, 0.05, 1),
+              labels = c("0.001", "0.01", "0.05", "Not sig")) + 
+  tm_borders(alpha = 0.5) +
+  tm_layout(main.title = "p-value of Gi*",
+            main.title.size = 0.8)
+
+tmap_arrange(map3, map4, ncol = 2)
+```
+
+Villages that are insignificant indicate that their dengue cases are more likely due to geographical proximity.
+
+## Visualising General Hot & Cold spot areas
+
+```{r}
+HCSA_sig <- HCSA  %>%
+  filter(p_sim < 0.05)
+
+tmap_mode("plot")
+
+HCSA_sig_map <- tm_shape(HCSA) +
+  tm_polygons() +
+  tm_borders(alpha = 0.5) +
+tm_shape(HCSA_sig) +
+  tm_fill("gi_star") + 
+  tm_borders(alpha = 0.4) +
+  tm_layout(main.title = "Gi*",
+            main.title.size = 1) +
+  tm_scale_bar()
+
+tmap_arrange(lisa_map, HCSA_sig_map, ncol = 2)
+```
+
+Several cold spots are observed along the northern region of the study area as well as some southern villages.
+
+# Emerging Hot Spot Analysis
+
+Hot spot analysis utilises Getis-Ord or Gi\* statistics where they are, by extension, local indicators of spatial association. More information can be found from Josiah Parry's succinct explanation on the fundamentals of hot spot analysis (here)\[https://www.youtube.com/watch?v=sjLyJW95fHM\]. (He is also the author of the sfdep pacakge!)
+
+## Creating Time Series Cube
+
+Use *spacetime()* of **sfdep** package to create a spatio-temporal cube.
+
+```{r}
+tn_st <- spacetime(vw_dengue, tainan_aoi, 
+                   .loc_col = "VILLCODE",
+                   .time_col = "epi_week",
+                   active = "data")
+
+is_spacetime_cube(tn_st)
+```
+
+## Deriving Spatial Weights
+
+Compute spatial weights by deriving inverse distance weights to compute the Gi\* statistics
+
+```{r}
+tn_nb <- tn_st %>%
+  activate("geometry") %>%
+  mutate(nb = include_self(st_contiguity(geometry)),
+         wt = st_inverse_distance(nb, geometry,
+                                  scale = 1,
+                                  alpha = 1),
+         .before = 1) %>%
+  set_nbs("nb") %>%
+  set_wts("wt")
+```
+
+::: callout-tip
+### Interpreting the above code block
+
+-   `activate()` activates the geometry context of the layer, and thus the layer should contain a polygon geometry attribute
+-   `mutate()` creates new columns *nb* and *wt*
+-   Activate the data context again and copy to the *nb* and *wt* columns to every time-slice using `set_nbs()` and `set_wts()`
+:::
+
+## Computation of Gi\*
+
+Use *local_gstar_perm()* of **sfdep** package and group by `epi_week` to manually calculate the local Gi\* statistic for each village `VILLCODE`. After which, use unnest() to unnest the gi_star column of the new dataframe.
+
+```{r}
+gistars <- tn_nb %>%
+  group_by(epi_week) %>%
+  mutate(gi_star = local_gstar_perm(count, nb, wt)) %>%
+  unnest(gi_star)
+```
+
+With the statistic, we can merge our geometry to plot and see the statistical trends of the local GI\* statistic
+
+```{r}
+gistar_map <- left_join(tainan_aoi, gistars,
+                          by = c("VILLCODE" = "VILLCODE"))
+```
+
+Create the tmap plot for the `gi_star` statistic over time.
+
+::: {callout-note}
+Use p_sim to use the simulated values and use fixed style and breaks to plot the values that were P \< 0.05 which are areas that are significant.
+:::
+
+```{r}
+gistar_map <- gistar_map %>% mutate(`P-Value` = case_when(p_sim < 0.05 ~ '< 0.05',  p_sim >= 0.05 ~ 'Not-Significant'))
+
+gistar_tmap <-
+  tm_shape(gistar_map) + 
+    tm_fill("P-Value") +
+    tm_borders(lwd = 0.1) +
+    tm_facets(along = "epi_week", free.coords = FALSE) + 
+  tm_scale_bar()
+```
+
+```{r}
+#| eval: false
+tmap_animation(gistar_tmap, filename = "gistar.gif", delay = 100, width = 1280, height = 720, scale = 2)
+```
+
+```{r}
+knitr::include_graphics("gistar.gif")
+```
+
+Villages in light blue mean that the p-value is less than 0.05, indicating that they are significantly associated with higher OR lower dengue cases compared to their neighbouring villages.
+
+Generally, there are different significant areas across the study period.
+
+The north western region of our study area in Tainan appears to be significant from epidemiology weeks 36 to 46.
+
+## Mann-Kendall Test and Gi\*
+
+First, locations can be evaluated through the Mann-Kendall test. This non-parametric test assesses if a set of data values is increasing or decreasing over time and also if the direction of the trend is statistically significant.
+
+The *MannKendall()* function is to identify whether the dengue cases are growing or decreasing with time.
+
+```{r}
+ehsa <- gistars %>%
+  group_by(VILLCODE) %>%
+  summarise(mk = list(
+    unclass(
+      Kendall::MannKendall(gi_star)))) %>%
+  unnest_wider(mk)
+```
+
+```{r}
+gistars_merged <- merge(gistars, tainan_aoi[c("VILLCODE", "VILLENG", "TOWNID", "TOWNNAME")], by = "VILLCODE", all.x = TRUE)
+```
+
+To have a look at all the Gi\* statistics across all the villages, the following function can be used.
+
+```{r}
+#| eval: false
+unique_villeng <- unique(gistars_merged$VILLENG)
+
+create_plot <- function(villeng) {
+  cbg <- gistars_merged %>%
+    ungroup() %>%
+    filter(VILLENG == villeng) %>%
+    select(VILLENG, epi_week, gi_star)
+  
+  ggplot(data = cbg, aes(x = epi_week, y = gi_star)) +
+    geom_line() +
+    theme_light() +
+    ggtitle(paste("VILLENG:", villeng))
+}
+```
+
+```{r}
+#| eval: false
+plots_list <- map(unique_villeng, create_plot)
+plots_list
+write_rds(plots_list, "gistars_plots")
+```
+
+```{r}
+plots_list <- read_rds("gistars_plots")
+```
+
+::: callout-warning
+Since the above two code chunks requires a lot of computation time, I have saved `plots_list` as a rds file.
+:::
+
+There are some Gi\* graphs of some villages that caught my attention. So let's plot them out.
+
+```{r}
+interested_vills <- c("Fuqian Vil.", "Nanhua Vil.", "Shenggong Vil.")
+
+vills_filtered <- tainan_aoi %>%
+  mutate(highlight = ifelse(VILLENG %in% interested_vills, "Intersting", "NA"))
+```
+
+```{r}
+tm_shape(vills_filtered) +
+  tm_polygons("highlight", palette = c("red","grey")) +
+  tm_borders(lwd = 0.2, alpha = 1) +
+  tm_layout(main.title = "Overview of Initial Interested Villages", main.title.size = 1) +
+  tm_scale_bar()
+```
+
+::: callout-note
+### What is a Census Block Group?
+
+It is a unit of census geography that is a combination of census blocks typically used in the (United States)\[https://support.esri.com/en-us/gis-dictionary/block-group\]. However, another such of a unit of measurement is not available globally, hence I employ census block group for easier reference.
+:::
+
+### Initial census block groups.
+
+::: panel-tabset
+#### Shenggong Village
+
+```{r}
+cbg_sg <- gistars_merged %>%
+  ungroup() %>%
+  filter(VILLENG == "Shenggong Vil.") |>
+  select(VILLENG, epi_week, gi_star)
+```
+
+#### Nanhua Village
+
+```{r}
+cbg_nh <- gistars_merged %>%
+  ungroup() %>%
+  filter(VILLENG == "Nanhua Vil.") |>
+  select(VILLENG, epi_week, gi_star)
+```
+
+#### Fuqian Village
+
+```{r}
+cbg_fq <- gistars_merged %>%
+  ungroup() %>%
+  filter(VILLENG == "Fuqian Vil.") |>
+  select(VILLENG, epi_week, gi_star)
+```
+:::
+
+### Gi\* Temporal Trends
+
+Hypothesis:
+
+H0: There is no monotonic time-series trend.
+
+H1: A positive, negative or non-null trend exists.
+
+```{r}
+ggplot() +
+  geom_line(data = cbg_sg, mapping = aes(x = epi_week, y = gi_star, color = "Shenggong Village")) +
+  geom_line(data = cbg_nh, mapping = aes(x = epi_week, y = gi_star, color = "Nanhua Village")) + 
+  geom_line(data = cbg_fq, mapping = aes(x = epi_week, y = gi_star, color = "Fuqian Village")) +
+  labs(x = "Epi Week", y = "Gi* Value", 
+       title = "Gi* over time for 3 villages",
+       color = "Village")
+```
+
+Let's check these villages and the significance of the local dengue cases over time.
+
+::: panel-tabset
+#### Shenggong Village
+
+```{r}
+cbg_sg %>%
+  summarise(mk = list(
+    unclass(
+      Kendall::MannKendall(gi_star)))) %>% 
+  tidyr::unnest_wider(mk)
+```
+
+#### Nanhua Village
+
+```{r}
+cbg_nh %>%
+  summarise(mk = list(
+    unclass(
+      Kendall::MannKendall(gi_star)))) %>% 
+  tidyr::unnest_wider(mk)
+```
+
+#### Fuqian Village
+
+```{r}
+cbg_fq %>%
+  summarise(mk = list(
+    unclass(
+      Kendall::MannKendall(gi_star)))) %>% 
+  tidyr::unnest_wider(mk)
+```
+:::
+
+::: callout-note
+#### Note
+
+The p-value is represented by attribute *sl*.
+:::
+
+All the villages that caught my attention with my naked eye have insignificant time-series trends for their dengue cases. Thus there are no monotonic time-series trends detected.
+
+Let's check out where are the locations with significant time-series trends!
+
+```{r}
+filter_vill <- function(data) {
+  result <- data %>%
+    group_by(VILLCODE,VILLENG) %>%
+    summarise(mk = list(unclass(Kendall::MannKendall(gi_star)))) %>%
+    tidyr::unnest_wider(mk) %>%
+    filter(sl < 0.05)
+  
+  return(result)
+}
+
+sig_vills <- filter_vill(gistars_merged)
+```
+
+```{r}
+#| echo: false
+sig_vills %>% arrange(tau)
+```
+
+From the results above, we can observe that about 5.43% of all the villages (14 of 258) in the study area only possess significant trends denoted by a p-value (sl) of less than 0.05.
+
+The greatest downward and upward trends in dengue cases were exhibited in Huaping Village and Chenggong Village respectively according to their tau values.
+
+### Significant Census Block Groups
+
+::: panel-tabset
+#### Huaping Village
+
+```{r}
+cbg_hp <- gistars_merged %>%
+  ungroup() %>%
+  filter(VILLENG == "Huaping Vil.") |>
+  select(VILLENG, epi_week, gi_star)
+```
+
+```{r}
+ggplot() +
+  geom_line(data = cbg_hp, mapping = aes(x = epi_week, y = gi_star, color = "Huaping Village")) +
+  labs(x = "Epi Week", y = "Gi* Value", 
+       title = "Gi* over time for Huaping Village",
+       color = "Village")
+```
+
+#### Jiading Village
+
+```{r}
+cbg_jd <- gistars_merged %>%
+  ungroup() %>%
+  filter(VILLENG == "Jiading Vil.") |>
+  select(VILLENG, epi_week, gi_star)
+```
+
+```{r}
+ggplot() +
+  geom_line(data = cbg_jd, mapping = aes(x = epi_week, y = gi_star, color = "Jiading Village")) +
+  labs(x = "Epi Week", y = "Gi* Value", 
+       title = "Gi* over time for Jiading Village",
+       color = "Village")
+```
+
+#### Haidong Village
+
+```{r}
+cbg_hd <- gistars_merged %>%
+  ungroup() %>%
+  filter(VILLENG == "Haidong Vil.") |>
+  select(VILLENG, epi_week, gi_star)
+```
+
+```{r}
+ggplot() +
+  geom_line(data = cbg_hd, mapping = aes(x = epi_week, y = gi_star, color = "Haidong Village")) +
+  labs(x = "Epi Week", y = "Gi* Value", 
+       title = "Gi* over time for Haidong Village",
+       color = "Village")
+```
+
+#### Zhuxi Village
+
+```{r}
+cbg_zx <- gistars_merged %>%
+  ungroup() %>%
+  filter(VILLENG == "Zhuxi Vil.") |>
+  select(VILLENG, epi_week, gi_star)
+```
+
+```{r}
+ggplot() +
+  geom_line(data = cbg_zx, mapping = aes(x = epi_week, y = gi_star, color = "Zhuxi Village")) +
+  labs(x = "Epi Week", y = "Gi* Value", 
+       title = "Gi* over time for Zhuxi Village",
+       color = "Village")
+```
+
+#### Dongqiao Village
+
+```{r}
+cbg_dq <- gistars_merged %>%
+  ungroup() %>%
+  filter(VILLENG == "Dongqiao Vil.") |>
+  select(VILLENG, epi_week, gi_star)
+```
+
+```{r}
+ggplot() +
+  geom_line(data = cbg_dq, mapping = aes(x = epi_week, y = gi_star, color = "Dongqiao Village")) +
+  labs(x = "Epi Week", y = "Gi* Value", 
+       title = "Gi* over time for Dongqiao Village",
+       color = "Village")
+```
+
+#### Lixing Village
+
+```{r}
+cbg_lx <- gistars_merged %>%
+  ungroup() %>%
+  filter(VILLENG == "Lixing Vil.") |>
+  select(VILLENG, epi_week, gi_star)
+```
+
+```{r}
+ggplot() +
+  geom_line(data = cbg_lx, mapping = aes(x = epi_week, y = gi_star, color = "Lixing Village")) +
+  labs(x = "Epi Week", y = "Gi* Value", 
+       title = "Gi* over time for Lixing Village",
+       color = "Village")
+```
+
+#### Guangzhou Village
+
+```{r}
+cbg_gz <- gistars_merged %>%
+  ungroup() %>%
+  filter(VILLENG == "Guangzhou Vil.") |>
+  select(VILLENG, epi_week, gi_star)
+```
+
+```{r}
+ggplot() +
+  geom_line(data = cbg_gz, mapping = aes(x = epi_week, y = gi_star, color = "Guangzhou Village")) +
+  labs(x = "Epi Week", y = "Gi* Value", 
+       title = "Gi* over time for Guangzhou Village",
+       color = "Village")
+```
+
+#### Xiaoximen Village
+
+```{r}
+cbg_xm <- gistars_merged %>%
+  ungroup() %>%
+  filter(VILLENG == "Xiaoximen Vil.") |>
+  select(VILLENG, epi_week, gi_star)
+```
+
+```{r}
+ggplot() +
+  geom_line(data = cbg_xm, mapping = aes(x = epi_week, y = gi_star, color = "Xiaoximen Village")) +
+  labs(x = "Epi Week", y = "Gi* Value", 
+       title = "Gi* over time for Xiaoximen Village",
+       color = "Village")
+```
+
+#### Zhongxi Village
+
+```{r}
+cbg_zx2 <- gistars_merged %>%
+  ungroup() %>%
+  filter(VILLENG == "Zhongxi Vil.") |>
+  select(VILLENG, epi_week, gi_star)
+```
+
+```{r}
+ggplot() +
+  geom_line(data = cbg_zx2, mapping = aes(x = epi_week, y = gi_star, color = "Zhongxi Village")) +
+  labs(x = "Epi Week", y = "Gi* Value", 
+       title = "Gi* over time for Zhongxi Village",
+       color = "Village")
+```
+
+#### Dongwan Village
+
+```{r}
+cbg_dw <- gistars_merged %>%
+  ungroup() %>%
+  filter(VILLENG == "Dongwan Vil.") |>
+  select(VILLENG, epi_week, gi_star)
+```
+
+```{r}
+ggplot() +
+  geom_line(data = cbg_dw, mapping = aes(x = epi_week, y = gi_star, color = "Dongwan Village")) +
+  labs(x = "Epi Week", y = "Gi* Value", 
+       title = "Gi* over time for Dongwan Village",
+       color = "Village")
+```
+
+#### Jincheng Village
+
+```{r}
+cbg_jc <- gistars_merged %>%
+  ungroup() %>%
+  filter(VILLENG == "Jincheng Vil.") |>
+  select(VILLENG, epi_week, gi_star)
+```
+
+```{r}
+ggplot() +
+  geom_line(data = cbg_jc, mapping = aes(x = epi_week, y = gi_star, color = "Jincheng Village")) +
+  labs(x = "Epi Week", y = "Gi* Value", 
+       title = "Gi* over time for Jincheng Village",
+       color = "Village")
+```
+
+#### Zhongzhou Village
+
+```{r}
+cbg_zz <- gistars_merged %>%
+  ungroup() %>%
+  filter(VILLENG == "Zhongzhou Vil.") |>
+  select(VILLENG, epi_week, gi_star)
+```
+
+```{r}
+ggplot() +
+  geom_line(data = cbg_zz, mapping = aes(x = epi_week, y = gi_star, color = "Zhongzhou Village")) +
+  labs(x = "Epi Week", y = "Gi* Value", 
+       title = "Gi* over time for Zhongzhou Village",
+       color = "Village")
+```
+
+#### Diandong Village
+
+```{r}
+cbg_dd <- gistars_merged %>%
+  ungroup() %>%
+  filter(VILLENG == "Diandong Vil.") |>
+  select(VILLENG, epi_week, gi_star)
+```
+
+```{r}
+ggplot() +
+  geom_line(data = cbg_dd, mapping = aes(x = epi_week, y = gi_star, color = "Diandong Village")) +
+  labs(x = "Epi Week", y = "Gi* Value", 
+       title = "Gi* over time for Diandong Village",
+       color = "Village")
+```
+
+#### Da'en Village
+
+```{r}
+cbg_de <- gistars_merged %>%
+  ungroup() %>%
+  filter(VILLENG == "Da'en Vil.") |>
+  select(VILLENG, epi_week, gi_star)
+```
+
+```{r}
+ggplot() +
+  geom_line(data = cbg_de, mapping = aes(x = epi_week, y = gi_star, color = "Da'en Village")) +
+  labs(x = "Epi Week", y = "Gi* Value", 
+       title = "Gi* over time for Da'en Village",
+       color = "Village")
+```
+:::
+
+Generally, six of the significant villages had consistent negative Gi\* values over the weeks. These villages are Zhuxi, Lixi, Zhongxi, Dongwan, Jincheng and Zhongzhou. Only Dongqiao village had a consistent positive Gi\* value across the weeks.
+
+Guangzhou, Xiaoximen, Huaping and Diandong villages were initially spatial outliers that became spatial clusters that occurred less likely by chance as time progressed. Xiaoximen increased the most from epidemiology week 31 to 50 in Gi\* value. This similar increasing trend was also observed by Huaping. Haidong village had a very sharp increase in Gi\* from -2.7 to 1 starting from week 44. Thus a spatial cluster was formed in this village in the last seven weeks of the study period. Furthermore, Dongqiao village consistently had positive Gi\*, thus it was constantly a spatial cluster of dengue cases.
+
+# Overall
+
+```{r}
+ehsa <- gistars %>%
+  group_by(VILLCODE) %>%
+  summarise(mk = list(
+    unclass(
+      Kendall::MannKendall(gi_star)))) %>%
+  tidyr::unnest_wider(mk)
+
+nrow(ehsa[ehsa$sl < 0.05,])
+nrow(ehsa[ehsa$sl >= 0.05,])
+
+nrow(ehsa[ehsa$sl < 0.05,])/nrow(ehsa[ehsa$sl >= 0.05,])
+```
+
+A majority 59.3% of the total villages have significant trends regardless of their directions.
+
+## All Villages
+
+From the **sfdep** package, *emerging_hotspot_analysis()* can be used. The purpose is to check if temporal trends are associated with dengue rates or if dengue rates are solely situated in a spatial context.
+
+```{r}
+ehsa <- emerging_hotspot_analysis(
+  x = tn_st,
+  .var = "count",
+  k = 1,
+  nsim = 99
+)
+```
+
+-   The k argument is used to specify the number of time lags which is set to 1 by default.
+
+To view the distribution of EHSA classes, we can use *ggplot()*.
+
+## Distribution of EHSA Classes
+
+```{r}
+ggplot(data = ehsa,
+       aes(x = classification)) +
+  geom_bar() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+::: callout-tip
+### What do the EHSA classifications mean?
+
+1.  Consecutive: Consistently low or high in dengue cases over an extended period
+2.  Oscillating: Consistent dengue fluctuations at either lower or higher levels
+3.  Sporadic: Inconsistent cases over time
+4.  No Pattern Detected: No particular pattern observed
+:::
+
+The highest number of over 100 villages are classified as oscillating hotspots. This means that these villages is a wavering cluster as it has been a significant cold spot before it became a hot spot towards the end of the observed time period.
+
+The next highest bar making up over 50 villages are classified as oscillating coldspots. Conversely, these villages are wavering clusters due to being a hotspot before becoming a cold spot towards the end of the study time period.
+
+### Visualising EHSA
+
+Currently, `ehsa` does not have any spatial characteristic. Hence it needs to join with `tainan_aoi` to obtain the geospatial characteristics.
+
+```{r}
+tn_ehsa <- tainan_aoi %>%
+  left_join(ehsa,
+            by = join_by(VILLCODE == location))
+```
+
+Filter for significant locations.
+
+```{r}
+ehsa_sig <- tn_ehsa %>%
+  filter(p_value < 0.05)
+
+ehsa_sig_map <- tm_shape(tn_ehsa) +
+  tm_polygons(id="VILLENG") +
+  tm_borders(alpha = 0.5) +
+tm_shape(ehsa_sig) +
+  tm_fill("classification",id="VILLENG") + 
+  tm_borders(alpha = 0.4) +
+  tm_scale_bar()
+
+tmap_mode("view")
+
+ehsa_sig_map
+```
+
+In general, most of the study area is characterised by hotspots rather than coldspots. There are a significant number of oscillating hotspots in the study area.
+
+In total, seven villages had no detected patterns.
+
+```{r}
+filter(tn_ehsa, classification == "no pattern detected")$VILLENG
+```
+
+```{r}
+filter(tn_ehsa, classification == "consecutive coldspot")$VILLENG
+```
+
+```{r}
+filter(tn_ehsa, classification == "consecutive hotspot")$VILLENG
+```
+
+```{r}
+filter(tn_ehsa, classification == "oscilating coldspot")$VILLENG
+```
+
+```{r}
+filter(tn_ehsa, classification == "oscilating hotspot")$VILLENG
+```
+
+These oscillating hotspots still have considerable dengue cases throughout the study period. Additionally, these villages may have remained as oscillating hotspots due to the [warmer autumn and winter seasons](https://www.taipeitimes.com/News/taiwan/archives/2023/10/25/2003808201).
+
+```{r}
+filter(tn_ehsa, classification == "sporadic coldspot")$VILLENG
+```
+
+According to Tainan City's Climate [data](https://en.climate-data.org/asia/republic-of-china-taiwan/tainan-city/tainan-city-983291/t/december-12/) in 2023, our study period which falls between August and December has had an average temperature of 24.5C which is within the optimal temperature for dengue fever transmission ([Tran et al., 2020](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7068348/)).
