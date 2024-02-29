@@ -122,7 +122,7 @@ head(dengue)
 The data is in Traditional Chinese? No problem! The following table is a rough guide on all the attributes:
 
 | Attribute             | Translation                                       |
-|------------------------|------------------------------------------------|
+|-------------------------|------------------------------------------------|
 | **發病日**            | **Onset date**                                    |
 | 個案研判日            | Assessed date                                     |
 | 通報日                | Notification date                                 |
@@ -580,9 +580,80 @@ The north western region of our study area in Tainan appears to be significant f
 
 To have a closer analysis on the significant areas, an emerging hot spot analysis can further conclude the observations.
 
-# Emerging Hot Spot and Cold Spot Area Analysis
+# Hot Spot and Cold Spot Area Analysis
 
-Hot spot analysis utilises Getis-Ord or Gi\* statistics where they are, by extension, local indicators of spatial association. More information can be found from Josiah Parry's succinct explanation on the fundamentals of hot spot analysis (here)\[https://www.youtube.com/watch?v=sjLyJW95fHM\]. (He is also the author of the sfdep pacakge!)
+Hot spot analysis utilises Getis-Ord or Gi\* statistics where they are, by extension, local indicators of spatial association. More information can be found from Josiah Parry's succinct explanation on the fundamentals of hot spot analysis (here)[https://www.youtube.com/watch?v=sjLyJW95fHM]. (He is also the author of the sfdep pacakge!)
+
+## Computation of local Gi\*
+
+```{r}
+wm_idw <- v_dengue.sf %>%
+  mutate(nb = st_contiguity(geometry),
+         wts = st_inverse_distance(nb, geometry,
+         scale = 1,
+         alpha = 1),
+.before = 1)
+```
+
+```{r}
+HCSA <- wm_idw %>% 
+  mutate(local_Gi = local_gstar_perm(
+    count, nb, wt, nsim = 99),
+         .before = 1) %>%
+  unnest(local_Gi)
+HCSA
+```
+
+### Visualising Gi\*
+```{r}
+tmap_mode("plot")
+tm_shape(HCSA) +
+  tm_fill("gi_star") + 
+  tm_borders(alpha = 0.5) +
+  tm_view(set.zoom.limits = c(6,8))
+```
+
+### Visualising p-value of HCSA
+```{r}
+tmap_mode("plot")
+tm_shape(HCSA) +
+  tm_fill("p_sim") + 
+  tm_borders(alpha = 0.5)
+```
+
+### Visualising General Local HCSA
+```{r}
+tmap_mode("plot")
+map1 <- tm_shape(HCSA) +
+  tm_fill("gi_star") + 
+  tm_borders(alpha = 0.5) +
+  tm_view(set.zoom.limits = c(6,8)) +
+  tm_layout(main.title = "Gi* of Dengue Case Count",
+            main.title.size = 0.8)
+
+map2 <- tm_shape(HCSA) +
+  tm_fill("p_value",
+          breaks = c(0, 0.001, 0.01, 0.05, 1),
+              labels = c("0.001", "0.01", "0.05", "Not sig")) + 
+  tm_borders(alpha = 0.5) +
+  tm_layout(main.title = "p-value of Gi*",
+            main.title.size = 0.8)
+
+tmap_arrange(map1, map2, ncol = 2)
+```
+
+### Visualising General hot & cold spot areas
+```{r}
+HCSA_sig <- HCSA  %>%
+  filter(p_sim < 0.05)
+tmap_mode("plot")
+tm_shape(HCSA) +
+  tm_polygons() +
+  tm_borders(alpha = 0.5) +
+tm_shape(HCSA_sig) +
+  tm_fill("gi_star") + 
+  tm_borders(alpha = 0.4)
+```
 
 ## Mann-Kendall Test and Gi\*
 

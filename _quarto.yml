@@ -42,7 +42,7 @@ website:
           - text: "Take-home Exercise 1: Report"
             href: "Take-home_Ex/Take-home_Ex01/Take-home_Ex01a.html"
           - text: "Take-home Exercise 2"
-            href: "Take-home_Ex/Take-home_Ex02/Take-home_Ex02a.html"
+            href: "Take-home_Ex/Take-home_Ex02/Take-home_Ex02.html"
     right:
       - href: index.qmd
         text: Home
