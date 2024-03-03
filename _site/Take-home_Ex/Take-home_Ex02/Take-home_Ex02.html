@@ -157,7 +157,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <a class="dropdown-item" href="../../Hands-on_Ex/Hands-on_Ex06/Hands-on_Ex06.html" rel="" target="">
  <span class="dropdown-text">Hands-on Exercise 6</span></a>
   </li>  
-        <li class="dropdown-header">Hands-on Exercise 7</li>
+        <li>
+    <a class="dropdown-item" href="../../Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html" rel="" target="">
+ <span class="dropdown-text">Hands-on Exercise 7</span></a>
+  </li>  
         <li>
     <a class="dropdown-item" href="../../Hands-on_Ex/Hands-on_Ex08/Hands-on_Ex08.html" rel="" target="">
  <span class="dropdown-text">Hands-on Exercise 8</span></a>
@@ -269,7 +272,6 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#computing-local-morans-i" id="toc-computing-local-morans-i" class="nav-link" data-scroll-target="#computing-local-morans-i">Computing Local Moran’s I</a>
   <ul class="collapse">
   <li><a href="#visualising-local-morans-i" id="toc-visualising-local-morans-i" class="nav-link" data-scroll-target="#visualising-local-morans-i">Visualising local Moran’s I</a></li>
-  <li><a href="#visualising-local-morans-i-1" id="toc-visualising-local-morans-i-1" class="nav-link" data-scroll-target="#visualising-local-morans-i-1">Visualising local Moran’s I</a></li>
   <li><a href="#visualising-lisa-map" id="toc-visualising-lisa-map" class="nav-link" data-scroll-target="#visualising-lisa-map">Visualising LISA map</a></li>
   </ul></li>
   </ul></li>
@@ -303,6 +305,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#visualising-ehsa" id="toc-visualising-ehsa" class="nav-link" data-scroll-target="#visualising-ehsa">Visualising EHSA</a></li>
   </ul></li>
   </ul></li>
+  <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references">References</a></li>
   </ul>
 </nav>
     </div>
@@ -335,7 +338,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <div>
     <div class="quarto-title-meta-heading">Modified</div>
     <div class="quarto-title-meta-contents">
-      <p class="date-modified">February 29, 2024</p>
+      <p class="date-modified">March 3, 2024</p>
     </div>
   </div>
     
@@ -354,8 +357,19 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <h1>Getting Started</h1>
 <section id="loading-necessary-packages" class="level2">
 <h2 class="anchored" data-anchor-id="loading-necessary-packages">Loading necessary packages</h2>
+<p>For this project we need the following packages:</p>
+<ul>
+<li><p><strong>tidyverse</strong> for importing, wrangling and visualising data</p></li>
+<li><p><strong>lubridate</strong> to work with time-related data more easily</p></li>
+<li><p><strong>dplyr</strong> for attribute data handling</p></li>
+<li><p><strong>sf</strong> to handle spatial data</p></li>
+<li><p><strong>tmap</strong> to plot choropleth maps</p></li>
+<li><p><strong>sfdep</strong> to compute spatial contiguity weights</p></li>
+<li><p><strong>gifski</strong> to save gif files</p></li>
+<li><p><strong>Kendall</strong> to perform Mann-Kendall test</p></li>
+</ul>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>pacman<span class="sc">::</span><span class="fu">p_load</span>(tidyverse, lubridate, dplyr, sf, tmap, sfdep, gifski, Kendall, cowplot)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>pacman<span class="sc">::</span><span class="fu">p_load</span>(tidyverse, lubridate, dplyr, sf, tmap, sfdep, gifski, Kendall)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section>
 <section id="importing-data" class="level2">
@@ -512,8 +526,8 @@ attr(,"class")
 <p>The data is in Traditional Chinese? No problem! The following table is a rough guide on all the attributes:</p>
 <table class="table">
 <colgroup>
-<col style="width: 34%">
-<col style="width: 65%">
+<col style="width: 31%">
+<col style="width: 68%">
 </colgroup>
 <thead>
 <tr class="header">
@@ -745,6 +759,19 @@ Learning Point
 </div>
 <div class="sourceCode cell-code" id="cb37"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a>aoi_dengue.sf <span class="ot">&lt;-</span> aoi_dengue.sf <span class="sc">%&gt;%</span></span>
 <span id="cb37-2"><a href="#cb37-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(發病日, 性別, 年齡層, 感染國家, 確定病例數, epi_week, geometry)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Note
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>I have decided to extract the onset date, gender, age group, country of infection, count, epidemiology week and geometry. Technically, the gender, age group, and country of infection need not be included.</p>
+</div>
 </div>
 <p>Finally, an intersection between <code>tainan_aoi</code> and <code>aoi_dengue.sf</code> to confine the dengue cases to the study area can be performed using `<em>st_intersection()</em></p>
 <div class="cell">
@@ -1102,6 +1129,7 @@ alternative hypothesis: two.sided</code></pre>
 </section>
 <section id="local-spatial-autocorrelation" class="level1">
 <h1>Local Spatial Autocorrelation</h1>
+<p>Local indicators of Spatial Association (LISA) statistics measure the extent to which points that are close to a given point have similar based on a contiguity measure among these points within a specified radius and thus are useful for identifying local spatial autocorrelation (Anselin, 1995).</p>
 <section id="computing-local-morans-i" class="level2">
 <h2 class="anchored" data-anchor-id="computing-local-morans-i">Computing Local Moran’s I</h2>
 <p>Local Moran’s I is the most popular spatial statistical method to detect for spatial clusters and outliers.</p>
@@ -1127,9 +1155,6 @@ alternative hypothesis: two.sided</code></pre>
 <p><img src="Take-home_Ex02_files/figure-html/unnamed-chunk-40-1.png" class="img-fluid" width="672"></p>
 </div>
 </div>
-</section>
-<section id="visualising-local-morans-i-1" class="level3">
-<h3 class="anchored" data-anchor-id="visualising-local-morans-i-1">Visualising local Moran’s I</h3>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb84"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb84-1"><a href="#cb84-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tmap_mode</span>(<span class="st">"plot"</span>)</span>
 <span id="cb84-2"><a href="#cb84-2" aria-hidden="true" tabindex="-1"></a><span class="fu">tm_shape</span>(lisa) <span class="sc">+</span></span>
@@ -1139,24 +1164,6 @@ alternative hypothesis: two.sided</code></pre>
 <span id="cb84-6"><a href="#cb84-6" aria-hidden="true" tabindex="-1"></a>            <span class="at">main.title.size =</span> <span class="fl">0.8</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output-display">
 <p><img src="Take-home_Ex02_files/figure-html/unnamed-chunk-41-1.png" class="img-fluid" width="672"></p>
-</div>
-</div>
-<ul>
-<li>Villages with a darker orange have values closer to 1 which signify that they have significant clustering and their neighbouring areas exhibit similar values. These villages seem to mostly gather at the centre of our study area.</li>
-</ul>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb85"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb85-1"><a href="#cb85-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tmap_mode</span>(<span class="st">"plot"</span>)</span>
-<span id="cb85-2"><a href="#cb85-2" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb85-3"><a href="#cb85-3" aria-hidden="true" tabindex="-1"></a>map2 <span class="ot">&lt;-</span> <span class="fu">tm_shape</span>(lisa) <span class="sc">+</span></span>
-<span id="cb85-4"><a href="#cb85-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_fill</span>(<span class="st">"p_ii_sim"</span>, <span class="at">breaks =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="fl">0.001</span>, <span class="fl">0.01</span>, <span class="fl">0.05</span>, <span class="dv">1</span>),</span>
-<span id="cb85-5"><a href="#cb85-5" aria-hidden="true" tabindex="-1"></a>          <span class="at">labels =</span> <span class="fu">c</span>(<span class="st">"0.001"</span>, <span class="st">"0.01"</span>, <span class="st">"0.05"</span>, <span class="st">"Not sig"</span>)) <span class="sc">+</span> </span>
-<span id="cb85-6"><a href="#cb85-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_borders</span>(<span class="at">alpha =</span> <span class="fl">0.5</span>) <span class="sc">+</span></span>
-<span id="cb85-7"><a href="#cb85-7" aria-hidden="true" tabindex="-1"></a>   <span class="fu">tm_layout</span>(<span class="at">main.title =</span> <span class="st">"p-value of local Moran's I"</span>,</span>
-<span id="cb85-8"><a href="#cb85-8" aria-hidden="true" tabindex="-1"></a>            <span class="at">main.title.size =</span> <span class="fl">0.8</span>)</span>
-<span id="cb85-9"><a href="#cb85-9" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb85-10"><a href="#cb85-10" aria-hidden="true" tabindex="-1"></a><span class="fu">tmap_arrange</span>(map1, map2, <span class="at">ncol =</span> <span class="dv">2</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output-display">
-<p><img src="Take-home_Ex02_files/figure-html/unnamed-chunk-42-1.png" class="img-fluid" width="672"></p>
 </div>
 </div>
 <div class="callout callout-style-default callout-warning callout-titled">
@@ -1172,9 +1179,28 @@ Warning
 <p>The appropriate classification for p-values should be 0.001, 0.01, 0.05 and not significant.</p>
 </div>
 </div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb85"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb85-1"><a href="#cb85-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tmap_mode</span>(<span class="st">"plot"</span>)</span>
+<span id="cb85-2"><a href="#cb85-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb85-3"><a href="#cb85-3" aria-hidden="true" tabindex="-1"></a>map2 <span class="ot">&lt;-</span> <span class="fu">tm_shape</span>(lisa) <span class="sc">+</span></span>
+<span id="cb85-4"><a href="#cb85-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_fill</span>(<span class="st">"p_ii_sim"</span>, <span class="at">breaks =</span> <span class="fu">c</span>(<span class="dv">0</span>, <span class="fl">0.001</span>, <span class="fl">0.01</span>, <span class="fl">0.05</span>, <span class="dv">1</span>),</span>
+<span id="cb85-5"><a href="#cb85-5" aria-hidden="true" tabindex="-1"></a>          <span class="at">labels =</span> <span class="fu">c</span>(<span class="st">"0.001"</span>, <span class="st">"0.01"</span>, <span class="st">"0.05"</span>, <span class="st">"Not sig"</span>)) <span class="sc">+</span> </span>
+<span id="cb85-6"><a href="#cb85-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_borders</span>(<span class="at">alpha =</span> <span class="fl">0.5</span>) <span class="sc">+</span></span>
+<span id="cb85-7"><a href="#cb85-7" aria-hidden="true" tabindex="-1"></a>   <span class="fu">tm_layout</span>(<span class="at">main.title =</span> <span class="st">"p-value of local Moran's I"</span>,</span>
+<span id="cb85-8"><a href="#cb85-8" aria-hidden="true" tabindex="-1"></a>            <span class="at">main.title.size =</span> <span class="fl">0.8</span>)</span>
+<span id="cb85-9"><a href="#cb85-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb85-10"><a href="#cb85-10" aria-hidden="true" tabindex="-1"></a><span class="fu">tmap_arrange</span>(map1, map2, <span class="at">ncol =</span> <span class="dv">2</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="Take-home_Ex02_files/figure-html/unnamed-chunk-42-1.png" class="img-fluid" width="672"></p>
+</div>
+</div>
+<ul>
+<li>Villages with a lighter orange have values closer to 0 which signify that they have significant clustering and their neighbouring areas exhibit similar values. These villages seem to mostly disperse at the fringes of our study area.</li>
+</ul>
 </section>
 <section id="visualising-lisa-map" class="level3">
 <h3 class="anchored" data-anchor-id="visualising-lisa-map">Visualising LISA map</h3>
+<p>Now, just filter for regions which had significant p-values and plot the map.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb86"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb86-1"><a href="#cb86-1" aria-hidden="true" tabindex="-1"></a>lisa_sig <span class="ot">&lt;-</span> lisa  <span class="sc">%&gt;%</span></span>
 <span id="cb86-2"><a href="#cb86-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(p_ii <span class="sc">&lt;</span> <span class="fl">0.05</span>)</span>
@@ -1195,13 +1221,42 @@ Warning
 <p><img src="Take-home_Ex02_files/figure-html/unnamed-chunk-43-1.png" class="img-fluid" width="672"></p>
 </div>
 </div>
+<div class="callout callout-style-default callout-note callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+What do the LISA classifications mean?
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<ul>
+<li><p>High-High Clusters: Villages with high number of dengue cases likewise surrounded by neighbouring villages with high number of dengue cases.</p></li>
+<li><p>Low-Low Clusters: Villages of a low number of dengue cases are similarly surrounded by neigbouring villages with low number of dengue cases</p></li>
+<li><p>High-Low Outliers: Villages with high number of dengue cases are instead surrounded by neighbouring villages with low number of dengue cases</p></li>
+<li><p>Low-High Outliers: Villages with low number of dengue cases are instead surrounded by neighbouring villages with high number of dengue cases</p></li>
+</ul>
+</div>
+</div>
 <p>The northwest and central-southeast villages of our Tainan area of interest have been identified as low-low clusters, thus their neighbours have had low-values or cases in general across the weeks.</p>
-<p>Interestingly, high-high clusters are found along the most part of a radial perimeter 3km away from the centre of the study area. These high-high clusters lie in Towns D06, D39, D01 and D02.</p>
+<p>Interestingly, high-high clusters are found along the most part of a radial perimeter 3km away from the centre of the study area. These high-high clusters lie in Districts:</p>
+<ul>
+<li><p>D01: East District</p></li>
+<li><p>D02: South District</p></li>
+<li><p>D06: An’nan District</p></li>
+<li><p>D39: Yong’kang District</p></li>
+</ul>
+<p>The municipality for these high-high clusters should impose more safety mechanisms to alleviate dengue transmissions.</p>
+<p>There were no high-low outliers identified and hence it is possible that there is no specific village that may be a local hotspot that may directly contribute to the dengue transmissions to its neighbours.</p>
+<p>Nearby the high-high clusters, there were five low-high outlier villages which could be worth investigating since these villages are not as affected as its badly infected neighbouring villages.</p>
 </section>
 </section>
 </section>
 <section id="hot-spot-and-cold-spot-area-analysis" class="level1">
 <h1>Hot Spot and Cold Spot Area Analysis</h1>
+<p>Gi* statistics helps to add definition to maps by estimating density distribution of events at the local level, which further allows for the assessment of spatial association in a study area or of a particular observation.</p>
+<p>Additionally, it helps to identify statistically significant hotspots/coldspots.</p>
 <section id="computation-of-local-gi" class="level2">
 <h2 class="anchored" data-anchor-id="computation-of-local-gi">Computation of local Gi*</h2>
 <div class="cell">
@@ -1256,7 +1311,20 @@ Geodetic CRS:  TWD97
 <p><img src="Take-home_Ex02_files/figure-html/unnamed-chunk-46-1.png" class="img-fluid" width="672"></p>
 </div>
 </div>
-<p>Beginning from the epicentre of the study area, the values of Gi* seems to decrease radially in general. Closer to the centre, the higher Gi* values indicate a higher number of dengue cases whilst the lower Gi* values indicate more randomness in the distribution of dengue cases in the villages.</p>
+<p>Beginning from the epicentre of the study area, the values of Gi* seem to decrease radially in general. Closer to the centre, the higher positive Gi* values indicate a higher density of dengue cases whilst the higher negative Gi* values indicate more randomness in the distribution of dengue cases in the villages.</p>
+<div class="callout callout-style-default callout-warning callout-titled">
+<div class="callout-header d-flex align-content-center">
+<div class="callout-icon-container">
+<i class="callout-icon"></i>
+</div>
+<div class="callout-title-container flex-fill">
+Disadvantage of using Gi* statistic
+</div>
+</div>
+<div class="callout-body-container callout-body">
+<p>Clusters composed of few observations may inflate Gi* although other methods that allow the selection of only the most robust clusters is available</p>
+</div>
+</div>
 <section id="visualising-p-value-of-hcsa" class="level3">
 <h3 class="anchored" data-anchor-id="visualising-p-value-of-hcsa">Visualising p-value of HCSA</h3>
 <div class="cell">
@@ -1389,7 +1457,7 @@ Interpreting the above code block
 </div>
 <p>Create the tmap plot for the <code>gi_star</code> statistic over time.</p>
 <div class="{callout-note}">
-<p>Use p_sim to use the simulated values and use fixed style and breaks to plot the values that were P &lt; 0.05 which are areas that are significant.</p>
+<p>Use p_sim to use the simulated values and use fixed style and breaks to plot the values that were P &lt; 0.05, which are areas that are significant.</p>
 </div>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb99"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb99-1"><a href="#cb99-1" aria-hidden="true" tabindex="-1"></a>gistar_map <span class="ot">&lt;-</span> gistar_map <span class="sc">%&gt;%</span> <span class="fu">mutate</span>(<span class="st">`</span><span class="at">P-Value</span><span class="st">`</span> <span class="ot">=</span> <span class="fu">case_when</span>(p_sim <span class="sc">&lt;</span> <span class="fl">0.05</span> <span class="sc">~</span> <span class="st">'&lt; 0.05'</span>,  p_sim <span class="sc">&gt;=</span> <span class="fl">0.05</span> <span class="sc">~</span> <span class="st">'Not-Significant'</span>))</span>
@@ -2105,10 +2173,19 @@ What do the EHSA classifications mean?
 </div>
 </div>
 <p>According to Tainan City’s Climate <a href="https://en.climate-data.org/asia/republic-of-china-taiwan/tainan-city/tainan-city-983291/t/december-12/">data</a> in 2023, our study period which falls between August and December has had an average temperature of 24.5C which is within the optimal temperature for dengue fever transmission (<a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7068348/">Tran et al., 2020</a>).</p>
-
-
 </section>
 </section>
+</section>
+<section id="references" class="level1">
+<h1>References</h1>
+<p>Anselin, L. (1995). Local Indicators of Spatial Association—LISA. Geographical Analysis 27(2): 93–115.</p>
+<p>Columbia Mailman School of Public Health (n.d.). Hot Spot Spatial Analysis. https://www.publichealth.columbia.edu/research/population-health-methods/hot-spot-spatial-analysis</p>
+<p>Kam, T. S. (2022). R for Geospatial Data Science and Analytics. https://r4gdsa.netlify.app</p>
+<p>Lee, I. (2023) Dengue fever cases dropping, but risk still there: CDC.</p>
+<p>Parry, J., &amp; Locke, D. H. (2022). Emerging Hot Spot Analysis. sfdep. https://sfdep.josiahparry.com/articles/understanding-emerging-hotspots.html</p>
+<p>Tran, B., Tseng, W., Chen, C., &amp; Liao S. (2020) Estimating the Threshold Effects of Climate on Dengue: A Case Study of Taiwan.</p>
+
+
 </section>
 
 </main> <!-- /main -->
