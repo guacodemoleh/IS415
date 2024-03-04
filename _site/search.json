@@ -1549,162 +1549,239 @@
   {
     "objectID": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html",
     "href": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html",
-    "title": "In-class Exercise 7",
+    "title": "Hands-on Exercise 7",
     "section": "",
     "text": "This hands-on exercise focuses on how a homogeneous region is delineated using geographically referenced multivariate data.\nThe two major analyses focused here are: - hierarchical cluster analysis; - spatially constrained cluster analysis\n\n\n\nConvert GIS polygon data into R’s simple feature data.frame using appropriate sf functions\nConvert simple feature data.fram into SpatialPolygonDataFrame using sf package of R\nPerform spatially constrained cluster analysis using skater()\nVisualise the analysis output using ggplot2 and tmap packages"
   },
   {
     "objectID": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#learning-outcomes",
     "href": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#learning-outcomes",
-    "title": "In-class Exercise 7",
+    "title": "Hands-on Exercise 7",
     "section": "",
     "text": "Convert GIS polygon data into R’s simple feature data.frame using appropriate sf functions\nConvert simple feature data.fram into SpatialPolygonDataFrame using sf package of R\nPerform spatially constrained cluster analysis using skater()\nVisualise the analysis output using ggplot2 and tmap packages"
   },
   {
     "objectID": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#the-analytical-question",
     "href": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#the-analytical-question",
-    "title": "In-class Exercise 7",
+    "title": "Hands-on Exercise 7",
     "section": "The Analytical Question",
     "text": "The Analytical Question\nIt is a common practice to delineate the market or planning area into homogeneous regions by using multivariate data. For this exercise, the Shan State of Myanmar will be delineated into homogeneous regions with respect to ICT measures including radio, television, landlind phone, mobile phone, computer, and the availability of the internet at home."
   },
   {
     "objectID": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#installing-and-loading-packages",
     "href": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#installing-and-loading-packages",
-    "title": "In-class Exercise 7",
+    "title": "Hands-on Exercise 7",
     "section": "Installing and Loading Packages",
-    "text": "Installing and Loading Packages\nThe R packages needed are: - sf and spdep for spatial data hnadling - tidyverse, readr, ggplot2 and dplyr for attribute data handling - coorplot, ggpubr and heatmaply for multivariate data visualisation and analysis - cluster and ClusterGeo for cluster analysis!\n\npacman::p_load(spdep, tmap, sf, ClustGeo, \n               ggpubr, cluster, factoextra, NbClust,\n               heatmaply, corrplot, psych, tidyverse, GGally)"
+    "text": "Installing and Loading Packages\nThe R packages needed are: - sf and spdep for spatial data hnadling - tidyverse, readr, ggplot2 and dplyr for attribute data handling - coorplot, ggpubr and heatmaply for multivariate data visualisation and analysis - cluster and ClusterGeo for cluster analysis!\n\npacman::p_load(sp,spdep, tmap, sf, ClustGeo, \n               ggpubr, cluster, factoextra, NbClust,\n               heatmaply, corrplot, psych, tidyverse, GGally)"
   },
   {
     "objectID": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#data-importing-and-preparation",
     "href": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#data-importing-and-preparation",
-    "title": "In-class Exercise 7",
+    "title": "Hands-on Exercise 7",
     "section": "Data Importing and Preparation",
     "text": "Data Importing and Preparation\nLet’s import the Myanmar Township Boundary GIS data and its associated attribute table.\nThe Myanmar Township Boundary GIS data is in ESRI shapefile format. Thus st_read() is used to import the file over to our R environment.\n\nshan_sf &lt;- st_read(dsn = \"data/geospatial\", \n                   layer = \"myanmar_township_boundaries\") %&gt;%\n  filter(ST %in% c(\"Shan (East)\", \"Shan (North)\", \"Shan (South)\")) %&gt;%\n  select(c(2:7))\n\nReading layer `myanmar_township_boundaries' from data source \n  `C:\\guacodemoleh\\IS415-GAA\\Hands-on_Ex\\Hands-on_Ex07\\data\\geospatial' \n  using driver `ESRI Shapefile'\nSimple feature collection with 330 features and 14 fields\nGeometry type: MULTIPOLYGON\nDimension:     XY\nBounding box:  xmin: 92.17275 ymin: 9.671252 xmax: 101.1699 ymax: 28.54554\nGeodetic CRS:  WGS 84\n\n\nThe imported township boundary object, shan_sf is saved in simple feature data.frame format.\nTo view the contents of shan_sf.\n\nshan_sf\n\nSimple feature collection with 55 features and 6 fields\nGeometry type: MULTIPOLYGON\nDimension:     XY\nBounding box:  xmin: 96.15107 ymin: 19.29932 xmax: 101.1699 ymax: 24.15907\nGeodetic CRS:  WGS 84\nFirst 10 features:\n             ST ST_PCODE       DT   DT_PCODE        TS  TS_PCODE\n1  Shan (North)   MMR015  Mongmit MMR015D008   Mongmit MMR015017\n2  Shan (South)   MMR014 Taunggyi MMR014D001   Pindaya MMR014006\n3  Shan (South)   MMR014 Taunggyi MMR014D001   Ywangan MMR014007\n4  Shan (South)   MMR014 Taunggyi MMR014D001  Pinlaung MMR014009\n5  Shan (North)   MMR015  Mongmit MMR015D008    Mabein MMR015018\n6  Shan (South)   MMR014 Taunggyi MMR014D001     Kalaw MMR014005\n7  Shan (South)   MMR014 Taunggyi MMR014D001     Pekon MMR014010\n8  Shan (South)   MMR014 Taunggyi MMR014D001  Lawksawk MMR014008\n9  Shan (North)   MMR015  Kyaukme MMR015D003 Nawnghkio MMR015013\n10 Shan (North)   MMR015  Kyaukme MMR015D003   Kyaukme MMR015012\n                         geometry\n1  MULTIPOLYGON (((96.96001 23...\n2  MULTIPOLYGON (((96.7731 21....\n3  MULTIPOLYGON (((96.78483 21...\n4  MULTIPOLYGON (((96.49518 20...\n5  MULTIPOLYGON (((96.66306 24...\n6  MULTIPOLYGON (((96.49518 20...\n7  MULTIPOLYGON (((97.14738 19...\n8  MULTIPOLYGON (((96.94981 22...\n9  MULTIPOLYGON (((96.75648 22...\n10 MULTIPOLYGON (((96.95498 22...\n\n\nTo view the data types of the attributes.\n\nglimpse(shan_sf)\n\nRows: 55\nColumns: 7\n$ ST       &lt;chr&gt; \"Shan (North)\", \"Shan (South)\", \"Shan (South)\", \"Shan (South)…\n$ ST_PCODE &lt;chr&gt; \"MMR015\", \"MMR014\", \"MMR014\", \"MMR014\", \"MMR015\", \"MMR014\", \"…\n$ DT       &lt;chr&gt; \"Mongmit\", \"Taunggyi\", \"Taunggyi\", \"Taunggyi\", \"Mongmit\", \"Ta…\n$ DT_PCODE &lt;chr&gt; \"MMR015D008\", \"MMR014D001\", \"MMR014D001\", \"MMR014D001\", \"MMR0…\n$ TS       &lt;chr&gt; \"Mongmit\", \"Pindaya\", \"Ywangan\", \"Pinlaung\", \"Mabein\", \"Kalaw…\n$ TS_PCODE &lt;chr&gt; \"MMR015017\", \"MMR014006\", \"MMR014007\", \"MMR014009\", \"MMR01501…\n$ geometry &lt;MULTIPOLYGON [°]&gt; MULTIPOLYGON (((96.96001 23..., MULTIPOLYGON (((…"
   },
   {
     "objectID": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#importing-aspatial-data",
     "href": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#importing-aspatial-data",
-    "title": "In-class Exercise 7",
+    "title": "Hands-on Exercise 7",
     "section": "Importing aspatial data",
     "text": "Importing aspatial data\n\nict &lt;- read_csv(\"data/aspatial/Shan-ICT.csv\")\n\nTo view the summary statistics.\n\nsummary(ict)\n\n District Pcode     District Name      Township Pcode     Township Name     \n Length:55          Length:55          Length:55          Length:55         \n Class :character   Class :character   Class :character   Class :character  \n Mode  :character   Mode  :character   Mode  :character   Mode  :character  \n                                                                            \n                                                                            \n                                                                            \n Total households     Radio         Television    Land line phone \n Min.   : 3318    Min.   :  115   Min.   :  728   Min.   :  20.0  \n 1st Qu.: 8711    1st Qu.: 1260   1st Qu.: 3744   1st Qu.: 266.5  \n Median :13685    Median : 2497   Median : 6117   Median : 695.0  \n Mean   :18369    Mean   : 4487   Mean   :10183   Mean   : 929.9  \n 3rd Qu.:23471    3rd Qu.: 6192   3rd Qu.:13906   3rd Qu.:1082.5  \n Max.   :82604    Max.   :30176   Max.   :62388   Max.   :6736.0  \n  Mobile phone      Computer      Internet at home\n Min.   :  150   Min.   :  20.0   Min.   :   8.0  \n 1st Qu.: 2037   1st Qu.: 121.0   1st Qu.:  88.0  \n Median : 3559   Median : 244.0   Median : 316.0  \n Mean   : 6470   Mean   : 575.5   Mean   : 760.2  \n 3rd Qu.: 7177   3rd Qu.: 507.0   3rd Qu.: 630.5  \n Max.   :48461   Max.   :6705.0   Max.   :9746.0  \n\n\n\nThere are 11 attributes and 55 observations."
   },
   {
     "objectID": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#deriving-new-variables-using-dplyr",
     "href": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#deriving-new-variables-using-dplyr",
-    "title": "In-class Exercise 7",
+    "title": "Hands-on Exercise 7",
     "section": "Deriving new variables using dplyr",
     "text": "Deriving new variables using dplyr\nThe unit of measurement of the values are the number of households. Townships with more households will have a greater number of households owning radio, TV and other ICTs.\nTo overcome this bias, the penetration rate of each ICT variable can be derived.\n\nict_derived &lt;- ict %&gt;%\n  mutate(`RADIO_PR` = `Radio`/`Total households`*1000) %&gt;%\n  mutate(`TV_PR` = `Television`/`Total households`*1000) %&gt;%\n  mutate(`LLPHONE_PR` = `Land line phone`/`Total households`*1000) %&gt;%\n  mutate(`MPHONE_PR` = `Mobile phone`/`Total households`*1000) %&gt;%\n  mutate(`COMPUTER_PR` = `Computer`/`Total households`*1000) %&gt;%\n  mutate(`INTERNET_PR` = `Internet at home`/`Total households`*1000) %&gt;%\n  rename(`DT_PCODE` =`District Pcode`,`DT`=`District Name`,\n         `TS_PCODE`=`Township Pcode`, `TS`=`Township Name`,\n         `TT_HOUSEHOLDS`=`Total households`,\n         `RADIO`=`Radio`, `TV`=`Television`, \n         `LLPHONE`=`Land line phone`, `MPHONE`=`Mobile phone`,\n         `COMPUTER`=`Computer`, `INTERNET`=`Internet at home`) \n\nReview the summary statistics of the newly derived pentration rates.\n\nsummary(ict_derived)\n\n   DT_PCODE              DT              TS_PCODE              TS           \n Length:55          Length:55          Length:55          Length:55         \n Class :character   Class :character   Class :character   Class :character  \n Mode  :character   Mode  :character   Mode  :character   Mode  :character  \n                                                                            \n                                                                            \n                                                                            \n TT_HOUSEHOLDS       RADIO             TV           LLPHONE      \n Min.   : 3318   Min.   :  115   Min.   :  728   Min.   :  20.0  \n 1st Qu.: 8711   1st Qu.: 1260   1st Qu.: 3744   1st Qu.: 266.5  \n Median :13685   Median : 2497   Median : 6117   Median : 695.0  \n Mean   :18369   Mean   : 4487   Mean   :10183   Mean   : 929.9  \n 3rd Qu.:23471   3rd Qu.: 6192   3rd Qu.:13906   3rd Qu.:1082.5  \n Max.   :82604   Max.   :30176   Max.   :62388   Max.   :6736.0  \n     MPHONE         COMPUTER         INTERNET         RADIO_PR     \n Min.   :  150   Min.   :  20.0   Min.   :   8.0   Min.   : 21.05  \n 1st Qu.: 2037   1st Qu.: 121.0   1st Qu.:  88.0   1st Qu.:138.95  \n Median : 3559   Median : 244.0   Median : 316.0   Median :210.95  \n Mean   : 6470   Mean   : 575.5   Mean   : 760.2   Mean   :215.68  \n 3rd Qu.: 7177   3rd Qu.: 507.0   3rd Qu.: 630.5   3rd Qu.:268.07  \n Max.   :48461   Max.   :6705.0   Max.   :9746.0   Max.   :484.52  \n     TV_PR         LLPHONE_PR       MPHONE_PR       COMPUTER_PR    \n Min.   :116.0   Min.   :  2.78   Min.   : 36.42   Min.   : 3.278  \n 1st Qu.:450.2   1st Qu.: 22.84   1st Qu.:190.14   1st Qu.:11.832  \n Median :517.2   Median : 37.59   Median :305.27   Median :18.970  \n Mean   :509.5   Mean   : 51.09   Mean   :314.05   Mean   :24.393  \n 3rd Qu.:606.4   3rd Qu.: 69.72   3rd Qu.:428.43   3rd Qu.:29.897  \n Max.   :842.5   Max.   :181.49   Max.   :735.43   Max.   :92.402  \n  INTERNET_PR     \n Min.   :  1.041  \n 1st Qu.:  8.617  \n Median : 22.829  \n Mean   : 30.644  \n 3rd Qu.: 41.281  \n Max.   :117.985  \n\n\n\n\n\n\n\n\nNote\n\n\n\nSix new fields have been added into the data frame!"
   },
   {
     "objectID": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#eda-using-statistical-graphics",
     "href": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#eda-using-statistical-graphics",
-    "title": "In-class Exercise 7",
+    "title": "Hands-on Exercise 7",
     "section": "EDA using statistical graphics",
     "text": "EDA using statistical graphics\nHistograms are useful to identify the distribution of data values.\n\nggplot(data=ict_derived, \n       aes(x=`RADIO`)) +\n  geom_histogram(bins=20, \n                 color=\"black\", \n                 fill=\"light blue\")\n\n\n\n\n\nThe data seems to be right-skewed!\n\nNow check for any outliers using boxplot.\n\nggplot(data=ict_derived, \n       aes(x=`RADIO`)) +\n  geom_boxplot(color=\"black\", \n               fill=\"light blue\")\n\n\n\n\n\nThere are 3 outliers.\n\nNext, plot the distribution of the newly derived variables.\nFor instance, to check the distribution of the radio penetration rate,\n\nggplot(data=ict_derived, \n       aes(x=`RADIO_PR`)) +\n  geom_histogram(bins=20, \n                 color=\"black\", \n                 fill=\"light blue\")\n\n\n\n\nCheck for outliers\n\nggplot(data=ict_derived, \n       aes(x=`RADIO_PR`)) +\n  geom_boxplot(color=\"black\", \n               fill=\"light blue\")\n\n\n\n\n\nThere is only one outlier.\n\nLet’s check all the distributions across multiple variables.\nFirst, create the individual histograms and store each of them into a variable.\n\nradio &lt;- ggplot(data=ict_derived, \n             aes(x= `RADIO_PR`)) +\n  geom_histogram(bins=20, \n                 color=\"black\", \n                 fill=\"light blue\")\n\ntv &lt;- ggplot(data=ict_derived, \n             aes(x= `TV_PR`)) +\n  geom_histogram(bins=20, \n                 color=\"black\", \n                 fill=\"light blue\")\n\nllphone &lt;- ggplot(data=ict_derived, \n             aes(x= `LLPHONE_PR`)) +\n  geom_histogram(bins=20, \n                 color=\"black\", \n                 fill=\"light blue\")\n\nmphone &lt;- ggplot(data=ict_derived, \n             aes(x= `MPHONE_PR`)) +\n  geom_histogram(bins=20, \n                 color=\"black\", \n                 fill=\"light blue\")\n\ncomputer &lt;- ggplot(data=ict_derived, \n             aes(x= `COMPUTER_PR`)) +\n  geom_histogram(bins=20, \n                 color=\"black\", \n                 fill=\"light blue\")\n\ninternet &lt;- ggplot(data=ict_derived, \n             aes(x= `INTERNET_PR`)) +\n  geom_histogram(bins=20, \n                 color=\"black\", \n                 fill=\"light blue\")\n\nThen use the ggarrange() function of ggpubr to group the histograms together.\n\nggarrange(radio, tv, llphone, mphone, computer, internet, \n          ncol = 3, \n          nrow = 2)"
   },
   {
     "objectID": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#eda-using-choropleth-map",
     "href": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#eda-using-choropleth-map",
-    "title": "In-class Exercise 7",
+    "title": "Hands-on Exercise 7",
     "section": "EDA using choropleth map",
     "text": "EDA using choropleth map\n\nJoining geospatial data with aspatial data\n\nshan_sf &lt;- left_join(shan_sf, \n                     ict_derived, by=c(\"TS_PCODE\"=\"TS_PCODE\"))\n  \nwrite_rds(shan_sf, \"data/rds/shan_sf.rds\")\n\n\n\n\n\n\n\nNote\n\n\n\nTS_CODE field is the common field used to perform the left-join.\n\n\n\nshan_sf &lt;- read_rds(\"data/rds/shan_sf.rds\")\n\n\n\nPreparng a choropleth map\nLook at the distribution of the radio penetration rate using a choropleth map.\nA quick choropleth map can be created using qtm() from tmap package.\n\nqtm(shan_sf, \"RADIO_PR\")\n\n\n\n\nTo reveal the distribution is biased to the underlying total number of households at townships, let’s compare choropleth maps for total number of households and total number of households with radios.\n\nTT_HOUSEHOLDS.map &lt;- tm_shape(shan_sf) + \n  tm_fill(col = \"TT_HOUSEHOLDS\",\n          n = 5,\n          style = \"jenks\", \n          title = \"Total households\") + \n  tm_borders(alpha = 0.5) \n\nRADIO.map &lt;- tm_shape(shan_sf) + \n  tm_fill(col = \"RADIO\",\n          n = 5,\n          style = \"jenks\",\n          title = \"Number Radio \") + \n  tm_borders(alpha = 0.5) \n\ntmap_arrange(TT_HOUSEHOLDS.map, RADIO.map,\n             asp=NA, ncol=2)\n\n\n\n\n\nTownships with more households positively correlate with the radio ownership rates.\n\nNow plot the choropleth maps showing the distribution of the total number of households and radio penetration rate.\n\ntm_shape(shan_sf) +\n    tm_polygons(c(\"TT_HOUSEHOLDS\", \"RADIO_PR\"),\n                style=\"jenks\") +\n    tm_facets(sync = TRUE, ncol = 2) +\n  tm_legend(legend.position = c(\"right\", \"bottom\"))+\n  tm_layout(outer.margins=0, asp=0)\n\n\n\n\n\nLooking at the southern region of Shan state, there are fewer households in this part of the state yet they have moderate radio penetration rates which are similar to the rates in regions with more households."
   },
   {
     "objectID": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#extracting-clustering-variables",
     "href": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#extracting-clustering-variables",
-    "title": "In-class Exercise 7",
+    "title": "Hands-on Exercise 7",
     "section": "Extracting clustering variables",
     "text": "Extracting clustering variables\n\ncluster_vars &lt;- shan_sf %&gt;%\n  st_set_geometry(NULL) %&gt;%\n  select(\"TS.x\", \"RADIO_PR\", \"TV_PR\", \"LLPHONE_PR\", \"MPHONE_PR\", \"COMPUTER_PR\")\nhead(cluster_vars,10)\n\n        TS.x RADIO_PR    TV_PR LLPHONE_PR MPHONE_PR COMPUTER_PR\n1    Mongmit 286.1852 554.1313   35.30618  260.6944    12.15939\n2    Pindaya 417.4647 505.1300   19.83584  162.3917    12.88190\n3    Ywangan 484.5215 260.5734   11.93591  120.2856     4.41465\n4   Pinlaung 231.6499 541.7189   28.54454  249.4903    13.76255\n5     Mabein 449.4903 708.6423   72.75255  392.6089    16.45042\n6      Kalaw 280.7624 611.6204   42.06478  408.7951    29.63160\n7      Pekon 318.6118 535.8494   39.83270  214.8476    18.97032\n8   Lawksawk 387.1017 630.0035   31.51366  320.5686    21.76677\n9  Nawnghkio 349.3359 547.9456   38.44960  323.0201    15.76465\n10   Kyaukme 210.9548 601.1773   39.58267  372.4930    30.94709\n\n\n\nINTERNET_PR was removed since it is highly correlated with COMPUTER_PR\n\nThen, change the rows by township name rather than row number for easier referencing.\n\nrow.names(cluster_vars) &lt;- cluster_vars$\"TS.x\"\nhead(cluster_vars,10)\n\n               TS.x RADIO_PR    TV_PR LLPHONE_PR MPHONE_PR COMPUTER_PR\nMongmit     Mongmit 286.1852 554.1313   35.30618  260.6944    12.15939\nPindaya     Pindaya 417.4647 505.1300   19.83584  162.3917    12.88190\nYwangan     Ywangan 484.5215 260.5734   11.93591  120.2856     4.41465\nPinlaung   Pinlaung 231.6499 541.7189   28.54454  249.4903    13.76255\nMabein       Mabein 449.4903 708.6423   72.75255  392.6089    16.45042\nKalaw         Kalaw 280.7624 611.6204   42.06478  408.7951    29.63160\nPekon         Pekon 318.6118 535.8494   39.83270  214.8476    18.97032\nLawksawk   Lawksawk 387.1017 630.0035   31.51366  320.5686    21.76677\nNawnghkio Nawnghkio 349.3359 547.9456   38.44960  323.0201    15.76465\nKyaukme     Kyaukme 210.9548 601.1773   39.58267  372.4930    30.94709\n\n\nDelete the TS.x field.\n\nshan_ict &lt;- select(cluster_vars, c(2:6))\nhead(shan_ict, 10)\n\n          RADIO_PR    TV_PR LLPHONE_PR MPHONE_PR COMPUTER_PR\nMongmit   286.1852 554.1313   35.30618  260.6944    12.15939\nPindaya   417.4647 505.1300   19.83584  162.3917    12.88190\nYwangan   484.5215 260.5734   11.93591  120.2856     4.41465\nPinlaung  231.6499 541.7189   28.54454  249.4903    13.76255\nMabein    449.4903 708.6423   72.75255  392.6089    16.45042\nKalaw     280.7624 611.6204   42.06478  408.7951    29.63160\nPekon     318.6118 535.8494   39.83270  214.8476    18.97032\nLawksawk  387.1017 630.0035   31.51366  320.5686    21.76677\nNawnghkio 349.3359 547.9456   38.44960  323.0201    15.76465\nKyaukme   210.9548 601.1773   39.58267  372.4930    30.94709"
   },
   {
     "objectID": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#data-standardisation",
     "href": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#data-standardisation",
-    "title": "In-class Exercise 7",
+    "title": "Hands-on Exercise 7",
     "section": "Data Standardisation",
     "text": "Data Standardisation\nMultiple variables will be used in cluster analysis. It is not unusual when their value ranges are different. However, standardisation of the data should be performed to prevent clustering variables with larger values to cause a bias."
   },
   {
     "objectID": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#min-max-standardisation",
     "href": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#min-max-standardisation",
-    "title": "In-class Exercise 7",
+    "title": "Hands-on Exercise 7",
     "section": "Min-Max Standardisation",
     "text": "Min-Max Standardisation\nFrom heatmaply, , the normalize() function is used to standardise the clustering variables by using the Min-Max methody.\n\nshan_ict.std &lt;- normalize(shan_ict)\nsummary(shan_ict.std)\n\n    RADIO_PR          TV_PR          LLPHONE_PR       MPHONE_PR     \n Min.   :0.0000   Min.   :0.0000   Min.   :0.0000   Min.   :0.0000  \n 1st Qu.:0.2544   1st Qu.:0.4600   1st Qu.:0.1123   1st Qu.:0.2199  \n Median :0.4097   Median :0.5523   Median :0.1948   Median :0.3846  \n Mean   :0.4199   Mean   :0.5416   Mean   :0.2703   Mean   :0.3972  \n 3rd Qu.:0.5330   3rd Qu.:0.6750   3rd Qu.:0.3746   3rd Qu.:0.5608  \n Max.   :1.0000   Max.   :1.0000   Max.   :1.0000   Max.   :1.0000  \n  COMPUTER_PR     \n Min.   :0.00000  \n 1st Qu.:0.09598  \n Median :0.17607  \n Mean   :0.23692  \n 3rd Qu.:0.29868  \n Max.   :1.00000"
   },
   {
     "objectID": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#z-score-standardisation",
     "href": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#z-score-standardisation",
-    "title": "In-class Exercise 7",
+    "title": "Hands-on Exercise 7",
     "section": "Z-score Standardisation",
     "text": "Z-score Standardisation\nZ-score standardisation can be performed easily by using scale().\n\nshan_ict.z &lt;- scale(shan_ict)\ndescribe(shan_ict.z)\n\n            vars  n mean sd median trimmed  mad   min  max range  skew kurtosis\nRADIO_PR       1 55    0  1  -0.04   -0.06 0.94 -1.85 2.55  4.40  0.48    -0.27\nTV_PR          2 55    0  1   0.05    0.04 0.78 -2.47 2.09  4.56 -0.38    -0.23\nLLPHONE_PR     3 55    0  1  -0.33   -0.15 0.68 -1.19 3.20  4.39  1.37     1.49\nMPHONE_PR      4 55    0  1  -0.05   -0.06 1.01 -1.58 2.40  3.98  0.48    -0.34\nCOMPUTER_PR    5 55    0  1  -0.26   -0.18 0.64 -1.03 3.31  4.34  1.80     2.96\n              se\nRADIO_PR    0.13\nTV_PR       0.13\nLLPHONE_PR  0.13\nMPHONE_PR   0.13\nCOMPUTER_PR 0.13\n\n\n\n\n\n\n\n\nWarning\n\n\n\nZ-score standardisation method should only be used if we would assume all variables come from some normal distribution."
   },
   {
     "objectID": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#visualising-standardised-clustering-variables",
     "href": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#visualising-standardised-clustering-variables",
-    "title": "In-class Exercise 7",
+    "title": "Hands-on Exercise 7",
     "section": "Visualising Standardised Clustering Variables",
     "text": "Visualising Standardised Clustering Variables\n\nr &lt;- ggplot(data=ict_derived, \n             aes(x= `RADIO_PR`)) +\n  geom_histogram(bins=20, \n                 color=\"black\", \n                 fill=\"light blue\") +\n  ggtitle(\"Raw values without standardisation\")\n\nshan_ict_s_df &lt;- as.data.frame(shan_ict.std)\ns &lt;- ggplot(data=shan_ict_s_df, \n       aes(x=`RADIO_PR`)) +\n  geom_histogram(bins=20, \n                 color=\"black\", \n                 fill=\"light blue\") +\n  ggtitle(\"Min-Max Standardisation\")\n\nshan_ict_z_df &lt;- as.data.frame(shan_ict.z)\nz &lt;- ggplot(data=shan_ict_z_df, \n       aes(x=`RADIO_PR`)) +\n  geom_histogram(bins=20, \n                 color=\"black\", \n                 fill=\"light blue\") +\n  ggtitle(\"Z-score Standardisation\")\n\nggarrange(r, s, z,\n          ncol = 3,\n          nrow = 1)\n\n\n\n\n\nAll the clustered variables follow a normal distribution and the previous standardisation step was performed successfully.\n\n\nr &lt;- ggplot(data=ict_derived, \n             aes(x= `RADIO_PR`)) +\n  geom_density(color=\"black\",\n               fill=\"light blue\") +\n  ggtitle(\"Raw values without standardisation\")\n\nshan_ict_s_df &lt;- as.data.frame(shan_ict.std)\ns &lt;- ggplot(data=shan_ict_s_df, \n       aes(x=`RADIO_PR`)) +\n  geom_density(color=\"black\",\n               fill=\"light blue\") +\n  ggtitle(\"Min-Max Standardisation\")\n\nshan_ict_z_df &lt;- as.data.frame(shan_ict.z)\nz &lt;- ggplot(data=shan_ict_z_df, \n       aes(x=`RADIO_PR`)) +\n  geom_density(color=\"black\",\n               fill=\"light blue\") +\n  ggtitle(\"Z-score Standardisation\")\n\nggarrange(r, s, z,\n          ncol = 3,\n          nrow = 1)"
   },
   {
     "objectID": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#computing-proximity-matrix",
     "href": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#computing-proximity-matrix",
-    "title": "In-class Exercise 7",
+    "title": "Hands-on Exercise 7",
     "section": "Computing Proximity Matrix",
     "text": "Computing Proximity Matrix\nThe dist() function supports six distance proximity calculations: - euclidean (default) - maximum - minimum - canberra - binary - minkowski\n\nproxmat &lt;- dist(shan_ict, method = 'euclidean')"
   },
   {
     "objectID": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#computing-hierarchical-clustering",
     "href": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#computing-hierarchical-clustering",
-    "title": "In-class Exercise 7",
+    "title": "Hands-on Exercise 7",
     "section": "Computing Hierarchical Clustering",
     "text": "Computing Hierarchical Clustering\nhclust() employs an agglomeration method to compute the cluster. The eight clustering algorithms supported ward.D, ward.D2, single, complete, average (UPGMA), mcquitty (WPGMA), median (WPGMC) and centroid (UPGMC).\nTo try hierarchical cluster analysis using the ward.D method,\n\nhclust_ward &lt;- hclust(proxmat, method = 'ward.D')\n\nPlot the tree using plot().\n\nplot(hclust_ward, cex = 0.6)"
   },
   {
     "objectID": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#selecting-the-optimal-clustering-algorithm",
     "href": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#selecting-the-optimal-clustering-algorithm",
-    "title": "In-class Exercise 7",
+    "title": "Hands-on Exercise 7",
     "section": "Selecting the optimal clustering algorithm",
     "text": "Selecting the optimal clustering algorithm\nIt is difficult to identify the stronger clusters, but we can do so using agnes() from the cluster package! The agglomerative coefficient can be gathered and a coefficient value closer to 1 indicates strong clustering.\nComputing the agglomerative coefficients of all hierarchical clustering algorithms,\n\nm &lt;- c( \"average\", \"single\", \"complete\", \"ward\")\nnames(m) &lt;- c( \"average\", \"single\", \"complete\", \"ward\")\n\nac &lt;- function(x) {\n  agnes(shan_ict, method = x)$ac\n}\n\nmap_dbl(m, ac)\n\n  average    single  complete      ward \n0.8131144 0.6628705 0.8950702 0.9427730 \n\n\n\nWard’s method provides the strongest clustering structure among the four methods assessed."
   },
   {
     "objectID": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#determining-optimal-clusters",
     "href": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#determining-optimal-clusters",
-    "title": "In-class Exercise 7",
+    "title": "Hands-on Exercise 7",
     "section": "Determining Optimal Clusters",
     "text": "Determining Optimal Clusters\nThe common methods to determine the optimal clusters are: - Gap Statistic Method - Elbow Method - Average Silhouette Method\n\nGap Statistic Method\nThe gap statistic compares the total within intra-cluster variation for different values of k with their expected values under null reference distribution of the data. The estimate of the optimal clusters will be value that maximize the gap statistic (i.e., that yields the largest gap statistic). This means that the clustering structure is far away from the random uniform distribution of points.\nTo compute the gap statistic, clusGap() of cluster package will be used.\n\nset.seed(12345)\ngap_stat &lt;- clusGap(shan_ict, \n                    FUN = hcut, \n                    nstart = 25, \n                    K.max = 10, \n                    B = 50)\n# Print the result\nprint(gap_stat, method = \"firstmax\")\n\nClustering Gap statistic [\"clusGap\"] from call:\nclusGap(x = shan_ict, FUNcluster = hcut, K.max = 10, B = 50, nstart = 25)\nB=50 simulated reference sets, k = 1..10; spaceH0=\"scaledPCA\"\n --&gt; Number of clusters (method 'firstmax'): 1\n          logW   E.logW       gap     SE.sim\n [1,] 8.407129 8.680794 0.2736651 0.04460994\n [2,] 8.130029 8.350712 0.2206824 0.03880130\n [3,] 7.992265 8.202550 0.2102844 0.03362652\n [4,] 7.862224 8.080655 0.2184311 0.03784781\n [5,] 7.756461 7.978022 0.2215615 0.03897071\n [6,] 7.665594 7.887777 0.2221833 0.03973087\n [7,] 7.590919 7.806333 0.2154145 0.04054939\n [8,] 7.526680 7.731619 0.2049390 0.04198644\n [9,] 7.458024 7.660795 0.2027705 0.04421874\n[10,] 7.377412 7.593858 0.2164465 0.04540947\n\n\n\n\n\n\n\n\nNote\n\n\n\nhcut is from the factoextra package.\n\n\nVisualise the plot using fviz_gap_stat() of the factoextra package.\n\nfviz_gap_stat(gap_stat)\n\n\n\n\nThe recommended number of cluster to retain is 1. However, it is not logical to retain only one cluster. By examine the gap statistic graph, the 6-cluster gives the largest gap statistic and should be the next best cluster to pick.\n\n\n\n\n\n\nNote\n\n\n\nThe NbClust package provides 30 indices to determine the relevant number of clusters and proposes to users the best clustering schemes based on different results that are obtained by various combinations of clusters, distance measures and clustering methods."
   },
   {
     "objectID": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#interpreting-dendrograms",
     "href": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#interpreting-dendrograms",
-    "title": "In-class Exercise 7",
+    "title": "Hands-on Exercise 7",
     "section": "Interpreting Dendrograms",
     "text": "Interpreting Dendrograms\nEach leaf in a dendrogram corresponds to one observation. Observations similar to each other are combined into branches as shown by tracing the dendrogram from bottom to top.\nThe height of these fused branches indicates the (dis)similarity between two observations. The higher these fusions, the less similar the observations.\nTo draw the dendogram with a border around the selected clusters using rect.hclust(), the argument border is used to specify the border colours of the rectangles.\n\nplot(hclust_ward, cex = 0.6)\nrect.hclust(hclust_ward, \n            k = 6, \n            border = 2:5)"
   },
   {
     "objectID": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#visually-driven-hierarchical-clustering-analysis",
     "href": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#visually-driven-hierarchical-clustering-analysis",
-    "title": "In-class Exercise 7",
+    "title": "Hands-on Exercise 7",
     "section": "Visually-driven Hierarchical Clustering Analysis",
     "text": "Visually-driven Hierarchical Clustering Analysis\nPerform visually-driven hiearchical clustering analysis by using the heatmaply package.\nTurn the data frame into a data matrix.\n\nshan_ict_mat &lt;- data.matrix(shan_ict)\n\n\nPlotting interactive cluster heatmap using heatmaply()\n\nheatmaply(normalize(shan_ict_mat),\n          Colv=NA,\n          dist_method = \"euclidean\",\n          hclust_method = \"ward.D\",\n          seriate = \"OLO\",\n          colors = Blues,\n          k_row = 6,\n          margins = c(NA,200,60,NA),\n          fontsize_row = 4,\n          fontsize_col = 5,\n          main=\"Geographic Segmentation of Shan State by ICT indicators\",\n          xlab = \"ICT Indicators\",\n          ylab = \"Townships of Shan State\"\n          )\n\n\n\n\n\n\nSix clusters are identfied! (look at the number of distinct branch colours)"
   },
   {
     "objectID": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#mapping-formed-clusters",
     "href": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#mapping-formed-clusters",
-    "title": "In-class Exercise 7",
+    "title": "Hands-on Exercise 7",
     "section": "Mapping Formed Clusters",
-    "text": "Mapping Formed Clusters\nUse cutree() to derive a 6-cluster model.\n\ngroups &lt;- as.factor(cutree(hclust_ward, k=6))\n\nThe output is called groups. It is a list object.\nIn order to visualise the clusters, the groups object needs to be appended to the shan_sf simple feature object.\nTo form the join in three steps: - Convert the groups list object into a matrix - Append the groups matrix to shan_sf using cbind() - Use rename() from dplyr to rename the as.amtrix.groups field as CLUSTER\n\nshan_sf_cluster &lt;- cbind(shan_sf, as.matrix(groups)) %&gt;%\n  rename(`CLUSTER`=`as.matrix.groups.`)\n\nHave a look at where are the clusters using a choropleth map.\n\nqtm(shan_sf_cluster, \"CLUSTER\")\n\n\n\n\nAs shown above, the clusters are very fragmented and this is a limitation of using a non-spatial clustering algorithm such as hiearchical clustering."
+    "text": "Mapping Formed Clusters\nUse cutree() to derive a 6-cluster model.\n\ngroups &lt;- as.factor(cutree(hclust_ward, k=6))\n\nThe output is called groups. It is a list object.\nIn order to visualise the clusters, the groups object needs to be appended to the shan_sf simple feature object.\nTo form the join in three steps:\n\nConvert the groups list object into a matrix\nAppend the groups matrix to shan_sf using cbind()\nUse rename() from dplyr to rename the as.amtrix.groups field as CLUSTER\n\n\nshan_sf_cluster &lt;- cbind(shan_sf, as.matrix(groups)) %&gt;%\n  rename(`CLUSTER`=`as.matrix.groups.`)\n\nHave a look at where are the clusters using a choropleth map.\n\nqtm(shan_sf_cluster, \"CLUSTER\")\n\n\n\n\nAs shown above, the clusters are very fragmented and this is a limitation of using a non-spatial clustering algorithm such as hiearchical clustering."
   },
   {
     "objectID": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#converting-into-spatialpolygonsdataframe",
     "href": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#converting-into-spatialpolygonsdataframe",
-    "title": "In-class Exercise 7",
+    "title": "Hands-on Exercise 7",
     "section": "Converting into SpatialPolygonsDataFrame",
     "text": "Converting into SpatialPolygonsDataFrame\nConvert shan_sf into spdf form since the SKATER function only supports spatial (sp) objects.\n\nshan_sp &lt;- as_Spatial(shan_sf)"
   },
   {
     "objectID": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#computing-neighbour-list",
     "href": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#computing-neighbour-list",
-    "title": "In-class Exercise 7",
+    "title": "Hands-on Exercise 7",
     "section": "Computing Neighbour List",
-    "text": "Computing Neighbour List\nFrom a previous exercise, apply poly2nb() to compute the neighbours list for all the polygons.\n\nshan.nb &lt;- poly2nb(shan_sp)\nsummary(shan.nb)\n\nNeighbour list object:\nNumber of regions: 55 \nNumber of nonzero links: 264 \nPercentage nonzero weights: 8.727273 \nAverage number of links: 4.8 \nLink number distribution:\n\n 2  3  4  5  6  7  8  9 \n 5  9  7 21  4  3  5  1 \n5 least connected regions:\n3 5 7 9 47 with 2 links\n1 most connected region:\n8 with 9 links\n\n\nWe can also view the networks between the polygons.\n\nplot(shan_sp, \n     border=grey(.5))\nplot(shan.nb, \n     coordinates(shan_sp), \n     col=\"blue\", \n     add=TRUE)"
+    "text": "Computing Neighbour List\nFrom a previous exercise, apply poly2nb() to compute the neighbours list for all the polygons.\n\nshan.nb &lt;- poly2nb(shan_sp)\nsummary(shan.nb)\n\nNeighbour list object:\nNumber of regions: 55 \nNumber of nonzero links: 264 \nPercentage nonzero weights: 8.727273 \nAverage number of links: 4.8 \nLink number distribution:\n\n 2  3  4  5  6  7  8  9 \n 5  9  7 21  4  3  5  1 \n5 least connected regions:\n3 5 7 9 47 with 2 links\n1 most connected region:\n8 with 9 links\n\n\nWe can also view the networks between the polygons.\n\nplot(shan_sp, \n     border=grey(.5))\nplot(shan.nb, \n     coordinates(shan_sp), \n     col=\"blue\", \n     add=TRUE)\n\nThe plotting area is usually determined by the characteristics of the neighbouring plots. Since the boundary map extends further than the neighbour graph, the boundary map should be plotted first."
+  },
+  {
+    "objectID": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#computing-minimum-spanning-tree",
+    "href": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#computing-minimum-spanning-tree",
+    "title": "Hands-on Exercise 7",
+    "section": "Computing Minimum Spanning Tree",
+    "text": "Computing Minimum Spanning Tree\n\nCalculating Edge Costs\nNext, nbcosts() from spdep can compute the cost of each edge, i.e. distance between nodes. This function computes the distance using a data frame with the observation vector in each node.\nTo compute the cost of each edge.\n\nlcosts &lt;- nbcosts(shan.nb, shan_ict)\n\nEach observation provides a pairwise dissimilarity between its values on the five variables and the values for the neighbouring observation (from the neighbour list). This is the notion of a generalised weight for a spatial weights matrix.\nThe next step is to incorporate these costs into a weights object in the same way the inverse distance weights were calculated. This is done by converting the neighbour list to a list weights object by specifying the computed lcost as the weights.\n\nshan.w &lt;- nb2listw(shan.nb, \n                   lcosts, \n                   style=\"B\")\nsummary(shan.w)\n\nCharacteristics of weights list object:\nNeighbour list object:\nNumber of regions: 55 \nNumber of nonzero links: 264 \nPercentage nonzero weights: 8.727273 \nAverage number of links: 4.8 \nLink number distribution:\n\n 2  3  4  5  6  7  8  9 \n 5  9  7 21  4  3  5  1 \n5 least connected regions:\n3 5 7 9 47 with 2 links\n1 most connected region:\n8 with 9 links\n\nWeights style: B \nWeights constants summary:\n   n   nn       S0       S1        S2\nB 55 3025 76267.65 58260785 522016004"
+  },
+  {
+    "objectID": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#computing-minimum-spanning-tree-1",
+    "href": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#computing-minimum-spanning-tree-1",
+    "title": "Hands-on Exercise 7",
+    "section": "Computing minimum spanning tree",
+    "text": "Computing minimum spanning tree\nThe minimum spanning tree is computed by mean of the mstree() from spdep.\n\nshan.mst &lt;- mstree(shan.w)\n\n\nclass(shan.mst)\n\n[1] \"mst\"    \"matrix\"\n\n\n\ndim(shan.mst)\n\n[1] 54  3\n\n\nThe dimension is 54 since there are a minimum of (n-1) edges to traverse all nodes.\n\nhead(shan.mst)\n\n     [,1] [,2]      [,3]\n[1,]   54   48  47.79331\n[2,]   54   17 109.08506\n[3,]   54   45 127.42203\n[4,]   45   52 146.78891\n[5,]   52   13 110.55197\n[6,]   13   28  92.79567\n\n\nThe plot method for the Minimum Spanning Tree is a method for showing the observable number of nodes on top of the edge.\n\nplot(shan_sp, border=gray(.5))\nplot.mst(shan.mst, \n         coordinates(shan_sp), \n         col=\"blue\", \n         cex.lab=0.7, \n         cex.circles=0.005, \n         add=TRUE)"
+  },
+  {
+    "objectID": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#computing-spatially-constrained-clusters-using-skater-method",
+    "href": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#computing-spatially-constrained-clusters-using-skater-method",
+    "title": "Hands-on Exercise 7",
+    "section": "Computing spatially constrained clusters using SKATER method",
+    "text": "Computing spatially constrained clusters using SKATER method\nUsing SKATER,\n\nclust6 &lt;- spdep::skater(edges = shan.mst[,1:2], \n                 data = shan_ict, \n                 method = \"euclidean\", \n                 ncuts = 5)\n\n\n\n\n\n\n\nInterpreting the above code\n\n\n\n\nthe first two columns of the MST matrix are extracted\nthe data argument from Shan State’s ICT information\nthe number of cuts which will lead to n+1 clusters formed\n\n\n\n\nstr(clust6)\n\nList of 8\n $ groups      : num [1:55] 3 3 6 3 3 3 3 3 3 3 ...\n $ edges.groups:List of 6\n  ..$ :List of 3\n  .. ..$ node: num [1:22] 13 48 54 55 45 37 34 16 25 52 ...\n  .. ..$ edge: num [1:21, 1:3] 48 55 54 37 34 16 45 25 13 13 ...\n  .. ..$ ssw : num 3423\n  ..$ :List of 3\n  .. ..$ node: num [1:18] 47 27 53 38 42 15 41 51 43 32 ...\n  .. ..$ edge: num [1:17, 1:3] 53 15 42 38 41 51 15 27 15 43 ...\n  .. ..$ ssw : num 3759\n  ..$ :List of 3\n  .. ..$ node: num [1:11] 2 6 8 1 36 4 10 9 46 5 ...\n  .. ..$ edge: num [1:10, 1:3] 6 1 8 36 4 6 8 10 10 9 ...\n  .. ..$ ssw : num 1458\n  ..$ :List of 3\n  .. ..$ node: num [1:2] 44 20\n  .. ..$ edge: num [1, 1:3] 44 20 95\n  .. ..$ ssw : num 95\n  ..$ :List of 3\n  .. ..$ node: num 23\n  .. ..$ edge: num[0 , 1:3] \n  .. ..$ ssw : num 0\n  ..$ :List of 3\n  .. ..$ node: num 3\n  .. ..$ edge: num[0 , 1:3] \n  .. ..$ ssw : num 0\n $ not.prune   : NULL\n $ candidates  : int [1:6] 1 2 3 4 5 6\n $ ssto        : num 12613\n $ ssw         : num [1:6] 12613 10977 9962 9540 9123 ...\n $ crit        : num [1:2] 1 Inf\n $ vec.crit    : num [1:55] 1 1 1 1 1 1 1 1 1 1 ...\n - attr(*, \"class\")= chr \"skater\"\n\n\n\nccs6 &lt;- clust6$groups\nccs6\n\n [1] 3 3 6 3 3 3 3 3 3 3 2 1 1 1 2 1 1 1 2 4 1 2 5 1 1 1 2 1 2 2 1 2 2 1 1 3 1 2\n[39] 2 2 2 2 2 4 1 3 2 1 1 1 2 1 2 1 1\n\n\nTo check the number of observations for each cluster,\n\ntable(ccs6)\n\nccs6\n 1  2  3  4  5  6 \n22 18 11  2  1  1 \n\n\nPlot out the clustered networks or pruned tree over the townships.\n\nplot(shan_sp, border=gray(.5))\nplot(clust6, \n     coordinates(shan_sp), \n     cex.lab=.7,\n     groups.colors=c(\"red\",\"green\",\"blue\", \"brown\", \"pink\"),\n     cex.circles=0.005, \n     add=TRUE)"
+  },
+  {
+    "objectID": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#visualising-clusters-in-choropleth-map",
+    "href": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#visualising-clusters-in-choropleth-map",
+    "title": "Hands-on Exercise 7",
+    "section": "Visualising CLusters in Choropleth Map",
+    "text": "Visualising CLusters in Choropleth Map\nTo plot the newly derived clusters using SKATER.\n\ngroups_mat &lt;- as.matrix(clust6$groups)\nshan_sf_spatialcluster &lt;- cbind(shan_sf_cluster, as.factor(groups_mat)) %&gt;%\n  rename(`SP_CLUSTER`=`as.factor.groups_mat.`)\nqtm(shan_sf_spatialcluster, \"SP_CLUSTER\")\n\n\n\n\nFor easier comparison between hierarchical clustering and spatially constrained hierarchical clustering,\n\nhclust.map &lt;- qtm(shan_sf_cluster,\n                  \"CLUSTER\") + \n  tm_borders(alpha = 0.5) \n\nshclust.map &lt;- qtm(shan_sf_spatialcluster,\n                   \"SP_CLUSTER\") + \n  tm_borders(alpha = 0.5) \n\ntmap_arrange(hclust.map, shclust.map,\n             asp=NA, ncol=2)"
+  },
+  {
+    "objectID": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#about-clustgeo-package",
+    "href": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#about-clustgeo-package",
+    "title": "Hands-on Exercise 7",
+    "section": "About ClustGeo package",
+    "text": "About ClustGeo package\nClusterGeo is designed to support the need of performing spatially constrained cluster analysis, where it provides a Ward-like hierarchical clustering algorithm called hclustgeo() that considers spatial or geographical constraints.\nThe algorithm uses two dissimilarity matrices D0 and D1 along with a mixing parameter alpha, where the value of alpha must be a real number between [0, 1]. D0 can be non-Euclidean and the weights of the observations can be non-uniform. It gives the dissimilarities in the attribute/clustering variable space. D1, on the other hand, gives the dissimilarities in the constraint space. The criterion minimised at each stage is a convex combination of the homogeneity criterion calculated with D0 and the homogeneity criterion calculated with D1."
+  },
+  {
+    "objectID": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#ward-like-hierarchical-clustering-clustgeo",
+    "href": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#ward-like-hierarchical-clustering-clustgeo",
+    "title": "Hands-on Exercise 7",
+    "section": "Ward-like hierarchical clustering: ClustGeo",
+    "text": "Ward-like hierarchical clustering: ClustGeo\nTypically, hclustgeo() performs Ward-like hierarchical clustering like what hclust() does.\nTo perform non-spatially constrained hierarchical clustering, we only need to pass a dissimilarity matrix in the function.\n\nnongeo_cluster &lt;- hclustgeo(proxmat)\nplot(nongeo_cluster, cex = 0.5)\nrect.hclust(nongeo_cluster, \n            k = 6, \n            border = 2:5)\n\n\n\n\n\n\n\n\n\n\nNote\n\n\n\nThe dissimilarity matrix must be an object of class dist, where the object is developed.\n\n\n\nMapping the formed clusters\n\ngroups &lt;- as.factor(cutree(nongeo_cluster, k=6))\n\nshan_sf_ngeo_cluster &lt;- cbind(shan_sf, as.matrix(groups)) %&gt;%\n  rename(`CLUSTER` = `as.matrix.groups.`)\n\nqtm(shan_sf_ngeo_cluster, \"CLUSTER\")"
+  },
+  {
+    "objectID": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#spatially-constrained-hierarchical-clustering",
+    "href": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#spatially-constrained-hierarchical-clustering",
+    "title": "Hands-on Exercise 7",
+    "section": "Spatially Constrained Hierarchical Clustering",
+    "text": "Spatially Constrained Hierarchical Clustering\nSpatial distance matrice can be derived by using st_distance().\n\ndist &lt;- st_distance(shan_sf, shan_sf)\ndistmat &lt;- as.dist(dist)\n\n\nTh data frame has been converted to a matrix using as.dist()\n\nNet, choicealpha() will be used to determine a suitable value for the mixing parameter alpha.\n\ncr &lt;- choicealpha(proxmat, distmat, range.alpha = seq(0, 1, 0.1), K=6, graph = TRUE)\n\n\n\n\n\n\n\n\nclustG &lt;- hclustgeo(proxmat, distmat, alpha = 0.3)\n\n\ngroups &lt;- as.factor(cutree(clustG, k=6))\n\n\nshan_sf_Gcluster &lt;- cbind(shan_sf, as.matrix(groups)) %&gt;%\n  rename(`CLUSTER` = `as.matrix.groups.`)\n\n\nqtm(shan_sf_Gcluster, \"CLUSTER\")"
+  },
+  {
+    "objectID": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#visualising-individual-clustering-variable",
+    "href": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#visualising-individual-clustering-variable",
+    "title": "Hands-on Exercise 7",
+    "section": "Visualising individual clustering variable",
+    "text": "Visualising individual clustering variable\n\nggplot(data = shan_sf_ngeo_cluster,\n       aes(x = CLUSTER, y = RADIO_PR)) +\n  geom_boxplot()"
+  },
+  {
+    "objectID": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#multivariate-visualisation",
+    "href": "Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html#multivariate-visualisation",
+    "title": "Hands-on Exercise 7",
+    "section": "Multivariate Visualisation",
+    "text": "Multivariate Visualisation\nPast studies shown that parallel coordinate plot can be used to reveal clustering variables by cluster very effectively. In the code chunk below, ggparcoord() of GGally package\n\nggparcoord(data = shan_sf_ngeo_cluster, \n           columns = c(17:21), \n           scale = \"globalminmax\",\n           alphaLines = 0.2,\n           boxplot = TRUE, \n           title = \"Multiple Parallel Coordinates Plots of ICT Variables by Cluster\") +\n  facet_grid(~ CLUSTER) + \n  theme(axis.text.x = element_text(angle = 30))\n\n\n\n\n\nshan_sf_ngeo_cluster %&gt;% \n  st_set_geometry(NULL) %&gt;%\n  group_by(CLUSTER) %&gt;%\n  summarise(mean_RADIO_PR = mean(RADIO_PR),\n            mean_TV_PR = mean(TV_PR),\n            mean_LLPHONE_PR = mean(LLPHONE_PR),\n            mean_MPHONE_PR = mean(MPHONE_PR),\n            mean_COMPUTER_PR = mean(COMPUTER_PR))\n\n# A tibble: 6 × 6\n  CLUSTER mean_RADIO_PR mean_TV_PR mean_LLPHONE_PR mean_MPHONE_PR\n  &lt;chr&gt;           &lt;dbl&gt;      &lt;dbl&gt;           &lt;dbl&gt;          &lt;dbl&gt;\n1 1               221.        521.            44.2           246.\n2 2               237.        402.            23.9           134.\n3 3               300.        611.            52.2           392.\n4 4               196.        744.            99.0           651.\n5 5               124.        224.            38.0           132.\n6 6                98.6       499.            74.5           468.\n# ℹ 1 more variable: mean_COMPUTER_PR &lt;dbl&gt;"
+  },
+  {
+    "objectID": "In-class_Ex/In-class_Ex07/In-class_Ex07.html",
+    "href": "In-class_Ex/In-class_Ex07/In-class_Ex07.html",
+    "title": "In-class Exercise 7",
+    "section": "",
+    "text": "pacman::p_load(sp,spdep, tmap, sf, ClustGeo, \n               ggpubr, cluster, factoextra, NbClust,\n               heatmaply, corrplot, psych, tidyverse, GGally)\n\n\nGDAL is no longer in use, thus replaced with sp"
+  },
+  {
+    "objectID": "In-class_Ex/In-class_Ex07/In-class_Ex07.html#section",
+    "href": "In-class_Ex/In-class_Ex07/In-class_Ex07.html#section",
+    "title": "In-class Exercise 7",
+    "section": "",
+    "text": "Gap Statistic Method\nThe gap statistic compares the total within intra-cluster variation for different values of k with their expected values under null reference distribution of the data. The estimate of the optimal clusters will be value that maximize the gap statistic (i.e., that yields the largest gap statistic). This means that the clustering structure is far away from the random uniform distribution of points.\nTo compute the gap statistic, clusGap() of cluster package will be used.\n\nset.seed(12345)\ngap_stat &lt;- clusGap(shan_ict, \n                    FUN = hcut, \n                    nstart = 25, \n                    K.max = 10, \n                    B = 50)\n# Print the result\nprint(gap_stat, method = \"firstmax\")\n\nClustering Gap statistic [\"clusGap\"] from call:\nclusGap(x = shan_ict, FUNcluster = hcut, K.max = 10, B = 50, nstart = 25)\nB=50 simulated reference sets, k = 1..10; spaceH0=\"scaledPCA\"\n --&gt; Number of clusters (method 'firstmax'): 1\n          logW   E.logW       gap     SE.sim\n [1,] 8.407129 8.680794 0.2736651 0.04460994\n [2,] 8.130029 8.350712 0.2206824 0.03880130\n [3,] 7.992265 8.202550 0.2102844 0.03362652\n [4,] 7.862224 8.080655 0.2184311 0.03784781\n [5,] 7.756461 7.978022 0.2215615 0.03897071\n [6,] 7.665594 7.887777 0.2221833 0.03973087\n [7,] 7.590919 7.806333 0.2154145 0.04054939\n [8,] 7.526680 7.731619 0.2049390 0.04198644\n [9,] 7.458024 7.660795 0.2027705 0.04421874\n[10,] 7.377412 7.593858 0.2164465 0.04540947\n\n\n\n\n\n\n\n\nNote\n\n\n\nhcut is from the factoextra package.\n\n\nVisualise the plot using fviz_gap_stat() of the factoextra package.\n\nfviz_gap_stat(gap_stat)\n\n\n\n\n\nThe optimisation is local.\n6 is the optimal number of clusters since it is the first peak."
   }
 ]
