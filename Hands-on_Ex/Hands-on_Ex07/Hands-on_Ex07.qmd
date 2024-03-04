@@ -1,5 +1,5 @@
 ---
-title: "In-class Exercise 7"
+title: "Hands-on Exercise 7"
 author: "Victoria Grace ANN"
 execute: 
   warning: false
@@ -558,7 +558,12 @@ The output is called groups. It is a list object.
 
 In order to visualise the clusters, the groups object needs to be appended to the `shan_sf` simple feature object.
 
-To form the join in three steps: - Convert the *groups* list object into a matrix - Append the *groups* matrix to `shan_sf` using *cbind()* - Use *rename()* from **dplyr** to rename the *as.amtrix.groups* field as `CLUSTER`
+To form the join in three steps: 
+
+- Convert the *groups* list object into a matrix 
+- Append the *groups* matrix to `shan_sf` using *cbind()* 
+
+- Use *rename()* from **dplyr** to rename the *as.amtrix.groups* field as `CLUSTER`
 
 ```{r}
 shan_sf_cluster <- cbind(shan_sf, as.matrix(groups)) %>%
@@ -604,16 +609,23 @@ plot(shan.nb,
      add=TRUE)
 ```
 
-<to fill in explanations after reading in detail>
+The plotting area is usually determined by the characteristics of the neighbouring plots. Since the boundary map extends further than the neighbour graph, the boundary map should be plotted first.
 
 ## Computing Minimum Spanning Tree
 
 ### Calculating Edge Costs
 
+Next, *nbcosts()* from **spdep** can compute the cost of each edge, i.e. distance between nodes. This function computes the distance using a data frame with the observation vector in each node.
+
+To compute the cost of each edge.
+
 ```{r}
 lcosts <- nbcosts(shan.nb, shan_ict)
 ```
 
+Each observation provides a pairwise dissimilarity between its values on the five variables and the values for the neighbouring observation (from the neighbour list). This is the notion of a generalised weight for a spatial weights matrix.
+
+The next step is to incorporate these costs into a weights object in the same way the inverse distance weights were calculated. This is done by converting the neighbour list to a list weights object by specifying the computed `lcost` as the weights.
 
 ```{r}
 shan.w <- nb2listw(shan.nb, 
@@ -625,24 +637,27 @@ summary(shan.w)
 
 ## Computing minimum spanning tree
 
+The minimum spanning tree is computed by mean of the *mstree()* from **spdep**.
+
 ```{r}
 shan.mst <- mstree(shan.w)
 ```
-
 
 ```{r}
 class(shan.mst)
 ```
 
-
 ```{r}
 dim(shan.mst)
 ```
+The dimension is 54 since there are a minimum of (n-1) edges to traverse all nodes.
 
 
 ```{r}
 head(shan.mst)
 ```
+
+The plot method for the Minimum Spanning Tree is a method for showing the observable number of nodes on top of the edge. 
 
 
 ```{r}
@@ -658,6 +673,7 @@ plot.mst(shan.mst,
 
 ## Computing spatially constrained clusters using SKATER method
 
+Using SKATER,
 ```{r}
 clust6 <- spdep::skater(edges = shan.mst[,1:2], 
                  data = shan_ict, 
@@ -665,6 +681,14 @@ clust6 <- spdep::skater(edges = shan.mst[,1:2],
                  ncuts = 5)
 ```
 
+::: {.callout-note}
+### Interpreting the above code
+-   the first two columns of the MST matrix are extracted
+
+-   the data argument from Shan State's ICT information
+
+-   the number of cuts which will lead to n+1 clusters formed
+:::
 
 ```{r}
 str(clust6)
@@ -676,11 +700,13 @@ ccs6 <- clust6$groups
 ccs6
 ```
 
+To check the number of observations for each cluster,
 
 ```{r}
 table(ccs6)
 ```
 
+Plot out the clustered networks or pruned tree over the townships.
 ```{r}
 plot(shan_sp, border=gray(.5))
 plot(clust6, 
@@ -694,13 +720,17 @@ plot(clust6,
 
 ## Visualising CLusters in Choropleth Map
 
+To plot the newly derived clusters using SKATER.
+
 ```{r}
 groups_mat <- as.matrix(clust6$groups)
 shan_sf_spatialcluster <- cbind(shan_sf_cluster, as.factor(groups_mat)) %>%
   rename(`SP_CLUSTER`=`as.factor.groups_mat.`)
 qtm(shan_sf_spatialcluster, "SP_CLUSTER")
 ```
-For easier comparison,
+
+
+For easier comparison between hierarchical clustering and spatially constrained hierarchical clustering,
 
 ```{r}
 hclust.map <- qtm(shan_sf_cluster,
@@ -718,13 +748,20 @@ tmap_arrange(hclust.map, shclust.map,
 
 # Spatially COnstrained Clustering: ClustGeo Method
 
-In this section, you will gain hands-on experience on using functions provided by ClustGeo package to perform non-spatially constrained hierarchical cluster analysis and spatially constrained cluster analysis.
+In this section, we use functions provided by ClustGeo package to perform non-spatially constrained hierarchical cluster analysis and spatially constrained cluster analysis.
 
 
 ## About ClustGeo package
 
+**ClusterGeo** is designed to support the need of performing spatially constrained cluster analysis, where it provides a Ward-like hierarchical clustering algorithm called *hclustgeo()* that considers spatial or geographical constraints.
+
+The algorithm uses two dissimilarity matrices D0 and D1 along with a mixing parameter alpha, where the value of alpha must be a real number between [0, 1]. D0 can be non-Euclidean and the weights of the observations can be non-uniform. It gives the dissimilarities in the attribute/clustering variable space. D1, on the other hand, gives the dissimilarities in the constraint space. The criterion minimised at each stage is a convex combination of the homogeneity criterion calculated with D0 and the homogeneity criterion calculated with D1.
+
 ## Ward-like hierarchical clustering: ClustGeo
 
+Typically, *hclustgeo()* performs Ward-like hierarchical clustering like what *hclust()* does.
+
+To perform non-spatially constrained hierarchical clustering, we only need to pass a dissimilarity matrix in the function.
 
 ```{r}
 nongeo_cluster <- hclustgeo(proxmat)
@@ -734,6 +771,9 @@ rect.hclust(nongeo_cluster,
             border = 2:5)
 ```
 
+::: {.callout-note}
+The dissimilarity matrix must be an object of class *dist*, where the object is developed.
+:::
 
 ### Mapping the formed clusters
 
@@ -749,11 +789,16 @@ qtm(shan_sf_ngeo_cluster, "CLUSTER")
 
 ## Spatially Constrained Hierarchical Clustering
 
+Spatial distance matrice can be derived by using *st_distance()*.
+
 ```{r}
 dist <- st_distance(shan_sf, shan_sf)
 distmat <- as.dist(dist)
 ```
 
+-   Th data frame has been converted to a matrix using *as.dist()*
+
+Net, *choicealpha()* will be used to determine a suitable value for the mixing parameter alpha.
 
 ```{r}
 cr <- choicealpha(proxmat, distmat, range.alpha = seq(0, 1, 0.1), K=6, graph = TRUE)
@@ -792,6 +837,8 @@ ggplot(data = shan_sf_ngeo_cluster,
 
 
 ## Multivariate Visualisation
+
+Past studies shown that parallel coordinate plot can be used to reveal clustering variables by cluster very effectively. In the code chunk below, ggparcoord() of GGally package
 
 ```{r}
 ggparcoord(data = shan_sf_ngeo_cluster, 
