@@ -45,7 +45,6 @@ For this project we need the following packages:
 
 -   **Kendall** to perform Mann-Kendall test
 
-
 ```{r}
 pacman::p_load(tidyverse, lubridate, dplyr, sf, tmap, sfdep, gifski, Kendall)
 ```
@@ -142,7 +141,7 @@ head(dengue)
 The data is in Traditional Chinese? No problem! The following table is a rough guide on all the attributes:
 
 | Attribute             | Translation                                       |
-|-----------------------|-------------------------------------------------|
+|------------------------|------------------------------------------------|
 | **發病日**            | **Onset date**                                    |
 | 個案研判日            | Assessed date                                     |
 | 通報日                | Notification date                                 |
@@ -272,7 +271,7 @@ aoi_dengue.sf <- aoi_dengue.sf %>%
   select(發病日, 性別, 年齡層, 感染國家, 確定病例數, epi_week, geometry)
 ```
 
-:::{.callout-note}
+::: callout-note
 I have decided to extract the onset date, gender, age group, country of infection, count, epidemiology week and geometry. Technically, the gender, age group, and country of infection need not be included.
 :::
 
@@ -342,6 +341,7 @@ write_rds(vw_dengue.sf, "data/geospatial/vw_dengue.sf")
 
 ::: callout-note
 ### Note
+
 In the data, there are some villages that do not have cases or have no recorded cases for some weeks. Using *complete()*, we can iterate through our study period weeks and *fill* them with the `count` value of 0
 :::
 
@@ -407,6 +407,12 @@ dengue_anim <- tm_shape(vw_dengue.sf) +
 dengue_anim
 ```
 
+::: callout-note
+#### Legend Scale
+
+Notice that the legend scale and bins are equal across all the rendered maps
+:::
+
 ```{r}
 #| eval: false
 tmap_animation(dengue_anim, filename = "dengue.gif", delay = 100, width = 1280, height = 720, scale = 2)
@@ -415,6 +421,18 @@ tmap_animation(dengue_anim, filename = "dengue.gif", delay = 100, width = 1280, 
 ```{r}
 knitr::include_graphics("dengue.gif")
 ```
+
+Corresponding to the tallest bar from the earlier histogram for the dengue cases per week, there were the most dengue cases reported in epidemiology week 39. In the same week, there was a village in the east of our study area that demonstrated the highest case count of at least 60, the highest count for a village during the study period.
+
+# Spatial Autocorrelation
+
+Spatial autocorrelation analysis gathers a set of statistics that describes how a variable like dengue likelihood is autocorrelated through space.
+
+It is typical to first identify if the whole data set is geographically clustered or dispersed. This step is known as global spatial autocorrelation and the statistic used to measure global autocorrelation is global Moran's I.
+
+By extension, local spatial autocorrelation enables the evaluation of individual features like individual villages by comparing to their neighbours and checks for any clustering or dispersion.
+
+Global and local spatial autocorrelation results can be compared and any anomaly can be identified.
 
 # Global Spatial Autocorrelation
 
@@ -441,7 +459,7 @@ global_moran_test(dengue.wm_q$count,
                   dengue.wm_q$wt)
 ```
 
-The Moran I statistic standard deviate is 12.869, indicating that there is high spatial autocorrelation.
+The Moran I statistic standard deviate is 12.869, indicating that there is positive spatial autocorrelation.
 
 The low p-value reveals that the spatial correlation is statistically significant.
 
@@ -489,7 +507,6 @@ map1 <- tm_shape(lisa) +
 map1
 ```
 
-
 ```{r}
 tmap_mode("plot")
 tm_shape(lisa) +
@@ -505,7 +522,6 @@ tm_shape(lisa) +
 The appropriate classification for p-values should be 0.001, 0.01, 0.05 and not significant.
 :::
 
-
 ```{r}
 tmap_mode("plot")
 
@@ -519,9 +535,7 @@ map2 <- tm_shape(lisa) +
 tmap_arrange(map1, map2, ncol = 2)
 ```
 
-
--   Villages with a lighter orange have values closer to 0 which signify that they have significant clustering and their neighbouring areas exhibit similar values. These villages seem to mostly disperse at the fringes of our study area.
-
+-   Looking at the map on the right, villages with a lighter orange have values closer to 0 which signify that they have significant clustering and their neighbouring areas exhibit similar values. These villages seem to mostly disperse at the fringes of our study area.
 
 ### Visualising LISA map
 
@@ -547,6 +561,7 @@ tmap_arrange(lisa_map, secondary_map, ncol = 2)
 
 ::: callout-note
 #### What do the LISA classifications mean?
+
 -   High-High Clusters: Villages with high number of dengue cases likewise surrounded by neighbouring villages with high number of dengue cases.
 
 -   Low-Low Clusters: Villages of a low number of dengue cases are similarly surrounded by neigbouring villages with low number of dengue cases
@@ -572,14 +587,13 @@ The municipality for these high-high clusters should impose more safety mechanis
 
 There were no high-low outliers identified and hence it is possible that there is no specific village that may be a local hotspot that may directly contribute to the dengue transmissions to its neighbours.
 
-Nearby the high-high clusters, there were five low-high outlier villages which could be worth investigating since these villages are not as affected as its badly infected neighbouring villages. 
-
+Nearby the high-high clusters, there were five low-high outlier villages which could be worth investigating since these villages are not as affected as its badly infected neighbouring villages.
 
 # Hot Spot and Cold Spot Area Analysis
 
-Gi\* statistics helps to add definition to maps by estimating density distribution of events at the local level, which further allows for the assessment of spatial association in a study area or of a particular observation.
+Gi\* statistics help to add definition to maps by estimating the density distribution of events at the local level, which further allows for the assessment of spatial association in a study area or of a particular observation.
 
-Additionally, it helps to identify statistically significant hotspots/coldspots.
+Additionally, it helps to identify statistically significant hotspots and coldspots.
 
 ## Computation of local Gi\*
 
@@ -591,6 +605,16 @@ wm_idw <- v_dengue.sf %>%
          alpha = 1),
 .before = 1)
 ```
+
+::: callout-note
+### Interpreting code
+
+-   The data used here (`v_dengue.sf`) contains the consolidated data categorised by space, not space and time since we are only focusing on **spatial autocorrelation**
+
+-   `st_contiguity(geometry)`: Derives and identifies neighbours by reading sf polygon objects. Its sibling argument is [*st_knn()*](https://search.r-project.org/CRAN/refmans/sfdep/html/st_knn.html)
+
+-   `st_inverse_distance()`: calculates an inverse distance weight from the prior neighbour list and sf geometry column. Other weights can be calculated from *st_kernel_weights()*, *sth_nb_dists()* and *st_weights()*
+:::
 
 ```{r}
 HCSA <- wm_idw %>% 
@@ -611,11 +635,12 @@ tm_shape(HCSA) +
   tm_view(set.zoom.limits = c(6,8))
 ```
 
-Beginning from the epicentre of the study area, the values of Gi\* seem to decrease radially in general. Closer to the centre, the higher positive Gi\* values indicate a higher density of dengue cases whilst the higher negative Gi\* values indicate more randomness in the distribution of dengue cases in the villages.
+Beginning from the epicentre of the study area, the values of Gi\* seem to decrease radially in general. Closer to the centre, the more positive Gi\* values indicate a greater density of dengue cases whilst the more negative Gi\* values indicate more randomness in the distribution of dengue cases in the villages.
 
 ::: callout-warning
-#### Disadvantage of using Gi* statistic
-Clusters composed of few observations may inflate Gi* although other methods that allow the selection of only the most robust clusters is available
+#### Disadvantage of using Gi\* statistic
+
+Clusters composed of few observations may inflate Gi\* although other methods that allow the selection of only the most robust clusters is available.
 :::
 
 ### Visualising p-value of HCSA
@@ -652,8 +677,6 @@ tmap_arrange(map3, map4, ncol = 2)
 ```
 
 Villages that are insignificant indicate that their dengue cases are more likely due to geographical proximity.
-
-
 
 ## Visualising General Hot & Cold spot areas
 
@@ -771,6 +794,8 @@ The north western region of our study area in Tainan appears to be significant f
 
 ## Mann-Kendall Test and Gi\*
 
+### Exploratory Data Analysis
+
 First, locations can be evaluated through the Mann-Kendall test. This non-parametric test assesses if a set of data values is increasing or decreasing over time and also if the direction of the trend is statistically significant.
 
 The *MannKendall()* function is to identify whether the dengue cases are growing or decreasing with time.
@@ -840,12 +865,12 @@ tm_shape(vills_filtered) +
 ```
 
 ::: callout-note
-### What is a Census Block Group?
+### What is a Census Block Group (CBG)?
 
 It is a unit of census geography that is a combination of census blocks typically used in the (United States)\[https://support.esri.com/en-us/gis-dictionary/block-group\]. However, another such of a unit of measurement is not available globally, hence I employ census block group for easier reference.
 :::
 
-### Initial census block groups.
+#### Initial CBGs
 
 ::: panel-tabset
 #### Shenggong Village
@@ -961,7 +986,7 @@ From the results above, we can observe that about 5.43% of all the villages (14 
 
 The greatest downward and upward trends in dengue cases were exhibited in Huaping Village and Chenggong Village respectively according to their tau values.
 
-### Significant Census Block Groups
+## Significant Census Block Groups
 
 ::: panel-tabset
 #### Huaping Village
@@ -1203,6 +1228,8 @@ ggplot() +
 ```
 :::
 
+### Summary of Significant CBGs
+
 Generally, six of the significant villages had consistent negative Gi\* values over the weeks. These villages are Zhuxi, Lixi, Zhongxi, Dongwan, Jincheng and Zhongzhou. Only Dongqiao village had a consistent positive Gi\* value across the weeks.
 
 Guangzhou, Xiaoximen, Huaping and Diandong villages were initially spatial outliers that became spatial clusters that occurred less likely by chance as time progressed. Xiaoximen increased the most from epidemiology week 31 to 50 in Gi\* value. This similar increasing trend was also observed by Huaping. Haidong village had a very sharp increase in Gi\* from -2.7 to 1 starting from week 44. Thus a spatial cluster was formed in this village in the last seven weeks of the study period. Furthermore, Dongqiao village consistently had positive Gi\*, thus it was constantly a spatial cluster of dengue cases.
@@ -1216,9 +1243,6 @@ ehsa <- gistars %>%
     unclass(
       Kendall::MannKendall(gi_star)))) %>%
   tidyr::unnest_wider(mk)
-
-nrow(ehsa[ehsa$sl < 0.05,])
-nrow(ehsa[ehsa$sl >= 0.05,])
 
 nrow(ehsa[ehsa$sl < 0.05,])/nrow(ehsa[ehsa$sl >= 0.05,])
 ```
@@ -1274,7 +1298,6 @@ tn_ehsa <- tainan_aoi %>%
             by = join_by(VILLCODE == location))
 ```
 
-
 Filter for significant locations.
 
 ```{r}
@@ -1295,10 +1318,10 @@ ehsa_sig_map
 ```
 
 
-In general, most of the study area is characterised by hotspots rather than coldspots. There are a significant number of oscillating hotspots in the study area.
-
+In general, most of the study area is characterised by hotspots rather than coldspots. Specifically, there are a significant number of oscillating hotspots in the study area.
 
 In total, seven villages had no detected patterns.
+
 ```{r}
 filter(tn_ehsa, classification == "no pattern detected")$VILLENG
 ```
@@ -1327,13 +1350,11 @@ filter(tn_ehsa, classification == "sporadic coldspot")$VILLENG
 
 According to Tainan City's Climate [data](https://en.climate-data.org/asia/republic-of-china-taiwan/tainan-city/tainan-city-983291/t/december-12/) in 2023, our study period which falls between August and December has had an average temperature of 24.5C which is within the optimal temperature for dengue fever transmission ([Tran et al., 2020](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7068348/)).
 
-
 # References
 
 Anselin, L. (1995). Local Indicators of Spatial Association—LISA. Geographical Analysis 27(2): 93–115.
 
-Columbia Mailman School of Public Health (n.d.). Hot Spot Spatial Analysis.
-https://www.publichealth.columbia.edu/research/population-health-methods/hot-spot-spatial-analysis
+Columbia Mailman School of Public Health (n.d.). Hot Spot Spatial Analysis. https://www.publichealth.columbia.edu/research/population-health-methods/hot-spot-spatial-analysis
 
 Kam, T. S. (2022). R for Geospatial Data Science and Analytics. https://r4gdsa.netlify.app
 
