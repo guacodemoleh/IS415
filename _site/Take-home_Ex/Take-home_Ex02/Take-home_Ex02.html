@@ -667,7 +667,7 @@ attr(,"class")
 <div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a>dengue_study <span class="ot">&lt;-</span> dengue_2023 <span class="sc">%&gt;%</span></span>
 <span id="cb19-2"><a href="#cb19-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(epi_week <span class="sc">&gt;=</span> <span class="dv">31</span> <span class="sc">&amp;</span> epi_week <span class="sc">&lt;=</span> <span class="dv">50</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>According to (Health Protection Surveillance Centre)[https://www.hpsc.ie/notifiablediseases/resources/epidemiologicalweeks/], epidemiology weeks 31 to 50 are from 2023-07-30 to 2023-12-16.</p>
+<p>According to <a href="https://www.hpsc.ie/notifiablediseases/resources/epidemiologicalweeks/">Health Protection Surveillance Centre</a>, epidemiology weeks 31 to 50 are from 2023-07-30 to 2023-12-16.</p>
 <p>Then verify that the earliest and latest date in <strong>tainan_dengue_2023</strong> are 2023-07-30 and 2023-12-16 respectively.</p>
 <div class="cell">
 <div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>earliest_date <span class="ot">&lt;-</span> <span class="fu">min</span>(dengue_study<span class="sc">$</span>發病日)</span>
@@ -1442,7 +1442,7 @@ Disadvantage of using Gi* statistic
 </section>
 <section id="emerging-hot-spot-analysis" class="level1">
 <h1>Emerging Hot Spot Analysis</h1>
-<p>Hot spot analysis utilises Getis-Ord or Gi* statistics where they are, by extension, local indicators of spatial association. More information can be found from Josiah Parry’s succinct explanation on the fundamentals of hot spot analysis (here)[https://www.youtube.com/watch?v=sjLyJW95fHM]. (He is also the author of the sfdep pacakge!)</p>
+<p>Hot spot analysis utilises Getis-Ord or Gi* statistics where they are, by extension, local indicators of spatial association. More information can be found from Josiah Parry’s succinct explanation on the fundamentals of hot spot analysis <a href="https://www.youtube.com/watch?v=sjLyJW95fHM">here</a>. (He is also the author of the sfdep pacakge!)</p>
 <section id="creating-time-series-cube" class="level2">
 <h2 class="anchored" data-anchor-id="creating-time-series-cube">Creating Time Series Cube</h2>
 <p>Use <em>spacetime()</em> of <strong>sfdep</strong> package to create a spatio-temporal cube.</p>
@@ -1612,7 +1612,7 @@ What is a Census Block Group (CBG)?
 </div>
 </div>
 <div class="callout-body-container callout-body">
-<p>It is a unit of census geography that is a combination of census blocks typically used in the (United States)[https://support.esri.com/en-us/gis-dictionary/block-group]. However, another such of a unit of measurement is not available globally, hence I employ census block group for easier reference.</p>
+<p>It is a unit of census geography that is a combination of census blocks typically used in the <a href="https://support.esri.com/en-us/gis-dictionary/block-group">United States</a>. However, another such of a unit of measurement is not available globally, hence I employ census block group for easier reference.</p>
 </div>
 </div>
 <section id="initial-cbgs" class="level4">

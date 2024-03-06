@@ -141,7 +141,7 @@ head(dengue)
 The data is in Traditional Chinese? No problem! The following table is a rough guide on all the attributes:
 
 | Attribute             | Translation                                       |
-|------------------------|------------------------------------------------|
+|------------------------|-----------------------------------------------|
 | **發病日**            | **Onset date**                                    |
 | 個案研判日            | Assessed date                                     |
 | 通報日                | Notification date                                 |
@@ -190,7 +190,7 @@ dengue_study <- dengue_2023 %>%
   filter(epi_week >= 31 & epi_week <= 50)
 ```
 
-According to (Health Protection Surveillance Centre)\[https://www.hpsc.ie/notifiablediseases/resources/epidemiologicalweeks/\], epidemiology weeks 31 to 50 are from 2023-07-30 to 2023-12-16.
+According to [Health Protection Surveillance Centre](https://www.hpsc.ie/notifiablediseases/resources/epidemiologicalweeks/), epidemiology weeks 31 to 50 are from 2023-07-30 to 2023-12-16.
 
 Then verify that the earliest and latest date in **tainan_dengue_2023** are 2023-07-30 and 2023-12-16 respectively.
 
@@ -703,7 +703,7 @@ Several cold spots are observed along the northern region of the study area as w
 
 # Emerging Hot Spot Analysis
 
-Hot spot analysis utilises Getis-Ord or Gi\* statistics where they are, by extension, local indicators of spatial association. More information can be found from Josiah Parry's succinct explanation on the fundamentals of hot spot analysis (here)\[https://www.youtube.com/watch?v=sjLyJW95fHM\]. (He is also the author of the sfdep pacakge!)
+Hot spot analysis utilises Getis-Ord or Gi\* statistics where they are, by extension, local indicators of spatial association. More information can be found from Josiah Parry's succinct explanation on the fundamentals of hot spot analysis [here](https://www.youtube.com/watch?v=sjLyJW95fHM). (He is also the author of the sfdep pacakge!)
 
 ## Creating Time Series Cube
 
@@ -867,7 +867,7 @@ tm_shape(vills_filtered) +
 ::: callout-note
 ### What is a Census Block Group (CBG)?
 
-It is a unit of census geography that is a combination of census blocks typically used in the (United States)\[https://support.esri.com/en-us/gis-dictionary/block-group\]. However, another such of a unit of measurement is not available globally, hence I employ census block group for easier reference.
+It is a unit of census geography that is a combination of census blocks typically used in the [United States](https://support.esri.com/en-us/gis-dictionary/block-group). However, another such of a unit of measurement is not available globally, hence I employ census block group for easier reference.
 :::
 
 #### Initial CBGs
@@ -1316,7 +1316,6 @@ tmap_mode("view")
 
 ehsa_sig_map
 ```
-
 
 In general, most of the study area is characterised by hotspots rather than coldspots. Specifically, there are a significant number of oscillating hotspots in the study area.
 
