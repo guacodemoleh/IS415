@@ -141,7 +141,7 @@ head(dengue)
 The data is in Traditional Chinese? No problem! The following table is a rough guide on all the attributes:
 
 | Attribute             | Translation                                       |
-|------------------------|-----------------------------------------------|
+|-------------------------|-----------------------------------------------|
 | **發病日**            | **Onset date**                                    |
 | 個案研判日            | Assessed date                                     |
 | 通報日                | Notification date                                 |
@@ -1317,10 +1317,6 @@ tmap_mode("view")
 ehsa_sig_map
 ```
 
-In general, most of the study area is characterised by hotspots rather than coldspots. Specifically, there are a significant number of oscillating hotspots in the study area.
-
-In total, seven villages had no detected patterns.
-
 ```{r}
 filter(tn_ehsa, classification == "no pattern detected")$VILLENG
 ```
@@ -1341,13 +1337,19 @@ filter(tn_ehsa, classification == "oscilating coldspot")$VILLENG
 filter(tn_ehsa, classification == "oscilating hotspot")$VILLENG
 ```
 
-These oscillating hotspots still have considerable dengue cases throughout the study period. Additionally, these villages may have remained as oscillating hotspots due to the [warmer autumn and winter seasons](https://www.taipeitimes.com/News/taiwan/archives/2023/10/25/2003808201).
-
 ```{r}
 filter(tn_ehsa, classification == "sporadic coldspot")$VILLENG
 ```
 
-According to Tainan City's Climate [data](https://en.climate-data.org/asia/republic-of-china-taiwan/tainan-city/tainan-city-983291/t/december-12/) in 2023, our study period which falls between August and December has had an average temperature of 24.5C which is within the optimal temperature for dengue fever transmission ([Tran et al., 2020](https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7068348/)).
+In general, most of the study area is characterised by hotspots rather than coldspots.
+
+Specifically, there are a significant number of 108 oscillating hotspots in the study area. Additionally, these villages may have remained as oscillating hotspots due to the [warmer autumn and winter seasons](https://www.taipeitimes.com/News/taiwan/archives/2023/10/25/2003808201).
+
+Given these findings, it is worthwhile for local municipalities that are governing a hotspot village to learn from coldspot villages, especially consecutive coldspot villages that are consistently low in dengue cases throughout the weeks. These consecutive coldspot villages include Heping and Xinan.
+
+Furthermore, Tainan City's Climate [data](https://en.climate-data.org/asia/republic-of-china-taiwan/tainan-city/tainan-city-983291/t/december-12/) in 2023 falling within our study period reflects an average temperature of 24.5**°**C, an optimal temperature for dengue fever transmission ([Tran et al., 2020](#0){style="font-size: 11pt;"}).
+
+In total, seven villages had no detected patterns. Nonetheless, the global spatial autocorrelation analysis performed earlier reveals that the dengue cases over the weeks were spatially autocorrelated. In my opinion, Zhonglou village is worth investigating in detail as it is a consecutive coldspot with immediate neighbours that are oscillating hotspots and a consecutive hotspot quite near it.
 
 # References
 
