@@ -324,3 +324,137 @@ ggarrange(r, s, z,
           nrow = 1)
 ```
 
+
+
+```{r}
+r <- ggplot(data=ict_derived, 
+             aes(x= `RADIO_PR`)) +
+  geom_density(color="black",
+               fill="light blue") +
+  ggtitle("Raw values without standardisation")
+
+shan_ict_s_df <- as.data.frame(shan_ict.std)
+s <- ggplot(data=shan_ict_s_df, 
+       aes(x=`RADIO_PR`)) +
+  geom_density(color="black",
+               fill="light blue") +
+  ggtitle("Min-Max Standardisation")
+
+shan_ict_z_df <- as.data.frame(shan_ict.z)
+z <- ggplot(data=shan_ict_z_df, 
+       aes(x=`RADIO_PR`)) +
+  geom_density(color="black",
+               fill="light blue") +
+  ggtitle("Z-score Standardisation")
+
+ggarrange(r, s, z,
+          ncol = 3,
+          nrow = 1)
+```
+
+
+## Computing proximity matrix
+
+Many packages provide functions to calculate distance matrix and one of which is using *dist()*.
+
+The distance proximity calculations supported are:
+
+-   Euclidean (default)
+
+-   Maximum
+
+-   Manhattan
+
+-   Canberra
+
+-   Binary
+
+-   Minkowski
+
+
+```{r}
+#| echo: false
+proxmat <- dist(shan_ict, method = 'euclidean')
+proxmat
+```
+
+
+## Computing hierarchical clustering
+
+There are eight clustering algorithms supported by *hclust()*:
+
+-   ward.D
+
+-   ward.D2
+
+-   single
+
+-   complete
+
+-   average(UPGMA)
+
+-   mcquitty(WPGMA)
+
+-   median(WPGMC)
+
+
+```{r}
+hclust_ward <- hclust(proxmat, method = 'ward.D')
+```
+
+
+```{r}
+plot(hclust_ward, cex = 0.6)
+```
+
+
+## Selecting optimal clustering algorithm
+
+A challenge in performing hierarchical clustering is to identify stronger clustering structures. The issue can be solved by using use agnes() function of cluster package. It functions like hclus(), however, with the agnes() function you can also get the agglomerative coefficient, which measures the amount of clustering structure found (values closer to 1 suggest strong clustering structure).
+
+```{r}
+m <- c( "average", "single", "complete", "ward")
+names(m) <- c( "average", "single", "complete", "ward")
+
+ac <- function(x) {
+  agnes(shan_ict, method = x)$ac
+}
+
+map_dbl(m, ac)
+```
+
+-   Ward's method will be used since it gives the strongest clustering structure.
+
+
+## Determining optimal clusters
+
+### Gap staistic method
+
+The gap statistic compares the total within intra-cluster variation for different values of k with their expected values under null reference distribution of the data. The estimate of the optimal clusters will be value that maximize the gap statistic (i.e., that yields the largest gap statistic). This means that the clustering structure is far away from the random uniform distribution of points.
+
+*clusGap()* of **cluster** package will be used to compute the gap statistic.
+
+```{r}
+set.seed(12345)
+gap_stat <- clusGap(shan_ict, 
+                    FUN = hcut, 
+                    nstart = 25, 
+                    K.max = 10, 
+                    B = 50)
+# Print the result
+print(gap_stat, method = "firstmax")
+```
+
+
+Visualise the plot.
+```{r}
+fviz_gap_stat(gap_stat)
+```
+
+-   *fviz_gap_stat()* is from the **factoextra** package.
+
+
+
+
+
+
