@@ -1,0 +1,2001 @@
+---
+title: "Takehome-Ex 3"
+author: "Victoria Grace ANN"
+execute: 
+  warning: false
+  eval: true
+  echo: true
+  freeze: true
+format:  
+  html: 
+    code-summary: "Show the code"
+    toc-depth: 4
+date: "11 March, 2024"
+date-modified: "last-modified"
+editor: visual
+---
+
+# Overview
+
+Prototyping on GWR Poisson Distribution
+
+
+# Package Installation
+
+```{r}
+pacman::p_load(tmap, sf, sp, performance, reshape2,ggpubr, tidyverse, stplanr, knitr)
+```
+
+
+
+# Data Preparation
+
+-   URA's Masterplan Subzone 2019 Layer in shapefile format
+
+-   A tabulated bus passenger flow for Nov 2023, Dec 2023 and Jan 2024 from LTA dynamic data mall
+
+## Subzone Layer
+
+Read the subzone layer
+```{r}
+mpsz <- st_read("data/geospatial/master-plan-2019-subzone-boundary-no-sea-kml.kml")
+```
+
+Convert `mpsz` to 2D geometry.
+
+```{r}
+mpsz <- st_zm(mpsz, drop = TRUE) # Convert 3D geometries to 2D
+```
+
+Extract the `SUBZONE_N` and `PLN_AREA_N` from the `Dscrptn` field
+
+For SUBZONE_N,
+
+```{r}
+mpsz <- mpsz %>%
+  rowwise() %>%
+  mutate(SUBZONE_N = str_extract(Description, "<th>SUBZONE_N</th> <td>(.*?)</td>")) %>%
+  ungroup()
+
+mpsz$SUBZONE_N <- str_remove_all(mpsz$SUBZONE_N, "<.*?>|SUBZONE_N")
+```
+
+
+For PLN_AREA_N,
+```{r}
+mpsz <- mpsz %>%
+  rowwise() %>%
+  mutate(PLN_AREA_N = str_extract(Description, "<th>PLN_AREA_N</th> <td>(.*?)</td>")) %>%
+  ungroup()
+
+mpsz$PLN_AREA_N <- str_remove_all(mpsz$PLN_AREA_N, "<.*?>|PLN_AREA_N")
+```
+
+
+Remove the `Description` column
+```{r}
+mpsz$Description <- NULL
+```
+
+
+Create the shapefile
+```{r}
+#| eval: false
+st_write(mpsz, "data/geospatial/mpsz_sf.shp")
+```
+
+
+Read the updated shapefile.
+
+```{r}
+mpsz_sf <- st_read("data/geospatial/mpsz_sf.shp")
+```
+
+```{r}
+mpsz_sp <- as(mpsz_sf, "Spatial")
+```
+
+
+## Creating Spatial Grids
+
+```{r}
+mpsz3414 <- st_transform(mpsz_sf, 3414)
+outer_islands <- c("SEMAKAU", "SUDONG", "NORTH-EASTERN ISLANDS", "SOUTHERN GROUP")
+mpsz3414 <- mpsz3414 %>%
+  filter(!str_trim(SUBZONE_N) %in% str_trim(outer_islands))
+```
+
+```{r}
+hex_grid <- st_make_grid(mpsz3414, cellsize = c(750, 750), what = "polygons", square = FALSE) %>%
+  st_sf() %>%
+  # Apply as.factor() since index will be used as the identifier to link to other data sets
+  mutate(index = as.factor(row_number()))
+
+# Create border of Singapore's land area
+mpsz_border <- mpsz3414 %>% st_union()
+
+# Clip the hexagon grid layer
+hex_grid_bounded <- st_intersection(hex_grid, mpsz_border)
+```
+
+```{r}
+tmap_mode("plot")
+
+tm_shape(hex_grid_bounded) +
+  tm_polygons()
+```
+
+
+```{r}
+# Check if hex grid intersects any polygons using st_intersects
+# Returns a list of intersecting hexagons
+intersection_list = hex_grid$index[lengths(st_intersects(hex_grid, hex_grid_bounded)) > 0]
+
+# Filter for the intersecting hexagons
+hex_grid_bounded2 = hex_grid %>%
+  filter(index %in% intersection_list)
+
+tm_shape(hex_grid_bounded2) +
+  tm_polygons()
+```
+
+-   The map above now shows the complete analytical hexagon data of 375m (perpendicular distance between the centre of hexagon and its edges) that represents the TAZ.
+
+
+## Bus Stop Locations
+
+```{r}
+BusStop <- read.csv("data/aspatial/bus_coords_subzone.csv") %>% st_as_sf(coords=c("Longitude", "Latitude"), crs=4326) %>%
+  st_transform(crs=3414)
+```
+
+
+### Compute Bus Stop Density
+
+Using *st_intersects()*, we can intersect the bus stops layer and the hexagon layer and use *lengths()* to count the number of bus stops that lie inside each Traffic Analysis Zone. These count values are appended back to each spatial grid and encapsulated into a new column called `busstop_count` in a duplicated dataframe, `hex_grid_bounded2`.
+
+```{r}
+hex_grid_bounded2$busstop_count <- lengths(st_intersects(hex_grid_bounded2, BusStop))
+```
+
+```{r}
+tm_shape(hex_grid_bounded2) +
+  tm_fill(col = "busstop_count",
+          palette = "Blues",
+          style = "cont", 
+          title = "Bus Stop Density") + 
+  tm_borders(col = "grey") +
+  tm_legend(position = c("RIGHT", "BOTTOM"))
+```
+
+```{r}
+#| eval: false
+write_rds(hex_grid_bounded2, "data/rds/hex_grid_bounded2")
+```
+
+```{r}
+hex_grid_bounded2 <- readRDS("data/rds/hex_grid_bounded2")
+```
+
+## Constructing O-D Matrix of commuter flow
+
+```{r}
+od_bus_nov <- read_csv("data/OD Bus/origin_destination_bus_202311.csv")
+od_bus_dec <- read_csv("data/OD Bus/origin_destination_bus_202312.csv")
+od_bus_jan <- read_csv("data/OD Bus/origin_destination_bus_202401.csv")
+```
+
+```{r}
+OD <- rbind(od_bus_nov, od_bus_dec)
+OD <- rbind(OD, od_bus_jan)
+
+nrow(od_bus_nov) + nrow(od_bus_dec) + nrow(od_bus_jan) == nrow(OD)
+```
+
+```{r}
+str(OD)
+```
+
+`ORIGIN_PT_CODE` and `DESTINATION_PT_CODE` are listed as character variables. These variables should be transformed to factors so that R treats them as grouping variables.
+
+```{r}
+cols_to_convert <- c("ORIGIN_PT_CODE", "DESTINATION_PT_CODE")
+
+OD[cols_to_convert] <- lapply(OD[cols_to_convert], as.factor)
+
+glimpse(OD)
+```
+ORIGIN_PT_CODE` and `DESTINATION_PT_CODE` are now factors.
+
+```{r}
+#| eval: false
+write_rds(OD, "data/rds/odbus_combined.rds")
+```
+
+```{r}
+odbus_combined <- readRDS("data/rds/odbus_combined.rds")
+```
+
+
+# Commuting Flow Data
+
+## Weekday
+
+### Morning
+
+```{r}
+od_wkday_morn <- odbus_combined %>%
+  filter(DAY_TYPE == "WEEKDAY" & TIME_PER_HOUR >= 6 & TIME_PER_HOUR <= 9) %>%
+  group_by(ORIGIN_PT_CODE, DESTINATION_PT_CODE) %>%
+  summarise(TRIPS = sum(TOTAL_TRIPS)) %>%
+  ungroup()
+```
+
+```{r}
+head(od_wkday_morn, 10)
+```
+
+::: {.panel-tabset}
+#### November
+
+```{r}
+od_wkday_morn_nov <- odbus_combined %>%
+  filter(DAY_TYPE == "WEEKDAY" & TIME_PER_HOUR >= 6 & TIME_PER_HOUR <= 9 & YEAR_MONTH == "2023-11") %>%
+  group_by(ORIGIN_PT_CODE, DESTINATION_PT_CODE) %>%
+  summarise(TRIPS = sum(TOTAL_TRIPS)) %>%
+  ungroup()
+```
+
+
+#### December
+
+```{r}
+od_wkday_morn_dec <- odbus_combined %>%
+  filter(DAY_TYPE == "WEEKDAY" & TIME_PER_HOUR >= 6 & TIME_PER_HOUR <= 9 & YEAR_MONTH == "2023-12") %>%
+  group_by(ORIGIN_PT_CODE, DESTINATION_PT_CODE) %>%
+  summarise(TRIPS = sum(TOTAL_TRIPS)) %>%
+  ungroup()
+```
+
+
+#### January
+
+```{r}
+od_wkday_morn_jan <- odbus_combined %>%
+  filter(DAY_TYPE == "WEEKDAY" & TIME_PER_HOUR >= 6 & TIME_PER_HOUR <= 9 & YEAR_MONTH == "2024-01") %>%
+  group_by(ORIGIN_PT_CODE, DESTINATION_PT_CODE) %>%
+  summarise(TRIPS = sum(TOTAL_TRIPS)) %>%
+  ungroup()
+```
+:::
+
+### Evening
+
+```{r}
+od_wkday_eve <- odbus_combined %>%
+  filter(DAY_TYPE == "WEEKDAY" & TIME_PER_HOUR >= 17 & TIME_PER_HOUR <=20) %>%
+  group_by(ORIGIN_PT_CODE, DESTINATION_PT_CODE) %>%
+  summarise(TRIPS = sum(TOTAL_TRIPS)) %>%
+  ungroup()
+```
+
+
+::: {.panel-tabset}
+#### November
+
+```{r}
+od_wkday_eve_nov <- odbus_combined %>%
+  filter(DAY_TYPE == "WEEKDAY" & TIME_PER_HOUR >= 17 & TIME_PER_HOUR <= 20 & YEAR_MONTH == "2023-11") %>%
+  group_by(ORIGIN_PT_CODE, DESTINATION_PT_CODE) %>%
+  summarise(TRIPS = sum(TOTAL_TRIPS)) %>%
+  ungroup()
+```
+
+
+#### December
+
+```{r}
+od_wkday_eve_dec <- odbus_combined %>%
+  filter(DAY_TYPE == "WEEKDAY" & TIME_PER_HOUR >= 17 & TIME_PER_HOUR <= 20 & YEAR_MONTH == "2023-12") %>%
+  group_by(ORIGIN_PT_CODE, DESTINATION_PT_CODE) %>%
+  summarise(TRIPS = sum(TOTAL_TRIPS)) %>%
+  ungroup()
+```
+
+
+#### January
+
+```{r}
+od_wkday_eve_jan <- odbus_combined %>%
+  filter(DAY_TYPE == "WEEKDAY" & TIME_PER_HOUR >= 17 & TIME_PER_HOUR <= 20 & YEAR_MONTH == "2024-01") %>%
+  group_by(ORIGIN_PT_CODE, DESTINATION_PT_CODE) %>%
+  summarise(TRIPS = sum(TOTAL_TRIPS)) %>%
+  ungroup()
+```
+:::
+
+
+## Geospatial Data Wrangling
+
+Now we need to convert the od data from aspatial to geospatial data.
+
+First, we populate the hexagon grid indexes of `hex_grid_bounded2` sf data frame into `BusStop` sf data frame using *st_intersection()*.
+```{r}
+BusStop_hex <- st_intersection(BusStop, hex_grid_bounded2) %>%
+  select(BusStopCode, index) %>%
+  st_drop_geometry()
+
+cols_to_convert <- c("BusStopCode")
+BusStop_hex[cols_to_convert] <- lapply(BusStop_hex[cols_to_convert], as.factor)
+
+glimpse(BusStop_hex)
+```
+
+
+Append the hexagon grid index from `BusStop_hex` data frame to the segregated od data frames for both `ORIGIN_PT_CODE` and `DESTINATION_PT_CODE`.
+
+### Weekday Morning
+
+```{r}
+od_data_morn <- left_join(od_wkday_morn , BusStop_hex,
+            by = c("ORIGIN_PT_CODE" = "BusStopCode")) %>%
+  rename("ORIGIN_hex" = "index")
+
+od_data_morn <- left_join(od_data_morn , BusStop_hex,
+            by = c("DESTINATION_PT_CODE" = "BusStopCode")) %>%
+  rename("DESTIN_hex" = "index") %>%
+  drop_na() %>%
+  group_by(ORIGIN_hex, DESTIN_hex) %>%
+  summarise(TOTAL_TRIPS = sum(TRIPS))
+
+cols_to_convert <- c("ORIGIN_hex", "DESTIN_hex")
+
+od_data_morn[cols_to_convert] <- lapply(od_data_morn[cols_to_convert], as.factor)
+```
+
+Check for duplicates.
+```{r}
+duplicate <- od_data_morn %>%
+  group_by_all() %>%
+  filter(n()>1) %>%
+  ungroup()
+
+DT::datatable(duplicate)
+```
+
+
+::: {.panel-tabset}
+#### November
+
+```{r}
+od_data_morn_nov <- left_join(od_wkday_morn_nov , BusStop_hex,
+            by = c("ORIGIN_PT_CODE" = "BusStopCode")) %>%
+  rename("ORIGIN_hex" = "index")
+
+od_data_morn_nov <- left_join(od_data_morn_nov , BusStop_hex,
+            by = c("DESTINATION_PT_CODE" = "BusStopCode")) %>%
+  rename("DESTIN_hex" = "index") %>%
+  drop_na() %>%
+  group_by(ORIGIN_hex, DESTIN_hex) %>%
+  summarise(TOTAL_TRIPS = sum(TRIPS))
+
+cols_to_convert <- c("ORIGIN_hex", "DESTIN_hex")
+
+od_data_morn_nov[cols_to_convert] <- lapply(od_data_morn_nov[cols_to_convert], as.factor)
+```
+
+Check for duplicates.
+```{r}
+duplicate <- od_data_morn_nov %>%
+  group_by_all() %>%
+  filter(n()>1) %>%
+  ungroup()
+
+DT::datatable(duplicate)
+```
+
+
+#### December
+
+```{r}
+od_data_morn_dec <- left_join(od_wkday_morn_dec , BusStop_hex,
+            by = c("ORIGIN_PT_CODE" = "BusStopCode")) %>%
+  rename("ORIGIN_hex" = "index")
+
+od_data_morn_dec <- left_join(od_data_morn_dec , BusStop_hex,
+            by = c("DESTINATION_PT_CODE" = "BusStopCode")) %>%
+  rename("DESTIN_hex" = "index") %>%
+  drop_na() %>%
+  group_by(ORIGIN_hex, DESTIN_hex) %>%
+  summarise(TOTAL_TRIPS = sum(TRIPS))
+
+cols_to_convert <- c("ORIGIN_hex", "DESTIN_hex")
+
+od_data_morn_dec[cols_to_convert] <- lapply(od_data_morn_dec[cols_to_convert], as.factor)
+```
+
+
+Check for duplicates.
+```{r}
+duplicate <- od_data_morn_dec %>%
+  group_by_all() %>%
+  filter(n()>1) %>%
+  ungroup()
+
+DT::datatable(duplicate)
+```
+
+#### January
+
+```{r}
+od_data_morn_jan <- left_join(od_wkday_morn_jan , BusStop_hex,
+            by = c("ORIGIN_PT_CODE" = "BusStopCode")) %>%
+  rename("ORIGIN_hex" = "index")
+
+od_data_morn_jan <- left_join(od_data_morn_jan, BusStop_hex,
+            by = c("DESTINATION_PT_CODE" = "BusStopCode")) %>%
+  rename("DESTIN_hex" = "index") %>%
+  drop_na() %>%
+  group_by(ORIGIN_hex, DESTIN_hex) %>%
+  summarise(TOTAL_TRIPS = sum(TRIPS))
+
+cols_to_convert <- c("ORIGIN_hex", "DESTIN_hex")
+
+od_data_morn_jan[cols_to_convert] <- lapply(od_data_morn_jan[cols_to_convert], as.factor)
+```
+
+
+Check for duplicates.
+```{r}
+duplicate <- od_data_morn_jan %>%
+  group_by_all() %>%
+  filter(n()>1) %>%
+  ungroup()
+
+DT::datatable(duplicate)
+```
+
+:::
+
+
+### Weekday Evening
+
+```{r}
+od_data_eve <- left_join(od_wkday_eve , BusStop_hex,
+            by = c("ORIGIN_PT_CODE" = "BusStopCode")) %>%
+  rename("ORIGIN_hex" = "index")
+
+od_data_eve <- left_join(od_data_eve , BusStop_hex,
+            by = c("DESTINATION_PT_CODE" = "BusStopCode")) %>%
+  rename("DESTIN_hex" = "index") %>%
+  drop_na() %>%
+  group_by(ORIGIN_hex, DESTIN_hex) %>%
+  summarise(TOTAL_TRIPS = sum(TRIPS))
+
+od_data_eve[cols_to_convert] <- lapply(od_data_eve[cols_to_convert], as.factor)
+```
+
+Check for duplicates.
+```{r}
+duplicate <- od_data_eve %>%
+  group_by_all() %>%
+  filter(n()>1) %>%
+  ungroup()
+
+DT::datatable(duplicate)
+```
+
+
+::: {.panel-tabset}
+
+#### November
+
+```{r}
+od_data_eve_nov <- left_join(od_wkday_eve_nov , BusStop_hex,
+            by = c("ORIGIN_PT_CODE" = "BusStopCode")) %>%
+  rename("ORIGIN_hex" = "index")
+
+od_data_eve_nov <- left_join(od_data_eve_nov , BusStop_hex,
+            by = c("DESTINATION_PT_CODE" = "BusStopCode")) %>%
+  rename("DESTIN_hex" = "index") %>%
+  drop_na() %>%
+  group_by(ORIGIN_hex, DESTIN_hex) %>%
+  summarise(TOTAL_TRIPS = sum(TRIPS))
+
+cols_to_convert <- c("ORIGIN_hex", "DESTIN_hex")
+
+od_data_eve_nov[cols_to_convert] <- lapply(od_data_eve_nov[cols_to_convert], as.factor)
+```
+
+Check for duplicates.
+```{r}
+duplicate <- od_data_eve_nov %>%
+  group_by_all() %>%
+  filter(n()>1) %>%
+  ungroup()
+
+DT::datatable(duplicate)
+```
+
+
+#### December
+
+```{r}
+od_data_eve_dec <- left_join(od_wkday_eve_dec , BusStop_hex,
+            by = c("ORIGIN_PT_CODE" = "BusStopCode")) %>%
+  rename("ORIGIN_hex" = "index")
+
+od_data_eve_dec <- left_join(od_data_eve_dec , BusStop_hex,
+            by = c("DESTINATION_PT_CODE" = "BusStopCode")) %>%
+  rename("DESTIN_hex" = "index") %>%
+  drop_na() %>%
+  group_by(ORIGIN_hex, DESTIN_hex) %>%
+  summarise(TOTAL_TRIPS = sum(TRIPS))
+
+cols_to_convert <- c("ORIGIN_hex", "DESTIN_hex")
+
+od_data_eve_dec[cols_to_convert] <- lapply(od_data_eve_dec[cols_to_convert], as.factor)
+```
+
+
+Check for duplicates.
+```{r}
+duplicate <- od_data_eve_dec %>%
+  group_by_all() %>%
+  filter(n()>1) %>%
+  ungroup()
+
+DT::datatable(duplicate)
+```
+
+#### January
+
+```{r}
+od_data_eve_jan <- left_join(od_wkday_eve_jan , BusStop_hex,
+            by = c("ORIGIN_PT_CODE" = "BusStopCode")) %>%
+  rename("ORIGIN_hex" = "index")
+
+od_data_eve_jan <- left_join(od_data_eve_jan, BusStop_hex,
+            by = c("DESTINATION_PT_CODE" = "BusStopCode")) %>%
+  rename("DESTIN_hex" = "index") %>%
+  drop_na() %>%
+  group_by(ORIGIN_hex, DESTIN_hex) %>%
+  summarise(TOTAL_TRIPS = sum(TRIPS))
+
+cols_to_convert <- c("ORIGIN_hex", "DESTIN_hex")
+
+od_data_eve_jan[cols_to_convert] <- lapply(od_data_eve_jan[cols_to_convert], as.factor)
+```
+
+
+Check for duplicates.
+```{r}
+duplicate <- od_data_eve_jan %>%
+  group_by_all() %>%
+  filter(n()>1) %>%
+  ungroup()
+
+DT::datatable(duplicate)
+```
+:::
+
+
+## Visualisation of O-D Flows
+
+### Remove intra-zonal flows
+
+```{r}
+od_plot <- od_data_morn[od_data_morn$ORIGIN_hex!=od_data_morn$DESTIN_hex,]
+
+od_plot2 <- od_data_morn_nov[od_data_morn_nov$ORIGIN_hex!=od_data_morn_nov$DESTIN_hex,]
+
+od_plot3 <- od_data_morn_dec[od_data_morn_dec$ORIGIN_hex!=od_data_morn_dec$DESTIN_hex,]
+
+od_plot4 <- od_data_morn_jan[od_data_morn_jan$ORIGIN_hex!=od_data_morn_jan$DESTIN_hex,]
+
+
+od_plot5 <- od_data_eve[od_data_eve$ORIGIN_hex!=od_data_eve$DESTIN_hex,]
+
+od_plot6 <- od_data_eve_nov[od_data_eve_nov$ORIGIN_hex!=od_data_eve_nov$DESTIN_hex,]
+
+od_plot7 <- od_data_eve_dec[od_data_eve_dec$ORIGIN_hex!=od_data_eve_dec$DESTIN_hex,]
+
+od_plot8 <- od_data_eve_jan[od_data_eve_jan$ORIGIN_hex!=od_data_eve_jan$DESTIN_hex,]
+```
+
+
+### Create desire lines
+
+Use *od2line()* of **stplanr** package to create the desire lines.
+
+```{r}
+flowLine <- od2line(flow = od_plot, 
+                    zones = hex_grid_bounded2,
+                    zone_code = "index")
+
+flowLine2 <- od2line(flow = od_plot2, 
+                    zones = hex_grid_bounded2,
+                    zone_code = "index")
+
+flowLine3 <- od2line(flow = od_plot3, 
+                    zones = hex_grid_bounded2,
+                    zone_code = "index")
+
+flowLine4 <- od2line(flow = od_plot4, 
+                    zones = hex_grid_bounded2,
+                    zone_code = "index")
+
+flowLine5 <- od2line(flow = od_plot5, 
+                    zones = hex_grid_bounded2,
+                    zone_code = "index")
+
+flowLine6 <- od2line(flow = od_plot6, 
+                    zones = hex_grid_bounded2,
+                    zone_code = "index")
+
+flowLine7 <- od2line(flow = od_plot7, 
+                    zones = hex_grid_bounded2,
+                    zone_code = "index")
+
+flowLine8 <- od2line(flow = od_plot8, 
+                    zones = hex_grid_bounded2,
+                    zone_code = "index")
+```
+
+-   The above code chunk also created centroids representing the desire lines' start and end points.
+
+
+### Visualise desire lines
+
+Use *tmap()* to visualise the resulting desire lines. For a clearer visualisation, only desire lines with at least 5000 trips are shown.
+
+::: {.panel-tabset}
+
+#### General Peak Morning
+
+```{r}
+tm_shape(hex_grid_bounded2) +
+  tm_fill(col = "busstop_count",
+          palette = "Blues",
+          style = "cont",
+          title = "Bus Stop Density") +
+  tm_borders(col = "grey") +
+flowLine %>%  
+  filter(TOTAL_TRIPS >= 5000) %>%
+tm_shape() +
+  tm_lines(lwd = "TOTAL_TRIPS",
+           style = "fixed",
+           scale = c(1,2,3,4,5,7,9),
+           n = 6, 
+           alpha = 0.7,
+           title.lwd = "Total Trips") + 
+  tm_layout(main.title = "Desire Lines with at least 5000 trips \nbetween Traffic Analysis Zones for Weekday Morning Peak Period (General)",
+            main.title.position = "center",
+            main.title.size = 0.6,
+            frame = TRUE) +
+  tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4) 
+  
+```
+
+::: callout-note
+###### Note
+Notable centroids where people are travelling to or from during weekday morning peak period include Tampines, Punggol, Jurong East, and even CBD. In terms of distances, there are several long distance routes linking the East to the North.
+:::
+
+
+#### November Peak Morning
+
+```{r}
+tm_shape(hex_grid_bounded2) +
+  tm_fill(col = "busstop_count",
+          palette = "Blues",
+          style = "cont",
+          title = "Bus Stop Density") +
+  tm_borders(col = "grey") +
+flowLine2 %>%  
+  filter(TOTAL_TRIPS >= 5000) %>%
+tm_shape() +
+  tm_lines(lwd = "TOTAL_TRIPS",
+           style = "fixed",
+           scale = c(1,2,3,4,5,7,9),
+           n = 6, 
+           alpha = 0.7,
+           title.lwd = "Total Trips") + 
+  tm_layout(main.title = "Desire Lines with at least 5000 trips \nbetween Traffic Analysis Zones for Weekday Morning Peak Period (November '23)",
+            main.title.position = "center",
+            main.title.size = 0.6,
+            frame = TRUE) +
+  tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4) 
+  
+```
+
+#### December Peak Morning
+
+```{r}
+tm_shape(hex_grid_bounded2) +
+  tm_fill(col = "busstop_count",
+          palette = "Blues",
+          style = "cont",
+          title = "Bus Stop Density") +
+  tm_borders(col = "grey") +
+flowLine3 %>%  
+  filter(TOTAL_TRIPS >= 5000) %>%
+tm_shape() +
+  tm_lines(lwd = "TOTAL_TRIPS",
+           style = "fixed",
+           scale = c(1,2,3,4,5,7,9),
+           n = 6, 
+           alpha = 0.7,
+           title.lwd = "Total Trips") + 
+  tm_layout(main.title = "Desire Lines with at least 5000 trips \nbetween Traffic Analysis Zones for Weekday Morning Peak Period (December '23)",
+            main.title.position = "center",
+            main.title.size = 0.6,
+            frame = TRUE) +
+  tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4) 
+  
+```
+
+#### January Peak Morning
+
+```{r}
+tm_shape(hex_grid_bounded2) +
+  tm_fill(col = "busstop_count",
+          palette = "Blues",
+          style = "cont",
+          title = "Bus Stop Density") +
+  tm_borders(col = "grey") +
+flowLine4 %>%  
+  filter(TOTAL_TRIPS >= 5000) %>%
+tm_shape() +
+  tm_lines(lwd = "TOTAL_TRIPS",
+           style = "fixed",
+           scale = c(1,2,3,4,5,7,9),
+           n = 6, 
+           alpha = 0.7,
+           title.lwd = "Total Trips") + 
+  tm_layout(main.title = "Desire Lines with at least 5000 trips \nbetween Traffic Analysis Zones for Weekday Morning Peak Period (January '24)",
+            main.title.position = "center",
+            main.title.size = 0.6,
+            frame = TRUE) +
+  tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4) 
+  
+```
+
+:::
+
+
+
+::: {.panel-tabset}
+
+#### General Peak Evening
+
+```{r}
+tm_shape(hex_grid_bounded2) +
+  tm_fill(col = "busstop_count",
+          palette = "Blues",
+          style = "cont",
+          title = "Bus Stop Density") +
+  tm_borders(col = "grey") +
+flowLine5 %>%  
+  filter(TOTAL_TRIPS >= 5000) %>%
+tm_shape() +
+  tm_lines(lwd = "TOTAL_TRIPS",
+           style = "fixed",
+           scale = c(1,2,3,4,5,7,9),
+           n = 6, 
+           alpha = 0.7,
+           title.lwd = "Total Trips") + 
+  tm_layout(main.title = "Desire Lines with at least 5000 trips \nbetween Traffic Analysis Zones for Weekday Morning Peak Period (General)",
+            main.title.position = "center",
+            main.title.size = 0.6,
+            frame = TRUE) +
+  tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4) 
+  
+```
+
+::: callout-note
+###### Note
+Notable centroids where people are travelling to or from during weekday morning peak period include Tampines, Punggol, Jurong East, and even CBD. In terms of distances, there are several long distance routes linking the East to the North.
+:::
+
+
+#### November Peak Evening
+
+```{r}
+tm_shape(hex_grid_bounded2) +
+  tm_fill(col = "busstop_count",
+          palette = "Blues",
+          style = "cont",
+          title = "Bus Stop Density") +
+  tm_borders(col = "grey") +
+flowLine6 %>%  
+  filter(TOTAL_TRIPS >= 5000) %>%
+tm_shape() +
+  tm_lines(lwd = "TOTAL_TRIPS",
+           style = "fixed",
+           scale = c(1,2,3,4,5,7,9),
+           n = 6, 
+           alpha = 0.7,
+           title.lwd = "Total Trips") + 
+  tm_layout(main.title = "Desire Lines with at least 5000 trips \nbetween Traffic Analysis Zones for Weekday Morning Peak Period (November '23)",
+            main.title.position = "center",
+            main.title.size = 0.6,
+            frame = TRUE) +
+  tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4) 
+  
+```
+
+#### December Peak Evening
+
+```{r}
+tm_shape(hex_grid_bounded2) +
+  tm_fill(col = "busstop_count",
+          palette = "Blues",
+          style = "cont",
+          title = "Bus Stop Density") +
+  tm_borders(col = "grey") +
+flowLine7 %>%  
+  filter(TOTAL_TRIPS >= 5000) %>%
+tm_shape() +
+  tm_lines(lwd = "TOTAL_TRIPS",
+           style = "fixed",
+           scale = c(1,2,3,4,5,7,9),
+           n = 6, 
+           alpha = 0.7,
+           title.lwd = "Total Trips") + 
+  tm_layout(main.title = "Desire Lines with at least 5000 trips \nbetween Traffic Analysis Zones for Weekday Morning Peak Period (December '23)",
+            main.title.position = "center",
+            main.title.size = 0.6,
+            frame = TRUE) +
+  tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4) 
+  
+```
+
+#### January Peak Evening
+
+```{r}
+tm_shape(hex_grid_bounded2) +
+  tm_fill(col = "busstop_count",
+          palette = "Blues",
+          style = "cont",
+          title = "Bus Stop Density") +
+  tm_borders(col = "grey") +
+flowLine8 %>%  
+  filter(TOTAL_TRIPS >= 5000) %>%
+tm_shape() +
+  tm_lines(lwd = "TOTAL_TRIPS",
+           style = "fixed",
+           scale = c(1,2,3,4,5,7,9),
+           n = 6, 
+           alpha = 0.7,
+           title.lwd = "Total Trips") + 
+  tm_layout(main.title = "Desire Lines with at least 5000 trips \nbetween Traffic Analysis Zones for Weekday Morning Peak Period (January '24)",
+            main.title.position = "center",
+            main.title.size = 0.6,
+            frame = TRUE) +
+  tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4) 
+  
+```
+
+:::
+
+
+
+We can also zoom into individual planning areas of Singapore and observe commuting trends. A left join can be performed for `hex_grid_bounded3` and `mpsz` using *st_join()* and `left=TRUE`. ** 
+
+```{r}
+hex_grid_mpsz <- st_join(hex_grid_bounded2, mpsz3414, left = TRUE)
+
+tmap_mode("view")
+```
+
+
+A filter can also then be applied on the PLN_AREA_N column to a specific planning area. Let's look at Tampines.
+
+```{r}
+hex_grid_mpsz %>%
+  filter(PLN_AREA_N == "TAMPINES") %>% 
+tm_shape() +
+  tm_fill(col = "busstop_count",
+          palette = "Blues",
+          style = "cont",
+          title = "Bus Stop Density",
+          popup.vars = c("SUBZONE_N")) + 
+  tm_view(set.zoom.limits = c(11,14)) + 
+  tm_borders(col = "grey") +
+flowLine %>%  
+  filter(TOTAL_TRIPS >= 5000) %>%
+tm_shape() +
+  tm_lines(lwd = "TOTAL_TRIPS",
+           style = "fixed",
+           scale = c(1,2,3,4,5,7,9),
+           n = 6, 
+           alpha = 0.7,
+           popup.vars = c("TOTAL_TRIPS"))
+```
+
+```{r}
+tmap_mode("plot")
+```
+
+## Computing Distance Matrix
+
+```{r}
+dist <- spDists(mpsz_sp, 
+                longlat = FALSE)
+```
+
+```{r}
+head(dist, n=c(10,10))
+```
+
+
+### Label column and row headers of distance matrix
+
+Create a list sorted by planning subzone. 
+
+```{r}
+sz_names <- mpsz_sf$SUBZONE_N
+```
+
+
+Attach the subzones to row and column for distance matrix matching.
+
+```{r}
+colnames(dist) <- paste0(sz_names)
+rownames(dist) <- paste0(sz_names)
+```
+
+
+### Pivoting distance value by SUBZONE_N
+
+Pivot the distance matrix into a long table by using the row and column subzone names.
+
+```{r}
+distPair <- melt(dist) %>%
+  rename(dist = value)
+head(distPair, 10)
+```
+
+- Notice that from the first row, the within zone distance is 0.
+
+
+### Updating intra-zonal distances
+
+Append a constance value to replace the intra-zonaal distance of 0.
+
+```{r}
+distPair %>%
+  filter(dist > 0) %>%
+  summary()
+```
+
+Add a constant distance value of 50m into intra-zones distance.
+
+```{r}
+distPair$dist <- ifelse(distPair$dist == 0,
+                        50, distPair$dist)
+```
+
+
+Check the resulting dataframe.
+
+```{r}
+distPair %>%
+  summary()
+```
+
+Save the dataframe for future use.
+
+```{r}
+#| eval: false
+write_rds(distPair, "data/rds/distPair.rds") 
+```
+
+```{r}
+distPair <- read_rds("data/rds/distPair.rds")
+```
+
+
+
+# Population Density
+
+## Importing Aspatial HDB data
+
+Use *read_csv()* from the **readr** package to import the prepared HDB csv data.
+
+```{r}
+hdb <- read_csv("data/aspatial/hdb.csv")
+
+glimpse(hdb)
+```
+
+
+For the purpose of computing a proxy for population density, the residential units will be extracted using *filter()* from the **dplyr** package.
+
+```{r}
+hdb_residential <- hdb %>%
+  filter(residential == "Y")
+
+head(hdb_residential, 10)
+```
+
+There are also some outliers like hotels that are classified as a residential unit. We can remove rows containing 'hotel' using *grepl()*.
+
+```{r}
+hotels <- hdb_residential %>%
+  filter(grepl("HOTEL", building, ignore.case = TRUE))
+
+kable(hotels)
+```
+
+
+The HDB Blk 1 Beach Road shares a similar address as Raffles Hotel's 1 Beach Road, but they have different postal codes.
+
+To verify other similar addresses, filter for addresses containing "BEACH RD".
+
+```{r}
+beach_rd <- hdb_residential %>%
+  filter(grepl("BEACH RD", street, ignore.case = TRUE))
+
+kable(beach_rd)
+```
+
+
+2, 5 and 15 Beach Road do not have the correct postal codes following the 1900XX convention. Additionally, these addresses do not have the correct coordinates too. 
+
+With reference to URA's official asset map of Singapore, OneMap, the data will be manually modified using *mutate()* and *ifelse()*.
+
+
+```{r}
+hdb_residential2 <- hdb_residential %>%
+  mutate(postal = ifelse(blk_no == 1 & street == "BEACH RD", 190001, postal)) %>%
+  mutate(lat = ifelse(blk_no == 1 & street == "BEACH RD", 1.3036714, lat)) %>%
+  mutate(lng = ifelse(blk_no == 1 & street == "BEACH RD", 103.8644787, lng)) %>%
+  mutate(postal = ifelse(blk_no == 2 & street == "BEACH RD", 190002, postal)) %>%
+  mutate(lat = ifelse(blk_no == 2 & street == "BEACH RD", 1.3040331, lat)) %>%
+  mutate(lng = ifelse(blk_no == 2 & street == "BEACH RD", 103.8649285, lng)) %>%
+  mutate(postal = ifelse(blk_no == 3 & street == "BEACH RD", 190003, postal)) %>%
+  mutate(lat = ifelse(blk_no == 3 & street == "BEACH RD", 1.3041872, lat)) %>%
+  mutate(lng = ifelse(blk_no == 3 & street == "BEACH RD", 103.8651934, lng)) %>%
+  mutate(postal = ifelse(blk_no == 5 & street == "BEACH RD", 190005, postal)) %>%
+  mutate(lat = ifelse(blk_no == 5 & street == "BEACH RD", 1.3043463, lat)) %>%
+  mutate(lng = ifelse(blk_no == 5 & street == "BEACH RD", 103.8648158, lng)) %>%
+  mutate(postal = ifelse(blk_no == 15 & street == "BEACH RD", 190015, postal)) %>%
+  mutate(lat = ifelse(blk_no == 15 & street == "BEACH RD", 1.3034254, lat)) %>%
+  mutate(lng = ifelse(blk_no == 15 & street == "BEACH RD", 103.8631535, lng))
+```
+
+
+Check for any duplicates.
+
+```{r}
+duplicate <- hdb_residential2 %>%
+  group_by_all() %>%
+  filter(n()>1) %>%
+  ungroup()
+
+DT::datatable(duplicate)
+```
+
+
+## Converting Aspatial data to Geospatial data
+
+Longitude and latitude values are in decimal degrees and thus the data is in wgs84 geographic coordinate system.
+
+To convert `hdb_residential2` into sf, we use *st_as_sf()* and set the `crs` argument to 4326 first. The transformation to Singapore's coordinate reference system 3414 will be done with *st_transform()*.
+
+We only need the postal code, total dwelling units and geometry attributes so we will use the *select()* function to extract these columns.
+
+```{r}
+hdb_residential_sf <- st_as_sf(hdb_residential2, 
+                   coords = c("lng", "lat"),
+                   crs=4326) %>%
+  st_transform(crs = 3414) %>%
+  select(postal, total_dwelling_units, geometry)
+
+str(hdb_residential_sf)
+```
+
+
+Let's build the HDB residential population density map.
+
+```{r}
+tm_shape(hex_grid_bounded2) +
+  tm_fill(col = "busstop_count",
+          palette = "Blues",
+          style = "cont",
+          title = "Bus Stop Density") +
+  tm_borders(col = "grey") +
+tm_shape(hdb_residential_sf) +
+  tm_dots() + 
+  tm_layout(main.title = "Location of HDB Residential Units",
+            main.title.position = "center",
+            main.title.size = 1,
+            frame = TRUE)  +
+  tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4)
+```
+
+
+### Performming in-polygon count
+
+```{r}
+housing_count <- st_join(hex_grid_bounded2, hdb_residential_sf, 
+                     join = st_intersects, left = TRUE) %>%
+  st_drop_geometry() %>%
+  group_by(index) %>%
+  summarise(housing_count = sum(total_dwelling_units)) %>%
+  ungroup() %>%
+  mutate(housing_count = ifelse(is.na(housing_count), 0, housing_count))
+```
+
+```{r}
+hex_grid_bounded3 <- left_join(hex_grid_bounded2, housing_count,
+                               by = c("index" = "index"))
+
+summary(hex_grid_bounded3$housing_count)
+```
+
+```{r}
+tm_shape(hex_grid_bounded3) +
+  tm_fill(col = "housing_count",
+          palette = "Blues",
+          style = "cont", 
+          title = "Housing Density") + 
+  tm_borders(col = "grey")  +
+  tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4)
+```
+
+
+# Employment Opportunities Density
+
+## Import Geospatial data: Business
+
+```{r}
+biz <- st_read("data/geospatial/Business.shp") %>% st_transform(crs=3414)
+```
+
+
+```{r}
+tm_shape(hex_grid_bounded3) +
+  tm_fill(col = "busstop_count",
+          palette = "Blues",
+          style = "cont",
+          title = "Bus Stop Density") +
+  tm_borders(col = "grey") +
+  
+tm_shape(biz) +
+  tm_dots() + 
+  tm_layout(main.title = "Location of Businesses",
+            main.title.position = "center",
+            main.title.size = 1,
+            frame = TRUE)  +
+  tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4)
+```
+
+Businesses are concentrated in the central and west regions.
+
+
+## Perform point-in-polygon count
+
+```{r}
+hex_grid_bounded3$biz_count <- lengths(st_intersects(hex_grid_bounded3, biz))
+
+summary(hex_grid_bounded3$biz_count)
+```
+
+
+```{r}
+tm_shape(hex_grid_bounded3) +
+  tm_fill(col = "biz_count",
+          palette = "Blues",
+          style = "cont", 
+          title = "Business Density") + 
+  tm_borders(col = "grey")  +
+  tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4)
+```
+
+
+# Schools Density
+
+```{r}
+schools <- read_csv("data/aspatial/schoolsclean.csv")
+```
+
+```{r}
+schools <- schools %>%
+  separate(latlong, into = c("latitude", "longitude"), sep = ",", convert = TRUE)
+
+schools_sf <- st_as_sf(schools, coords = c("longitude","latitude"), crs = 4326) %>% 
+  st_transform(crs=3414)
+```
+
+
+```{r}
+tm_shape(hex_grid_bounded3) + 
+  tm_fill(col = "busstop_count",
+          palette = "Blues",
+          style = "cont",
+          title = "Bus Stop Density") +
+  tm_borders(col = "grey") +
+tm_shape(schools_sf) + 
+  tm_dots() + 
+  tm_layout(main.title = "Location of Schools",
+            main.title.position = "center",
+            main.title.size = 1,
+            frame = TRUE)  +
+  tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4)
+```
+
+
+
+## Perform point-in-polygon count
+
+```{r}
+hex_grid_bounded3$school_count <- lengths(st_intersects(hex_grid_bounded3, schools_sf))
+
+summary(hex_grid_bounded3$school_count)
+```
+
+
+```{r}
+tm_shape(hex_grid_bounded3) +
+  tm_fill(col = "school_count",
+          palette = "Blues",
+          style = "cont", 
+          title = "School Density") + 
+  tm_borders(col = "grey")  +
+  tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4)
+```
+
+
+
+# Financial Services Density
+
+## Importing Geospatial data: Fenancial Services
+
+```{r}
+FinServ <- st_read(dsn = "data/geospatial", layer = "FinServ") %>%
+  st_transform(crs = 3414)
+```
+
+
+```{r}
+tm_shape(hex_grid_bounded3) + 
+  tm_fill(col = "busstop_count",
+          palette = "Blues",
+          style = "cont",
+          title = "Bus Stop Density") +
+  tm_borders(col = "grey") +
+tm_shape(FinServ) + 
+  tm_dots() + 
+  tm_layout(main.title = "Location of Financial Services",
+            main.title.position = "center",
+            main.title.size = 1,
+            frame = TRUE)  +
+  tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4)
+```
+
+
+## Perform point-in-polygon count
+
+```{r}
+hex_grid_bounded3$fin_count <- lengths(st_intersects(hex_grid_bounded3, FinServ))
+
+summary(hex_grid_bounded3$fin_count)
+```
+
+
+```{r}
+tm_shape(hex_grid_bounded3) +
+  tm_fill(col = "fin_count",
+          palette = "Blues",
+          style = "cont", 
+          title = "Financial Services Density") + 
+  tm_borders(col = "grey")  +
+  tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4)
+```
+
+
+# Public Healthcare Density
+
+```{r}
+public_hc <- read_csv("data/aspatial/HospitalsPolyclinics v_2024.csv")
+```
+
+
+```{r}
+public_hc.sf <- st_as_sf(public_hc[1:42,], wkt = "geometry", crs = 4326) %>% 
+  st_transform(crs=3414)
+
+public_hc2.sf <- st_as_sf(public_hc[43:1235,], wkt = "geometry", crs = 3414) # CHAS clinics encoded in EPSG 3414 
+
+public_hc.sf <- rbind(public_hc.sf, public_hc2.sf)
+
+write_rds(public_hc.sf, "data/geospatial/public_hc.sf")
+```
+
+
+## Perform point-in-polygon count
+
+```{r}
+hex_grid_bounded3$hc_count <- lengths(st_intersects(hex_grid_bounded3, public_hc.sf))
+
+summary(hex_grid_bounded3$fin_count)
+```
+
+
+```{r}
+tm_shape(hex_grid_bounded3) +
+  tm_fill(col = "hc_count",
+          palette = "Blues",
+          style = "cont", 
+          title = "Public Healthcare Services Density") + 
+  tm_borders(col = "grey")  +
+  tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4)
+```
+
+
+# Prepare origin variables
+
+```{r}
+propulsive <- hex_grid_bounded3 %>%
+  st_drop_geometry() %>%
+  select(index, biz_count, school_count, fin_count, hc_count, busstop_count)
+  
+
+origin <- names(propulsive) %>%
+  modify_at(-1, ~ paste0("o_", .))  # Add prefix to all except index
+
+# Assign modified names back to the data frame
+names(propulsive) <- origin
+```
+
+# Prepare destination variables
+
+The attractiveness variables will be compiled into a tibble data frame called attractiveness to be used for the Spatial Interaction Model later. A prefix of “d_” will be added to the column names to identify them as origin variables.
+
+```{r}
+attractiveness <- hex_grid_bounded3 %>%
+  st_drop_geometry() %>%
+  select(index, biz_count, school_count, fin_count, hc_count, busstop_count)
+
+destin <- names(attractiveness) %>%
+  modify_at(-1, ~ paste0("d_", .)) # index no prefix added
+```
+
+
+# Compute Distance Matrix
+
+In spatial interaction, a distance matrix is a table that shows the distance between pairs of locations. A location’s distance from itself, which is shown in the main diagonal of a distance matrix table, is 0.
+
+There are at least two ways to compute the required distance matrix – one based on sf and the other based on sp. However, past experience has shown that computing the distance matrix using sf function takes relatively longer than sp method especially when the data set is large. In view of this, sp method will be used in the code chunks below.
+
+
+## Converting sf data frame to SpatialPolygonsDataFrame
+
+```{r}
+hex_grid_sp <- as(hex_grid_bounded2, "Spatial")
+hex_grid_sp
+```
+
+
+The code chunk below is used to measure the distance between the central points of each pair of spatial shapes using the function *spDists()* of sp package. This method is widely used due to its computational simplicity, providing a reasonably accurate indication of spatial connections between the shapes. As mentioned above, calculating distances between centroids demands less computational resources than calculations between all points along polygon edges, especially for intricate polygons with many vertices. Centroids also act as single point representations that provide an overview of the shape. While edges offer intricate shape details, the generalized perspective of centroids could be valuable when precise edge shapes are less critical.
+
+
+```{r}
+dist <- spDists(hex_grid_sp, longlat = FALSE)
+
+# Examine the resultant matrix
+head(dist, n=c(10, 10))
+```
+
+As seen in the output above, the result is a matrix object class and the column and row headers are not labeled with the hexagon grid index representing the TAZ.
+
+
+## Label column and row headers of distance matrix
+
+Create a list sorted according to the distance matrix by Traffic Analytical Zones.
+
+```{r}
+hex_names <- hex_grid_bounded2$index
+```
+
+
+Attach the hexagon grid index to the rows and columns for distance matrix matching.
+
+```{r}
+colnames(dist) <- paste0(hex_names)
+rownames(dist) <- paste0(hex_names)
+```
+
+
+## Pivot distance value by hexagon grid index
+
+The distance maatrix is pivoted into a long table by using the *melt()* function of **reshape2**.
+
+```{r}
+distPair <- reshape2::melt(dist) %>%
+  rename(dist = value)
+
+head(distPair, 10)
+```
+
+
+## Update inta-zonal distances
+
+```{r}
+distPair %>%
+  filter(dist > 0) %>%
+  summary()
+```
+
+
+Given that the minimum distance is 750m, any values smaller than 750m can be used to represent intra-zonal distance. As such, in the code chunk below, a value of 375m (half of 750m) will be appended to intra-zonal distance to replace the current value of 0.
+
+
+```{r}
+distPair$dist <- ifelse(distPair$dist == 0,
+                        375, distPair$dist)
+
+# Examine data frame
+summary(distPair)
+```
+
+
+Rename the origin and destination fields and convert into factor data type.
+
+```{r}
+distPair <- distPair %>%
+  rename(orig = Var1,
+         dest = Var2) %>%
+  mutate(across(c(orig, dest), as.factor))
+```
+
+
+# Separating intra-flow from passenger volume
+
+1   a new column FlowNoIntra is created to differentiate intra-zone trips from inter-zone trips based on the comparison of origin and destination zones.
+
+```{r}
+#| echo: false
+od_data_morn$FlowNoIntra <- ifelse(
+  od_data_morn$ORIGIN_hex == od_data_morn$DESTIN_hex, 0, od_data_morn$TOTAL_TRIPS)
+od_data_morn$offset <- ifelse(
+  od_data_morn$ORIGIN_hex == od_data_morn$DESTIN_hex, 0.000001, 1)
+
+od_data_morn_nov$FlowNoIntra <- ifelse(
+  od_data_morn_nov$ORIGIN_hex == od_data_morn_nov$DESTIN_hex, 0, od_data_morn_nov$TOTAL_TRIPS)
+od_data_morn_nov$offset <- ifelse(
+  od_data_morn_nov$ORIGIN_hex == od_data_morn_nov$DESTIN_hex, 0.000001, 1)
+
+od_data_morn_dec$FlowNoIntra <- ifelse(
+  od_data_morn_dec$ORIGIN_hex == od_data_morn_dec$DESTIN_hex, 0, od_data_morn_dec$TOTAL_TRIPS)
+od_data_morn_dec$offset <- ifelse(
+  od_data_morn_dec$ORIGIN_hex == od_data_morn_dec$DESTIN_hex, 0.000001, 1)
+
+od_data_morn_jan$FlowNoIntra <- ifelse(
+  od_data_morn_jan$ORIGIN_hex == od_data_morn_jan$DESTIN_hex, 0, od_data_morn_jan$TOTAL_TRIPS)
+od_data_morn_jan$offset <- ifelse(
+  od_data_morn_jan$ORIGIN_hex == od_data_morn_jan$DESTIN_hex, 0.000001, 1)
+
+od_data_eve$FlowNoIntra <- ifelse(
+  od_data_eve$ORIGIN_hex == od_data_eve$DESTIN_hex, 0, od_data_eve$TOTAL_TRIPS)
+od_data_eve$offset <- ifelse(
+  od_data_eve$ORIGIN_hex == od_data_eve$DESTIN_hex, 0.000001, 1)
+
+od_data_eve_nov$FlowNoIntra <- ifelse(
+  od_data_eve_nov$ORIGIN_hex == od_data_eve_nov$DESTIN_hex, 0, od_data_eve_nov$TOTAL_TRIPS)
+od_data_eve_nov$offset <- ifelse(
+  od_data_eve_nov$ORIGIN_hex == od_data_eve_nov$DESTIN_hex, 0.000001, 1)
+
+od_data_eve_dec$FlowNoIntra <- ifelse(
+  od_data_eve_dec$ORIGIN_hex == od_data_eve_dec$DESTIN_hex, 0, od_data_eve_dec$TOTAL_TRIPS)
+od_data_eve_dec$offset <- ifelse(
+  od_data_eve_dec$ORIGIN_hex == od_data_eve_dec$DESTIN_hex, 0.000001, 1)
+
+od_data_eve_jan$FlowNoIntra <- ifelse(
+  od_data_eve_jan$ORIGIN_hex == od_data_eve_jan$DESTIN_hex, 0, od_data_eve_jan$TOTAL_TRIPS)
+od_data_eve_jan$offset <- ifelse(
+  od_data_eve_jan$ORIGIN_hex == od_data_eve_jan$DESTIN_hex, 0.000001, 1)
+```
+
+
+
+```{r}
+#| echo: false
+flow_data <- od_data_morn %>%
+  left_join (distPair,
+             by = c("ORIGIN_hex" = "orig",
+                    "DESTIN_hex" = "dest"))
+
+flow_data2 <- od_data_morn_nov %>%
+  left_join (distPair,
+             by = c("ORIGIN_hex" = "orig",
+                    "DESTIN_hex" = "dest"))
+
+flow_data3 <- od_data_morn_dec %>%
+  left_join (distPair,
+             by = c("ORIGIN_hex" = "orig",
+                    "DESTIN_hex" = "dest"))
+
+flow_data4 <- od_data_morn_jan %>%
+  left_join (distPair,
+             by = c("ORIGIN_hex" = "orig",
+                    "DESTIN_hex" = "dest"))
+
+flow_data5 <- od_data_eve %>%
+  left_join (distPair,
+             by = c("ORIGIN_hex" = "orig",
+                    "DESTIN_hex" = "dest"))
+
+flow_data6 <- od_data_eve_nov %>%
+  left_join (distPair,
+             by = c("ORIGIN_hex" = "orig",
+                    "DESTIN_hex" = "dest"))
+
+flow_data7 <- od_data_eve_dec %>%
+  left_join (distPair,
+             by = c("ORIGIN_hex" = "orig",
+                    "DESTIN_hex" = "dest"))
+
+flow_data8 <- od_data_eve_jan %>%
+  left_join (distPair,
+             by = c("ORIGIN_hex" = "orig",
+                    "DESTIN_hex" = "dest"))
+```
+
+
+## Preparing origin attributes
+
+```{r}
+flow_data <- flow_data %>%
+  left_join (propulsive,
+             by = c("ORIGIN_hex" = "index"))
+
+flow_data2 <- flow_data2 %>%
+  left_join (propulsive,
+             by = c("ORIGIN_hex" = "index"))
+
+flow_data3 <- flow_data3 %>%
+  left_join (propulsive,
+             by = c("ORIGIN_hex" = "index"))
+
+flow_data4 <- flow_data4 %>%
+  left_join (propulsive,
+             by = c("ORIGIN_hex" = "index"))
+
+flow_data5 <- flow_data5 %>%
+  left_join (propulsive,
+             by = c("ORIGIN_hex" = "index"))
+
+flow_data6 <- flow_data6 %>%
+  left_join (propulsive,
+             by = c("ORIGIN_hex" = "index"))
+
+flow_data7 <- flow_data7 %>%
+  left_join (propulsive,
+             by = c("ORIGIN_hex" = "index"))
+
+flow_data8 <- flow_data8 %>%
+  left_join (propulsive,
+             by = c("ORIGIN_hex" = "index"))
+```
+
+
+## Preparing destination attributes
+
+```{r}
+flow_data <- flow_data %>%
+  left_join (attractiveness,
+             by = c("DESTIN_hex" = "index"))
+
+flow_data2 <- flow_data2 %>%
+  left_join (attractiveness,
+             by = c("DESTIN_hex" = "index"))
+
+flow_data3 <- flow_data3 %>%
+  left_join (attractiveness,
+             by = c("DESTIN_hex" = "index"))
+
+flow_data4 <- flow_data4 %>%
+  left_join (attractiveness,
+             by = c("DESTIN_hex" = "index"))
+
+flow_data5 <- flow_data5 %>%
+  left_join (attractiveness,
+             by = c("DESTIN_hex" = "index"))
+
+flow_data6 <- flow_data6 %>%
+  left_join (attractiveness,
+             by = c("DESTIN_hex" = "index"))
+
+flow_data7 <- flow_data7 %>%
+  left_join (attractiveness,
+             by = c("DESTIN_hex" = "index"))
+
+flow_data8 <- flow_data8 %>%
+  left_join (attractiveness,
+             by = c("DESTIN_hex" = "index"))
+```
+
+
+# Visualising dependent variable
+
+::: {.panel-tabset}
+
+## Morning Peak General
+```{r}
+ggplot(data = flow_data,
+       aes(x = TOTAL_TRIPS)) +
+  geom_histogram() + 
+  labs(title = "Distribution of Trips across TAZ",
+       x = "Total Trips",
+       y = "Counts") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+## Morning Peak November
+```{r}
+ggplot(data = flow_data2,
+       aes(x = TOTAL_TRIPS)) +
+  geom_histogram() + 
+  labs(title = "Distribution of Trips across TAZ",
+       x = "Total Trips",
+       y = "Counts") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+## Morning Peak December
+```{r}
+ggplot(data = flow_data3,
+       aes(x = TOTAL_TRIPS)) +
+  geom_histogram() + 
+  labs(title = "Distribution of Trips across TAZ",
+       x = "Total Trips",
+       y = "Counts") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+## Morning Peak January
+```{r}
+ggplot(data = flow_data4,
+       aes(x = TOTAL_TRIPS)) +
+  geom_histogram() + 
+  labs(title = "Distribution of Trips across TAZ",
+       x = "Total Trips",
+       y = "Counts") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+## Evening Peak General
+```{r}
+ggplot(data = flow_data5,
+       aes(x = TOTAL_TRIPS)) +
+  geom_histogram() + 
+  labs(title = "Distribution of Trips across TAZ",
+       x = "Total Trips",
+       y = "Counts") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+## Evening Peak November
+```{r}
+ggplot(data = flow_data6,
+       aes(x = TOTAL_TRIPS)) +
+  geom_histogram() + 
+  labs(title = "Distribution of Trips across TAZ",
+       x = "Total Trips",
+       y = "Counts") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+## Evening Peak December
+```{r}
+ggplot(data = flow_data7,
+       aes(x = TOTAL_TRIPS)) +
+  geom_histogram() + 
+  labs(title = "Distribution of Trips across TAZ",
+       x = "Total Trips",
+       y = "Counts") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+## Evening Peak January
+```{r}
+ggplot(data = flow_data8,
+       aes(x = TOTAL_TRIPS)) +
+  geom_histogram() + 
+  labs(title = "Distribution of Trips across TAZ",
+       x = "Total Trips",
+       y = "Counts") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+:::
+
+All the distributions are left-skewed and do not resemble a normal distribution.
+
+
+## Visualising with Linear Regression Line
+
+Visualise the relationship between the dependent variable and key independent variable i.e. `dist` of SIM. Setting the `method` as `lm` within `geom_smooth()` fits a linear regression line to the data.
+
+::: {.panel-tabset}
+### Morning Peak General
+
+```{r}
+ggplot(data = flow_data,
+       aes(x = dist,
+           y = TOTAL_TRIPS)) +
+  geom_point() +
+  geom_smooth(method = lm) + 
+  labs(title = "Relationship between Distance and Total Trips", 
+       x = "Distance", 
+       y = "Total Trips") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+### Morning Peak November
+
+```{r}
+ggplot(data = flow_data2,
+       aes(x = dist,
+           y = TOTAL_TRIPS)) +
+  geom_point() +
+  geom_smooth(method = lm) + 
+  labs(title = "Relationship between Distance and Total Trips", 
+       x = "Distance", 
+       y = "Total Trips") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+
+### Morning Peak December
+
+```{r}
+ggplot(data = flow_data3,
+       aes(x = dist,
+           y = TOTAL_TRIPS)) +
+  geom_point() +
+  geom_smooth(method = lm) + 
+  labs(title = "Relationship between Distance and Total Trips", 
+       x = "Distance", 
+       y = "Total Trips") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+### Morning Peak January
+
+```{r}
+ggplot(data = flow_data4,
+       aes(x = dist,
+           y = TOTAL_TRIPS)) +
+  geom_point() +
+  geom_smooth(method = lm) + 
+  labs(title = "Relationship between Distance and Total Trips", 
+       x = "Distance", 
+       y = "Total Trips") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+### Evening Peak General
+
+```{r}
+ggplot(data = flow_data5,
+       aes(x = dist,
+           y = TOTAL_TRIPS)) +
+  geom_point() +
+  geom_smooth(method = lm) + 
+  labs(title = "Relationship between Distance and Total Trips", 
+       x = "Distance", 
+       y = "Total Trips") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+### Evening Peak November
+
+```{r}
+ggplot(data = flow_data6,
+       aes(x = dist,
+           y = TOTAL_TRIPS)) +
+  geom_point() +
+  geom_smooth(method = lm) + 
+  labs(title = "Relationship between Distance and Total Trips", 
+       x = "Distance", 
+       y = "Total Trips") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+### Evening Peak December
+
+```{r}
+ggplot(data = flow_data7,
+       aes(x = dist,
+           y = TOTAL_TRIPS)) +
+  geom_point() +
+  geom_smooth(method = lm) + 
+  labs(title = "Relationship between Distance and Total Trips", 
+       x = "Distance", 
+       y = "Total Trips") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+### Evening Peak January
+
+```{r}
+ggplot(data = flow_data8,
+       aes(x = dist,
+           y = TOTAL_TRIPS)) +
+  geom_point() +
+  geom_smooth(method = lm) + 
+  labs(title = "Relationship between Distance and Total Trips", 
+       x = "Distance", 
+       y = "Total Trips") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+:::
+
+
+## Visualising Scatterplot after Log Transformation
+
+::: {.panel-tabset}
+### Morning Peak General
+
+```{r}
+ggplot(data = flow_data,
+       aes(x = log(dist),
+           y = log(TOTAL_TRIPS))) +
+  geom_point() +
+  geom_smooth(method = lm) + 
+  labs(title = "Relationship between Log Distance and Log Total Trips", 
+       x = "Log Distance", 
+       y = "Log Total Trips") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+### Morning Peak November
+
+```{r}
+ggplot(data = flow_data2,
+       aes(x = log(dist),
+           y = log(TOTAL_TRIPS))) +
+  geom_point() +
+  geom_smooth(method = lm) + 
+  labs(title = "Relationship between Log Distance and Log Total Trips", 
+       x = "Log Distance", 
+       y = "Log Total Trips") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+
+### Morning Peak December
+
+```{r}
+ggplot(data = flow_data3,
+       aes(x = log(dist),
+           y = log(TOTAL_TRIPS))) +
+  geom_point() +
+  geom_smooth(method = lm) + 
+  labs(title = "Relationship between Log Distance and Log Total Trips", 
+       x = "Log Distance", 
+       y = "Log Total Trips") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+### Morning Peak January
+
+```{r}
+ggplot(data = flow_data4,
+       aes(x = log(dist),
+           y = log(TOTAL_TRIPS))) +
+  geom_point() +
+  geom_smooth(method = lm) + 
+  labs(title = "Relationship between Log Distance and Log Total Trips", 
+       x = "Log Distance", 
+       y = "Log Total Trips") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+### Evening Peak General
+
+```{r}
+ggplot(data = flow_data5,
+       aes(x = log(dist),
+           y = log(TOTAL_TRIPS))) +
+  geom_point() +
+  geom_smooth(method = lm) + 
+  labs(title = "Relationship between Log Distance and Log Total Trips", 
+       x = "Log Distance", 
+       y = "Log Total Trips") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+### Evening Peak November
+
+```{r}
+ggplot(data = flow_data6,
+       aes(x = log(dist),
+           y = log(TOTAL_TRIPS))) +
+  geom_point() +
+  geom_smooth(method = lm) + 
+  labs(title = "Relationship between Log Distance and Log Total Trips", 
+       x = "Log Distance", 
+       y = "Log Total Trips") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+### Evening Peak December
+
+```{r}
+ggplot(data = flow_data7,
+       aes(x = log(dist),
+           y = log(TOTAL_TRIPS))) +
+  geom_point() +
+  geom_smooth(method = lm) + 
+  labs(title = "Relationship between Log Distance and Log Total Trips", 
+       x = "Log Distance", 
+       y = "Log Total Trips") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+### Evening Peak January
+
+```{r}
+ggplot(data = flow_data8,
+       aes(x = log(dist),
+           y = log(TOTAL_TRIPS))) +
+  geom_point() +
+  geom_smooth(method = lm) + 
+  labs(title = "Relationship between Log Distance and Log Total Trips", 
+       x = "Log Distance", 
+       y = "Log Total Trips") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+:::
+
+-   The relationships are still non-linear but they are less skewed than before
+
+# Poisson Regression
+
+Now we need to transform the zero values so that log transformation can be done correctly for the explanatory variables according to Poisson Regression.
+
+## Changing zero values
+
+```{r}
+flow_data <- flow_data %>%
+  mutate_at(vars(ends_with("_count")), ~ ifelse(. == 0, 0.99, .))
+
+flow_data2<- flow_data2 %>%
+  mutate_at(vars(ends_with("_count")), ~ ifelse(. == 0, 0.99, .))
+
+flow_data3 <- flow_data3 %>%
+  mutate_at(vars(ends_with("_count")), ~ ifelse(. == 0, 0.99, .))
+
+flow_data4 <- flow_data4 %>%
+  mutate_at(vars(ends_with("_count")), ~ ifelse(. == 0, 0.99, .))
+
+flow_data5 <- flow_data5 %>%
+  mutate_at(vars(ends_with("_count")), ~ ifelse(. == 0, 0.99, .))
+
+flow_data6 <- flow_data6 %>%
+  mutate_at(vars(ends_with("_count")), ~ ifelse(. == 0, 0.99, .))
+
+flow_data7 <- flow_data7 %>%
+  mutate_at(vars(ends_with("_count")), ~ ifelse(. == 0, 0.99, .))
+
+flow_data8 <- flow_data8 %>%
+  mutate_at(vars(ends_with("_count")), ~ ifelse(. == 0, 0.99, .))
+```
+
+
+```{r}
+#| echo: false
+#| eval: false
+summary(flow_data2)
+```
+
+
+
