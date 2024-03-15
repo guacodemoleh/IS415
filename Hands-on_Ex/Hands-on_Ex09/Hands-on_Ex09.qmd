@@ -1,460 +1,269 @@
 ---
-title: "Hands-on Exercise 9" 
+title: "Hands-on Exercise 9: Geographically Weighted Predictive Models" 
 author: "Victoria Grace ANN"
 execute: 
   warning: false
-date: "10 March, 2024"
+  eval: true
+  echo: true
+  freeze: true
+date: "13 March, 2024"
 date-modified: "last-modified"
 ---
+
+# Overview
+
+Predictive modelling utilises statistical or machine learning techniques to predict outcomes. A seet of known outcomes and predictors are used to calibrate predice models.
+
+When the occurrences of events are limited in distribution, geospatial predictive modelling can be used if the data has geospatial characteristics. These occurrences of events are not uniform nor random in distribution over space. In geospatial context, geospatial factors like topography, hydrology, infrastructure, slope aspect, etc. can have influence on where these events occur. Geospatial predictive modelling attempts to describe the constraints and influence where the locations occurs.
+
+
+## Learning Outcome
+
+This exercise aims to build predictive models using geographical random forest. Along the way, the intended acquired skills are:
+
+-   Preparing training and test data sets using sampling methods
+
+-   Calibrating predictive models using both geospatial statistical learning and machine learning methods
+
+-   Comparing and selecting the best model for predicting the future outcome and,
+
+-   Predicting future outcomes using the best calibrated model
+
+
+# Data
+
+-   [Aspatial] HDB Resale data: list of HDB resale transaction prices from Jan 2017 in a csv (Source: data.gov.sg)
+
+
+-   [Geospatial] MP14_SUBZONE_WEB_PL: a polygon feature data providing information of URA 2014 Master Plan Planning Subzone boundary data in shapefile format (Source: data.gov.sg)
+
+
+-   Locational factors with geographical coordinates 
+
+  -   Eldercare data in shapefile format (Source: data.gov.sg)
+  
+  -   Hawker Centre data in geojson format (Source: data.gov.sg)
+  
+  -   Supermarket data in geojson format (Source: data.gov.sg)
+  
+  -   CHAS clinics in geojson format (Source: data.gov.sg)
+  
+  -   Childcare services in geojson format (Source: data.gov.sg)
+  
+  -   Kindergartens in geojson format (Source: data.gov.sg)
+  
+  -   MRT data in shapefile format (Source: datamall.lta.gov.sg)
+  
+  - Bus stops data in shapefile format (Source: datamall.lta.gov.sg)
+  
+
+-   Locational factors without geographic coordinates
+
+  -   Primary school data extracted from General information of schools (Source: data.gov.sg)
+  
+  -   CBD coordinates data (Source: Google)
+  
+  -   Shopping malls data (Source: Wikipedia)
+  
+  -   Good primary schools (Source: Local Salary Forum)
+  
+  
 
 # Install required packages
 
 ```{r}
-pacman::p_load(spdep, tmap, sf, ClustGeo, ggpubr, cluster, factoextra, NbClust, heatmaply, corrplot, psych, tidyverse, GGally)
+pacman::p_load(sf, spdep, GWmodel, SpatialML, tmap, rsample, Metrics, tidyverse)
 ```
 
 
-# Imports
-## Geospatial data
+# Data Preparation
 
-Read the Myanmar Township Boundary shapefile using *st_read()*.
+## Reading rds file
 
 ```{r}
-shan_sf <- st_read(dsn="data/geospatial", layer = "myanmar_township_boundaries") %>%
-  filter(ST %in% c("Shan (East)", "Shan (North)", "Shan (South)")) %>%
-  select(c(2:7))
+mdata <- read_rds("data/aspatial/mdata.rds")
 ```
 
 
-To view the simple feature data frame, 
+## Data Sampling
 
 ```{r}
-glimpse(shan_sf)
+set.seed(1234)
+resale_split <- initial_split(mdata, 
+                              prop = 6.5/10,)
+train_data <- training(resale_split)
+test_data <- testing(resale_split)
 ```
 
-
-## Aspatial data
 
 ```{r}
-ict <- read_csv ("data/aspatial/Shan-ICT.csv")
+write_rds(train_data, "data/aspatial/train_data.rds")
+write_rds(test_data, "data/aspatial/test_data.rds")
 ```
 
 
-To view the summary statistics of `ict`,
+# Computing Correlation Matrix
+
+Check for any multicollinearity.
 
 ```{r}
-summary(ict)
+mdata_nogeo <- mdata %>%
+  st_drop_geometry()
+corrplot::corrplot(cor(mdata_nogeo[, 2:17]), 
+                   diag = FALSE, 
+                   order = "AOE",
+                   tl.pos = "td", 
+                   tl.cex = 0.5, 
+                   method = "number", 
+                   type = "upper")
 ```
 
+-   The correlation matrix above indicates all correlation values are below 0.8, so there is no sign of high multicolinearity.
 
-## New variables using dplyr
 
-To address the association bias due to the aggregated number of households in Shan state, we need to create the penetrationrates for each ICT variable.
+# Retrieving Stored Data
 
 ```{r}
-ict_derived <- ict %>%
-  mutate(`RADIO_PR` = `Radio`/`Total households`*1000) %>%
-  mutate(`TV_PR` = `Television`/`Total households`*1000) %>%
-  mutate(`LLPHONE_PR` = `Land line phone`/`Total households`*1000) %>%
-  mutate(`MPHONE_PR` = `Mobile phone`/`Total households`*1000) %>%
-  mutate(`COMPUTER_PR` = `Computer`/`Total households`*1000) %>%
-  mutate(`INTERNET_PR` = `Internet at home`/`Total households`*1000) %>%
-  rename(`DT_PCODE` =`District Pcode`,`DT`=`District Name`,
-         `TS_PCODE`=`Township Pcode`, `TS`=`Township Name`,
-         `TT_HOUSEHOLDS`=`Total households`,
-         `RADIO`=`Radio`, `TV`=`Television`, 
-         `LLPHONE`=`Land line phone`, `MPHONE`=`Mobile phone`,
-         `COMPUTER`=`Computer`, `INTERNET`=`Internet at home`) 
+train_data <- read_rds("data/aspatial/train_data.rds")
+test_data <- read_rds("data/aspatial/test_data.rds")
 ```
 
 
-Review the summary statistics of the newly derived penetration rates.
+# Non-spatial multiple linear regression
 
 ```{r}
-summary(ict_derived)
+price_mlr <- lm(resale_price ~ floor_area_sqm +
+                  storey_order + remaining_lease_mths +
+                  PROX_CBD + PROX_ELDERLYCARE + PROX_HAWKER +
+                  PROX_MRT + PROX_PARK + PROX_MALL + 
+                  PROX_SUPERMARKET + WITHIN_350M_KINDERGARTEN +
+                  WITHIN_350M_CHILDCARE + WITHIN_350M_BUS +
+                  WITHIN_1KM_PRISCH,
+                data=train_data)
+summary(price_mlr)
 ```
--   Six new fields  RADIO_PR, TV_PR, LLPHONE_PR, MPHONE_PR, COMPUTER_PR, and INTERNET_PR.
 
 
-# Exploratory Data Analysis
+# GWR Prediction
 
-## Histogram
+Let's predict HDB resale prices using geographically weighted regression with the help of the GWmodel package!
 
-We can use a histogram to observe the overall distribution of the households with radio.
+
+## Converting sf data frame to SPatialPointDataFrame
 
 ```{r}
-ggplot(data=ict_derived, 
-       aes(x=`RADIO`)) +
-  geom_histogram(bins=20, 
-                 color="black", 
-                 fill="light blue")
+train_data_sp <- as_Spatial(train_data)
+train_data_sp
 ```
--   A left-skewed histogram signifies that there are fewer households with more radios relative to most households.
 
-Then use a boxplot to detect if there are any outliers!
+
+## Compute adaptive bandwidth
 
 ```{r}
-ggplot(data=ict_derived, 
-       aes(x=`RADIO`)) +
-  geom_boxplot(color="black", 
-               fill="light blue")
+bw_adaptive <- bw.gwr(resale_price ~ floor_area_sqm +
+                  storey_order + remaining_lease_mths +
+                  PROX_CBD + PROX_ELDERLYCARE + PROX_HAWKER +
+                  PROX_MRT + PROX_PARK + PROX_MALL + 
+                  PROX_SUPERMARKET + WITHIN_350M_KINDERGARTEN +
+                  WITHIN_350M_CHILDCARE + WITHIN_350M_BUS +
+                  WITHIN_1KM_PRISCH,
+                  data=train_data_sp,
+                  approach="CV",
+                  kernel="gaussian",
+                  adaptive=TRUE,
+                  longlat=FALSE)
 ```
-
-
-Now plot the distribution for the radio penetration rate.
 
 ```{r}
-ggplot(data=ict_derived, 
-       aes(x=`RADIO_PR`)) +
-  geom_histogram(bins=20, 
-                 color="black", 
-                 fill="light blue")
+write_rds(bw_adaptive, "data/aspatial/bw_adaptive.rds")
 ```
 
-
-The outliers can be plotted as such.
-```{r}
-ggplot(data=ict_derived, 
-       aes(x=`RADIO_PR`)) +
-  geom_boxplot(color="black", 
-               fill="light blue")
-```
-
-
-For a better overview, we can build a collage of histograms for the various penetration rates.
+## Construct adaptive bandwidth GWR model
 
 ```{r}
-radio <- ggplot(data=ict_derived, 
-             aes(x= `RADIO_PR`)) +
-  geom_histogram(bins=20, 
-                 color="black", 
-                 fill="light blue")
-
-tv <- ggplot(data=ict_derived, 
-             aes(x= `TV_PR`)) +
-  geom_histogram(bins=20, 
-                 color="black", 
-                 fill="light blue")
-
-llphone <- ggplot(data=ict_derived, 
-             aes(x= `LLPHONE_PR`)) +
-  geom_histogram(bins=20, 
-                 color="black", 
-                 fill="light blue")
-
-mphone <- ggplot(data=ict_derived, 
-             aes(x= `MPHONE_PR`)) +
-  geom_histogram(bins=20, 
-                 color="black", 
-                 fill="light blue")
-
-computer <- ggplot(data=ict_derived, 
-             aes(x= `COMPUTER_PR`)) +
-  geom_histogram(bins=20, 
-                 color="black", 
-                 fill="light blue")
-
-internet <- ggplot(data=ict_derived, 
-             aes(x= `INTERNET_PR`)) +
-  geom_histogram(bins=20, 
-                 color="black", 
-                 fill="light blue")
+bw_adaptive <- read_rds("data/aspatial/bw_adaptive.rds")
 ```
 
 
-The key function to build the collage will be *ggarrange()*.
+Calibrate gwr-based hedonic pricing model using adaptive bandwidth and Gaussian kernel.
 
 ```{r}
-ggarrange(radio, tv, llphone, mphone, computer, internet, 
-          ncol = 3, 
-          nrow = 2)
+gwr_adaptive <- gwr.basic(formula = resale_price ~
+                            floor_area_sqm + storey_order +
+                            remaining_lease_mths + PROX_CBD + 
+                            PROX_ELDERLYCARE + PROX_HAWKER +
+                            PROX_MRT + PROX_PARK + PROX_MALL + 
+                            PROX_SUPERMARKET + WITHIN_350M_KINDERGARTEN +
+                            WITHIN_350M_CHILDCARE + WITHIN_350M_BUS +
+                            WITHIN_1KM_PRISCH,
+                          data=train_data_sp,
+                          bw=bw_adaptive, 
+                          kernel = 'gaussian', 
+                          adaptive=TRUE,
+                          longlat = FALSE)
 ```
 
-
-## Choropleth map
-
-We need to collate the aspatial penetration rates and join them into our geospatial data.
 
 ```{r}
-shan_sf <- left_join(shan_sf, 
-                     ict_derived, by=c("TS_PCODE"="TS_PCODE"))
+write_rds(gwr_adaptive, "data/aspatial/gwr_adaptive.rds")
 ```
 
--   TS_PCODE, the postal code, is the common identifier used to perform the left-join.
+
+## Retrieve GWR output object
+
+```{r}
+gwr_adaptive <- read_rds("data/aspatial/gwr_adaptive.rds")
+```
+
+
+```{r}
+gwr_adaptive
+```
+
+
+## Convert test data from sf data frame to SpatialPointDataFrame
+
+```{r}
+test_data_sp <- test_data %>%
+  as_Spatial()
+test_data_sp
+```
+
+
+## Computing adaptive bandwidth for test data
+
+```{r}
+gwr_bw_test_adaptive <- bw.gwr(resale_price ~ floor_area_sqm +
+                  storey_order + remaining_lease_mths +
+                  PROX_CBD + PROX_ELDERLYCARE + PROX_HAWKER +
+                  PROX_MRT + PROX_PARK + PROX_MALL + 
+                  PROX_SUPERMARKET + WITHIN_350M_KINDERGARTEN +
+                  WITHIN_350M_CHILDCARE + WITHIN_350M_BUS +
+                  WITHIN_1KM_PRISCH,
+                  data=test_data_sp,
+                  approach="CV",
+                  kernel="gaussian",
+                  adaptive=TRUE,
+                  longlat=FALSE)
+```
+
 
 ```{r}
 #| eval: false
-write_rds(shan_sf, "data/rds/shan_sf.rds")
+gwr_pred <- gwr.predict(resale_price ~
+                          floor_area_sqm + storey_order +
+                          remaining_lease_mths + PROX_CBD + 
+                          PROX_ELDERLYCARE + PROX_HAWKER + 
+                          PROX_MRT + PROX_PARK + PROX_MALL + 
+                          PROX_SUPERMARKET + WITHIN_350M_KINDERGARTEN +
+                          WITHIN_350M_CHILDCARE + WITHIN_350M_BUS + 
+                          WITHIN_1KM_PRISCH, 
+                        data=train_data_sp, 
+                        predictdata = test_data_sp, 
+                        bw=25, 
+                        kernel = 'gaussian', 
+                        adaptive=TRUE, 
+                        longlat = FALSE)
 ```
-
-
-A quick view of the choropleth map can be performed using *qtm()*.
-
-```{r}
-qtm(shan_sf, "RADIO_PR")
-```
-
-
-The problem with the above map is that it is subjected to the bias to the total number of households. This bias can be verified by comparing the total number of households per town and the total number of households with radios.
-
-```{r}
-TT_HOUSEHOLDS.map <- tm_shape(shan_sf) + 
-  tm_fill(col = "TT_HOUSEHOLDS",
-          n = 5,
-          style = "jenks", 
-          title = "Total households") + 
-  tm_borders(alpha = 0.5) 
-
-RADIO.map <- tm_shape(shan_sf) + 
-  tm_fill(col = "RADIO",
-          n = 5,
-          style = "jenks",
-          title = "Number Radio ") + 
-  tm_borders(alpha = 0.5) 
-
-tmap_arrange(TT_HOUSEHOLDS.map, RADIO.map,
-             asp=NA, ncol=2)
-```
-
--   As we can see, the choropleth maps show that townships with more households tend to have more radio ownership.
-
-As such, let's compare the distribution fo total number of households and the radio penetration rate.
-
-```{r}
-tm_shape(shan_sf) +
-    tm_polygons(c("TT_HOUSEHOLDS", "RADIO_PR"),
-                style="jenks") +
-    tm_facets(sync = TRUE, ncol = 2) +
-  tm_legend(legend.position = c("right", "bottom"))+
-  tm_layout(outer.margins=0, asp=0)
-```
-
--   Less densely populated towns may have higher radio penetration rates.
-
-
-# Correlation analysis
-
-```{r}
-cluster_vars.cor = cor(ict_derived[,12:17])
-corrplot.mixed(cluster_vars.cor,
-         lower = "ellipse", 
-               upper = "number",
-               tl.pos = "lt",
-               diag = "l",
-               tl.col = "black")
-```
-
-
-# Hierarchy Cluster Analyssis
-
-## Extracting cluster variables
-
-```{r}
-cluster_vars <- shan_sf %>%
-  st_set_geometry(NULL) %>%
-  select("TS.x", "RADIO_PR", "TV_PR", "LLPHONE_PR", "MPHONE_PR", "COMPUTER_PR")
-head(cluster_vars,10)
-```
-
-Change the rows by township name.
-
-```{r}
-row.names(cluster_vars) <- cluster_vars$"TS.x"
-head(cluster_vars,10)
-```
-
-Delete the TS.x field.
-```{r}
-shan_ict <- select(cluster_vars, c(2:6))
-head(shan_ict, 10)
-```
-
-
-## Data standardisation
-
-Data standardisation is important to avoid biases in clustering.
-
-## Min-Max standardisation
-
-From *heatmaply*, *normalize()* is used for standardisation of clustering variables using the Min-Max method.
-```{r}
-shan_ict.std <- normalize(shan_ict)
-summary(shan_ict.std)
-```
-
-
-## Z-score standardisation
-
-Z-score standardisation can be performed using *scale()*.
-
-```{r}
-shan_ict.z <- scale(shan_ict)
-describe(shan_ict.z)
-```
-
-
-## Visualising the standardised clustering variables
-
-```{r}
-r <- ggplot(data=ict_derived, 
-             aes(x= `RADIO_PR`)) +
-  geom_histogram(bins=20, 
-                 color="black", 
-                 fill="light blue") +
-  ggtitle("Raw values without standardisation")
-
-shan_ict_s_df <- as.data.frame(shan_ict.std)
-s <- ggplot(data=shan_ict_s_df, 
-       aes(x=`RADIO_PR`)) +
-  geom_histogram(bins=20, 
-                 color="black", 
-                 fill="light blue") +
-  ggtitle("Min-Max Standardisation")
-
-shan_ict_z_df <- as.data.frame(shan_ict.z)
-z <- ggplot(data=shan_ict_z_df, 
-       aes(x=`RADIO_PR`)) +
-  geom_histogram(bins=20, 
-                 color="black", 
-                 fill="light blue") +
-  ggtitle("Z-score Standardisation")
-
-ggarrange(r, s, z,
-          ncol = 3,
-          nrow = 1)
-```
-
-
-
-```{r}
-r <- ggplot(data=ict_derived, 
-             aes(x= `RADIO_PR`)) +
-  geom_density(color="black",
-               fill="light blue") +
-  ggtitle("Raw values without standardisation")
-
-shan_ict_s_df <- as.data.frame(shan_ict.std)
-s <- ggplot(data=shan_ict_s_df, 
-       aes(x=`RADIO_PR`)) +
-  geom_density(color="black",
-               fill="light blue") +
-  ggtitle("Min-Max Standardisation")
-
-shan_ict_z_df <- as.data.frame(shan_ict.z)
-z <- ggplot(data=shan_ict_z_df, 
-       aes(x=`RADIO_PR`)) +
-  geom_density(color="black",
-               fill="light blue") +
-  ggtitle("Z-score Standardisation")
-
-ggarrange(r, s, z,
-          ncol = 3,
-          nrow = 1)
-```
-
-
-## Computing proximity matrix
-
-Many packages provide functions to calculate distance matrix and one of which is using *dist()*.
-
-The distance proximity calculations supported are:
-
--   Euclidean (default)
-
--   Maximum
-
--   Manhattan
-
--   Canberra
-
--   Binary
-
--   Minkowski
-
-
-```{r}
-#| echo: false
-proxmat <- dist(shan_ict, method = 'euclidean')
-proxmat
-```
-
-
-## Computing hierarchical clustering
-
-There are eight clustering algorithms supported by *hclust()*:
-
--   ward.D
-
--   ward.D2
-
--   single
-
--   complete
-
--   average(UPGMA)
-
--   mcquitty(WPGMA)
-
--   median(WPGMC)
-
-
-```{r}
-hclust_ward <- hclust(proxmat, method = 'ward.D')
-```
-
-
-```{r}
-plot(hclust_ward, cex = 0.6)
-```
-
-
-## Selecting optimal clustering algorithm
-
-A challenge in performing hierarchical clustering is to identify stronger clustering structures. The issue can be solved by using use agnes() function of cluster package. It functions like hclus(), however, with the agnes() function you can also get the agglomerative coefficient, which measures the amount of clustering structure found (values closer to 1 suggest strong clustering structure).
-
-```{r}
-m <- c( "average", "single", "complete", "ward")
-names(m) <- c( "average", "single", "complete", "ward")
-
-ac <- function(x) {
-  agnes(shan_ict, method = x)$ac
-}
-
-map_dbl(m, ac)
-```
-
--   Ward's method will be used since it gives the strongest clustering structure.
-
-
-## Determining optimal clusters
-
-### Gap staistic method
-
-The gap statistic compares the total within intra-cluster variation for different values of k with their expected values under null reference distribution of the data. The estimate of the optimal clusters will be value that maximize the gap statistic (i.e., that yields the largest gap statistic). This means that the clustering structure is far away from the random uniform distribution of points.
-
-*clusGap()* of **cluster** package will be used to compute the gap statistic.
-
-```{r}
-set.seed(12345)
-gap_stat <- clusGap(shan_ict, 
-                    FUN = hcut, 
-                    nstart = 25, 
-                    K.max = 10, 
-                    B = 50)
-# Print the result
-print(gap_stat, method = "firstmax")
-```
-
-
-Visualise the plot.
-```{r}
-fviz_gap_stat(gap_stat)
-```
-
--   *fviz_gap_stat()* is from the **factoextra** package.
-
-
-
-
 
 
