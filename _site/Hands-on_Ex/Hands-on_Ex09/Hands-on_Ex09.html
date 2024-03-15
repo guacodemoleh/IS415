@@ -7,9 +7,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 <meta name="author" content="Victoria Grace ANN">
-<meta name="dcterms.date" content="2024-03-10">
+<meta name="dcterms.date" content="2024-03-13">
 
-<title>IS415-GAA - Hands-on Exercise 9</title>
+<title>IS415-GAA - Hands-on Exercise 9: Geographically Weighted Predictive Models</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -206,6 +206,10 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <a class="dropdown-item" href="../../Take-home_Ex/Take-home_Ex02/Take-home_Ex02.html" rel="" target="">
  <span class="dropdown-text">Take-home Exercise 2</span></a>
   </li>  
+        <li>
+    <a class="dropdown-item" href="../../Take-home_Ex/Take-home_Ex03/Take-home_Ex03.html" rel="" target="">
+ <span class="dropdown-text">Take-home Exercise 3</span></a>
+  </li>  
     </ul>
   </li>
 </ul>
@@ -234,33 +238,28 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#install-required-packages" id="toc-install-required-packages" class="nav-link active" data-scroll-target="#install-required-packages">Install required packages</a></li>
-  <li><a href="#imports" id="toc-imports" class="nav-link" data-scroll-target="#imports">Imports</a>
+  <li><a href="#overview" id="toc-overview" class="nav-link active" data-scroll-target="#overview">Overview</a>
   <ul class="collapse">
-  <li><a href="#geospatial-data" id="toc-geospatial-data" class="nav-link" data-scroll-target="#geospatial-data">Geospatial data</a></li>
-  <li><a href="#aspatial-data" id="toc-aspatial-data" class="nav-link" data-scroll-target="#aspatial-data">Aspatial data</a></li>
-  <li><a href="#new-variables-using-dplyr" id="toc-new-variables-using-dplyr" class="nav-link" data-scroll-target="#new-variables-using-dplyr">New variables using dplyr</a></li>
+  <li><a href="#learning-outcome" id="toc-learning-outcome" class="nav-link" data-scroll-target="#learning-outcome">Learning Outcome</a></li>
   </ul></li>
-  <li><a href="#exploratory-data-analysis" id="toc-exploratory-data-analysis" class="nav-link" data-scroll-target="#exploratory-data-analysis">Exploratory Data Analysis</a>
+  <li><a href="#data" id="toc-data" class="nav-link" data-scroll-target="#data">Data</a></li>
+  <li><a href="#install-required-packages" id="toc-install-required-packages" class="nav-link" data-scroll-target="#install-required-packages">Install required packages</a></li>
+  <li><a href="#data-preparation" id="toc-data-preparation" class="nav-link" data-scroll-target="#data-preparation">Data Preparation</a>
   <ul class="collapse">
-  <li><a href="#histogram" id="toc-histogram" class="nav-link" data-scroll-target="#histogram">Histogram</a></li>
-  <li><a href="#choropleth-map" id="toc-choropleth-map" class="nav-link" data-scroll-target="#choropleth-map">Choropleth map</a></li>
+  <li><a href="#reading-rds-file" id="toc-reading-rds-file" class="nav-link" data-scroll-target="#reading-rds-file">Reading rds file</a></li>
+  <li><a href="#data-sampling" id="toc-data-sampling" class="nav-link" data-scroll-target="#data-sampling">Data Sampling</a></li>
   </ul></li>
-  <li><a href="#correlation-analysis" id="toc-correlation-analysis" class="nav-link" data-scroll-target="#correlation-analysis">Correlation analysis</a></li>
-  <li><a href="#hierarchy-cluster-analyssis" id="toc-hierarchy-cluster-analyssis" class="nav-link" data-scroll-target="#hierarchy-cluster-analyssis">Hierarchy Cluster Analyssis</a>
+  <li><a href="#computing-correlation-matrix" id="toc-computing-correlation-matrix" class="nav-link" data-scroll-target="#computing-correlation-matrix">Computing Correlation Matrix</a></li>
+  <li><a href="#retrieving-stored-data" id="toc-retrieving-stored-data" class="nav-link" data-scroll-target="#retrieving-stored-data">Retrieving Stored Data</a></li>
+  <li><a href="#non-spatial-multiple-linear-regression" id="toc-non-spatial-multiple-linear-regression" class="nav-link" data-scroll-target="#non-spatial-multiple-linear-regression">Non-spatial multiple linear regression</a></li>
+  <li><a href="#gwr-prediction" id="toc-gwr-prediction" class="nav-link" data-scroll-target="#gwr-prediction">GWR Prediction</a>
   <ul class="collapse">
-  <li><a href="#extracting-cluster-variables" id="toc-extracting-cluster-variables" class="nav-link" data-scroll-target="#extracting-cluster-variables">Extracting cluster variables</a></li>
-  <li><a href="#data-standardisation" id="toc-data-standardisation" class="nav-link" data-scroll-target="#data-standardisation">Data standardisation</a></li>
-  <li><a href="#min-max-standardisation" id="toc-min-max-standardisation" class="nav-link" data-scroll-target="#min-max-standardisation">Min-Max standardisation</a></li>
-  <li><a href="#z-score-standardisation" id="toc-z-score-standardisation" class="nav-link" data-scroll-target="#z-score-standardisation">Z-score standardisation</a></li>
-  <li><a href="#visualising-the-standardised-clustering-variables" id="toc-visualising-the-standardised-clustering-variables" class="nav-link" data-scroll-target="#visualising-the-standardised-clustering-variables">Visualising the standardised clustering variables</a></li>
-  <li><a href="#computing-proximity-matrix" id="toc-computing-proximity-matrix" class="nav-link" data-scroll-target="#computing-proximity-matrix">Computing proximity matrix</a></li>
-  <li><a href="#computing-hierarchical-clustering" id="toc-computing-hierarchical-clustering" class="nav-link" data-scroll-target="#computing-hierarchical-clustering">Computing hierarchical clustering</a></li>
-  <li><a href="#selecting-optimal-clustering-algorithm" id="toc-selecting-optimal-clustering-algorithm" class="nav-link" data-scroll-target="#selecting-optimal-clustering-algorithm">Selecting optimal clustering algorithm</a></li>
-  <li><a href="#determining-optimal-clusters" id="toc-determining-optimal-clusters" class="nav-link" data-scroll-target="#determining-optimal-clusters">Determining optimal clusters</a>
-  <ul class="collapse">
-  <li><a href="#gap-staistic-method" id="toc-gap-staistic-method" class="nav-link" data-scroll-target="#gap-staistic-method">Gap staistic method</a></li>
-  </ul></li>
+  <li><a href="#converting-sf-data-frame-to-spatialpointdataframe" id="toc-converting-sf-data-frame-to-spatialpointdataframe" class="nav-link" data-scroll-target="#converting-sf-data-frame-to-spatialpointdataframe">Converting sf data frame to SPatialPointDataFrame</a></li>
+  <li><a href="#compute-adaptive-bandwidth" id="toc-compute-adaptive-bandwidth" class="nav-link" data-scroll-target="#compute-adaptive-bandwidth">Compute adaptive bandwidth</a></li>
+  <li><a href="#construct-adaptive-bandwidth-gwr-model" id="toc-construct-adaptive-bandwidth-gwr-model" class="nav-link" data-scroll-target="#construct-adaptive-bandwidth-gwr-model">Construct adaptive bandwidth GWR model</a></li>
+  <li><a href="#retrieve-gwr-output-object" id="toc-retrieve-gwr-output-object" class="nav-link" data-scroll-target="#retrieve-gwr-output-object">Retrieve GWR output object</a></li>
+  <li><a href="#convert-test-data-from-sf-data-frame-to-spatialpointdataframe" id="toc-convert-test-data-from-sf-data-frame-to-spatialpointdataframe" class="nav-link" data-scroll-target="#convert-test-data-from-sf-data-frame-to-spatialpointdataframe">Convert test data from sf data frame to SpatialPointDataFrame</a></li>
+  <li><a href="#computing-adaptive-bandwidth-for-test-data" id="toc-computing-adaptive-bandwidth-for-test-data" class="nav-link" data-scroll-target="#computing-adaptive-bandwidth-for-test-data">Computing adaptive bandwidth for test data</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -270,7 +269,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Hands-on Exercise 9</h1>
+<h1 class="title">Hands-on Exercise 9: Geographically Weighted Predictive Models</h1>
 </div>
 
 
@@ -287,14 +286,14 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
     <div>
     <div class="quarto-title-meta-heading">Published</div>
     <div class="quarto-title-meta-contents">
-      <p class="date">March 10, 2024</p>
+      <p class="date">March 13, 2024</p>
     </div>
   </div>
   
     <div>
     <div class="quarto-title-meta-heading">Modified</div>
     <div class="quarto-title-meta-contents">
-      <p class="date-modified">March 11, 2024</p>
+      <p class="date-modified">March 15, 2024</p>
     </div>
   </div>
     
@@ -303,1092 +302,433 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 
 </header>
 
+<section id="overview" class="level1">
+<h1>Overview</h1>
+<p>Predictive modelling utilises statistical or machine learning techniques to predict outcomes. A seet of known outcomes and predictors are used to calibrate predice models.</p>
+<p>When the occurrences of events are limited in distribution, geospatial predictive modelling can be used if the data has geospatial characteristics. These occurrences of events are not uniform nor random in distribution over space. In geospatial context, geospatial factors like topography, hydrology, infrastructure, slope aspect, etc. can have influence on where these events occur. Geospatial predictive modelling attempts to describe the constraints and influence where the locations occurs.</p>
+<section id="learning-outcome" class="level2">
+<h2 class="anchored" data-anchor-id="learning-outcome">Learning Outcome</h2>
+<p>This exercise aims to build predictive models using geographical random forest. Along the way, the intended acquired skills are:</p>
+<ul>
+<li><p>Preparing training and test data sets using sampling methods</p></li>
+<li><p>Calibrating predictive models using both geospatial statistical learning and machine learning methods</p></li>
+<li><p>Comparing and selecting the best model for predicting the future outcome and,</p></li>
+<li><p>Predicting future outcomes using the best calibrated model</p></li>
+</ul>
+</section>
+</section>
+<section id="data" class="level1">
+<h1>Data</h1>
+<ul>
+<li><p>[Aspatial] HDB Resale data: list of HDB resale transaction prices from Jan 2017 in a csv (Source: data.gov.sg)</p></li>
+<li><p>[Geospatial] MP14_SUBZONE_WEB_PL: a polygon feature data providing information of URA 2014 Master Plan Planning Subzone boundary data in shapefile format (Source: data.gov.sg)</p></li>
+<li><p>Locational factors with geographical coordinates</p></li>
+<li><p>Eldercare data in shapefile format (Source: data.gov.sg)</p></li>
+<li><p>Hawker Centre data in geojson format (Source: data.gov.sg)</p></li>
+<li><p>Supermarket data in geojson format (Source: data.gov.sg)</p></li>
+<li><p>CHAS clinics in geojson format (Source: data.gov.sg)</p></li>
+<li><p>Childcare services in geojson format (Source: data.gov.sg)</p></li>
+<li><p>Kindergartens in geojson format (Source: data.gov.sg)</p></li>
+<li><p>MRT data in shapefile format (Source: datamall.lta.gov.sg)</p></li>
+<li><p>Bus stops data in shapefile format (Source: datamall.lta.gov.sg)</p></li>
+<li><p>Locational factors without geographic coordinates</p></li>
+<li><p>Primary school data extracted from General information of schools (Source: data.gov.sg)</p></li>
+<li><p>CBD coordinates data (Source: Google)</p></li>
+<li><p>Shopping malls data (Source: Wikipedia)</p></li>
+<li><p>Good primary schools (Source: Local Salary Forum)</p></li>
+</ul>
+</section>
 <section id="install-required-packages" class="level1">
 <h1>Install required packages</h1>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>pacman<span class="sc">::</span><span class="fu">p_load</span>(spdep, tmap, sf, ClustGeo, ggpubr, cluster, factoextra, NbClust, heatmaply, corrplot, psych, tidyverse, GGally)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>pacman<span class="sc">::</span><span class="fu">p_load</span>(sf, spdep, GWmodel, SpatialML, tmap, rsample, Metrics, tidyverse)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section>
-<section id="imports" class="level1">
-<h1>Imports</h1>
-<section id="geospatial-data" class="level2">
-<h2 class="anchored" data-anchor-id="geospatial-data">Geospatial data</h2>
-<p>Read the Myanmar Township Boundary shapefile using <em>st_read()</em>.</p>
+<section id="data-preparation" class="level1">
+<h1>Data Preparation</h1>
+<section id="reading-rds-file" class="level2">
+<h2 class="anchored" data-anchor-id="reading-rds-file">Reading rds file</h2>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>shan_sf <span class="ot">&lt;-</span> <span class="fu">st_read</span>(<span class="at">dsn=</span><span class="st">"data/geospatial"</span>, <span class="at">layer =</span> <span class="st">"myanmar_township_boundaries"</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(ST <span class="sc">%in%</span> <span class="fu">c</span>(<span class="st">"Shan (East)"</span>, <span class="st">"Shan (North)"</span>, <span class="st">"Shan (South)"</span>)) <span class="sc">%&gt;%</span></span>
-<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="fu">c</span>(<span class="dv">2</span><span class="sc">:</span><span class="dv">7</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>Reading layer `myanmar_township_boundaries' from data source 
-  `C:\guacodemoleh\IS415-GAA\Hands-on_Ex\Hands-on_Ex09\data\geospatial' 
-  using driver `ESRI Shapefile'
-Simple feature collection with 330 features and 14 fields
-Geometry type: MULTIPOLYGON
-Dimension:     XY
-Bounding box:  xmin: 92.17275 ymin: 9.671252 xmax: 101.1699 ymax: 28.54554
-Geodetic CRS:  WGS 84</code></pre>
-</div>
-</div>
-<p>To view the simple feature data frame,</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">glimpse</span>(shan_sf)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>Rows: 55
-Columns: 7
-$ ST       &lt;chr&gt; "Shan (North)", "Shan (South)", "Shan (South)", "Shan (South)…
-$ ST_PCODE &lt;chr&gt; "MMR015", "MMR014", "MMR014", "MMR014", "MMR015", "MMR014", "…
-$ DT       &lt;chr&gt; "Mongmit", "Taunggyi", "Taunggyi", "Taunggyi", "Mongmit", "Ta…
-$ DT_PCODE &lt;chr&gt; "MMR015D008", "MMR014D001", "MMR014D001", "MMR014D001", "MMR0…
-$ TS       &lt;chr&gt; "Mongmit", "Pindaya", "Ywangan", "Pinlaung", "Mabein", "Kalaw…
-$ TS_PCODE &lt;chr&gt; "MMR015017", "MMR014006", "MMR014007", "MMR014009", "MMR01501…
-$ geometry &lt;MULTIPOLYGON [°]&gt; MULTIPOLYGON (((96.96001 23..., MULTIPOLYGON (((…</code></pre>
-</div>
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>mdata <span class="ot">&lt;-</span> <span class="fu">read_rds</span>(<span class="st">"data/aspatial/mdata.rds"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section>
-<section id="aspatial-data" class="level2">
-<h2 class="anchored" data-anchor-id="aspatial-data">Aspatial data</h2>
+<section id="data-sampling" class="level2">
+<h2 class="anchored" data-anchor-id="data-sampling">Data Sampling</h2>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>ict <span class="ot">&lt;-</span> <span class="fu">read_csv</span> (<span class="st">"data/aspatial/Shan-ICT.csv"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">1234</span>)</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a>resale_split <span class="ot">&lt;-</span> <span class="fu">initial_split</span>(mdata, </span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a>                              <span class="at">prop =</span> <span class="fl">6.5</span><span class="sc">/</span><span class="dv">10</span>,)</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a>train_data <span class="ot">&lt;-</span> <span class="fu">training</span>(resale_split)</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a>test_data <span class="ot">&lt;-</span> <span class="fu">testing</span>(resale_split)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>To view the summary statistics of <code>ict</code>,</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(ict)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code> District Pcode     District Name      Township Pcode     Township Name     
- Length:55          Length:55          Length:55          Length:55         
- Class :character   Class :character   Class :character   Class :character  
- Mode  :character   Mode  :character   Mode  :character   Mode  :character  
-                                                                            
-                                                                            
-                                                                            
- Total households     Radio         Television    Land line phone 
- Min.   : 3318    Min.   :  115   Min.   :  728   Min.   :  20.0  
- 1st Qu.: 8711    1st Qu.: 1260   1st Qu.: 3744   1st Qu.: 266.5  
- Median :13685    Median : 2497   Median : 6117   Median : 695.0  
- Mean   :18369    Mean   : 4487   Mean   :10183   Mean   : 929.9  
- 3rd Qu.:23471    3rd Qu.: 6192   3rd Qu.:13906   3rd Qu.:1082.5  
- Max.   :82604    Max.   :30176   Max.   :62388   Max.   :6736.0  
-  Mobile phone      Computer      Internet at home
- Min.   :  150   Min.   :  20.0   Min.   :   8.0  
- 1st Qu.: 2037   1st Qu.: 121.0   1st Qu.:  88.0  
- Median : 3559   Median : 244.0   Median : 316.0  
- Mean   : 6470   Mean   : 575.5   Mean   : 760.2  
- 3rd Qu.: 7177   3rd Qu.: 507.0   3rd Qu.: 630.5  
- Max.   :48461   Max.   :6705.0   Max.   :9746.0  </code></pre>
-</div>
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="fu">write_rds</span>(train_data, <span class="st">"data/aspatial/train_data.rds"</span>)</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="fu">write_rds</span>(test_data, <span class="st">"data/aspatial/test_data.rds"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section>
-<section id="new-variables-using-dplyr" class="level2">
-<h2 class="anchored" data-anchor-id="new-variables-using-dplyr">New variables using dplyr</h2>
-<p>To address the association bias due to the aggregated number of households in Shan state, we need to create the penetrationrates for each ICT variable.</p>
+</section>
+<section id="computing-correlation-matrix" class="level1">
+<h1>Computing Correlation Matrix</h1>
+<p>Check for any multicollinearity.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>ict_derived <span class="ot">&lt;-</span> ict <span class="sc">%&gt;%</span></span>
-<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="st">`</span><span class="at">RADIO_PR</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">Radio</span><span class="st">`</span><span class="sc">/</span><span class="st">`</span><span class="at">Total households</span><span class="st">`</span><span class="sc">*</span><span class="dv">1000</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="st">`</span><span class="at">TV_PR</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">Television</span><span class="st">`</span><span class="sc">/</span><span class="st">`</span><span class="at">Total households</span><span class="st">`</span><span class="sc">*</span><span class="dv">1000</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="st">`</span><span class="at">LLPHONE_PR</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">Land line phone</span><span class="st">`</span><span class="sc">/</span><span class="st">`</span><span class="at">Total households</span><span class="st">`</span><span class="sc">*</span><span class="dv">1000</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="st">`</span><span class="at">MPHONE_PR</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">Mobile phone</span><span class="st">`</span><span class="sc">/</span><span class="st">`</span><span class="at">Total households</span><span class="st">`</span><span class="sc">*</span><span class="dv">1000</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="st">`</span><span class="at">COMPUTER_PR</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">Computer</span><span class="st">`</span><span class="sc">/</span><span class="st">`</span><span class="at">Total households</span><span class="st">`</span><span class="sc">*</span><span class="dv">1000</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="st">`</span><span class="at">INTERNET_PR</span><span class="st">`</span> <span class="ot">=</span> <span class="st">`</span><span class="at">Internet at home</span><span class="st">`</span><span class="sc">/</span><span class="st">`</span><span class="at">Total households</span><span class="st">`</span><span class="sc">*</span><span class="dv">1000</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb9-8"><a href="#cb9-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="st">`</span><span class="at">DT_PCODE</span><span class="st">`</span> <span class="ot">=</span><span class="st">`</span><span class="at">District Pcode</span><span class="st">`</span>,<span class="st">`</span><span class="at">DT</span><span class="st">`</span><span class="ot">=</span><span class="st">`</span><span class="at">District Name</span><span class="st">`</span>,</span>
-<span id="cb9-9"><a href="#cb9-9" aria-hidden="true" tabindex="-1"></a>         <span class="st">`</span><span class="at">TS_PCODE</span><span class="st">`</span><span class="ot">=</span><span class="st">`</span><span class="at">Township Pcode</span><span class="st">`</span>, <span class="st">`</span><span class="at">TS</span><span class="st">`</span><span class="ot">=</span><span class="st">`</span><span class="at">Township Name</span><span class="st">`</span>,</span>
-<span id="cb9-10"><a href="#cb9-10" aria-hidden="true" tabindex="-1"></a>         <span class="st">`</span><span class="at">TT_HOUSEHOLDS</span><span class="st">`</span><span class="ot">=</span><span class="st">`</span><span class="at">Total households</span><span class="st">`</span>,</span>
-<span id="cb9-11"><a href="#cb9-11" aria-hidden="true" tabindex="-1"></a>         <span class="st">`</span><span class="at">RADIO</span><span class="st">`</span><span class="ot">=</span><span class="st">`</span><span class="at">Radio</span><span class="st">`</span>, <span class="st">`</span><span class="at">TV</span><span class="st">`</span><span class="ot">=</span><span class="st">`</span><span class="at">Television</span><span class="st">`</span>, </span>
-<span id="cb9-12"><a href="#cb9-12" aria-hidden="true" tabindex="-1"></a>         <span class="st">`</span><span class="at">LLPHONE</span><span class="st">`</span><span class="ot">=</span><span class="st">`</span><span class="at">Land line phone</span><span class="st">`</span>, <span class="st">`</span><span class="at">MPHONE</span><span class="st">`</span><span class="ot">=</span><span class="st">`</span><span class="at">Mobile phone</span><span class="st">`</span>,</span>
-<span id="cb9-13"><a href="#cb9-13" aria-hidden="true" tabindex="-1"></a>         <span class="st">`</span><span class="at">COMPUTER</span><span class="st">`</span><span class="ot">=</span><span class="st">`</span><span class="at">Computer</span><span class="st">`</span>, <span class="st">`</span><span class="at">INTERNET</span><span class="st">`</span><span class="ot">=</span><span class="st">`</span><span class="at">Internet at home</span><span class="st">`</span>) </span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</div>
-<p>Review the summary statistics of the newly derived penetration rates.</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(ict_derived)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>   DT_PCODE              DT              TS_PCODE              TS           
- Length:55          Length:55          Length:55          Length:55         
- Class :character   Class :character   Class :character   Class :character  
- Mode  :character   Mode  :character   Mode  :character   Mode  :character  
-                                                                            
-                                                                            
-                                                                            
- TT_HOUSEHOLDS       RADIO             TV           LLPHONE      
- Min.   : 3318   Min.   :  115   Min.   :  728   Min.   :  20.0  
- 1st Qu.: 8711   1st Qu.: 1260   1st Qu.: 3744   1st Qu.: 266.5  
- Median :13685   Median : 2497   Median : 6117   Median : 695.0  
- Mean   :18369   Mean   : 4487   Mean   :10183   Mean   : 929.9  
- 3rd Qu.:23471   3rd Qu.: 6192   3rd Qu.:13906   3rd Qu.:1082.5  
- Max.   :82604   Max.   :30176   Max.   :62388   Max.   :6736.0  
-     MPHONE         COMPUTER         INTERNET         RADIO_PR     
- Min.   :  150   Min.   :  20.0   Min.   :   8.0   Min.   : 21.05  
- 1st Qu.: 2037   1st Qu.: 121.0   1st Qu.:  88.0   1st Qu.:138.95  
- Median : 3559   Median : 244.0   Median : 316.0   Median :210.95  
- Mean   : 6470   Mean   : 575.5   Mean   : 760.2   Mean   :215.68  
- 3rd Qu.: 7177   3rd Qu.: 507.0   3rd Qu.: 630.5   3rd Qu.:268.07  
- Max.   :48461   Max.   :6705.0   Max.   :9746.0   Max.   :484.52  
-     TV_PR         LLPHONE_PR       MPHONE_PR       COMPUTER_PR    
- Min.   :116.0   Min.   :  2.78   Min.   : 36.42   Min.   : 3.278  
- 1st Qu.:450.2   1st Qu.: 22.84   1st Qu.:190.14   1st Qu.:11.832  
- Median :517.2   Median : 37.59   Median :305.27   Median :18.970  
- Mean   :509.5   Mean   : 51.09   Mean   :314.05   Mean   :24.393  
- 3rd Qu.:606.4   3rd Qu.: 69.72   3rd Qu.:428.43   3rd Qu.:29.897  
- Max.   :842.5   Max.   :181.49   Max.   :735.43   Max.   :92.402  
-  INTERNET_PR     
- Min.   :  1.041  
- 1st Qu.:  8.617  
- Median : 22.829  
- Mean   : 30.644  
- 3rd Qu.: 41.281  
- Max.   :117.985  </code></pre>
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>mdata_nogeo <span class="ot">&lt;-</span> mdata <span class="sc">%&gt;%</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">st_drop_geometry</span>()</span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>corrplot<span class="sc">::</span><span class="fu">corrplot</span>(<span class="fu">cor</span>(mdata_nogeo[, <span class="dv">2</span><span class="sc">:</span><span class="dv">17</span>]), </span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>                   <span class="at">diag =</span> <span class="cn">FALSE</span>, </span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a>                   <span class="at">order =</span> <span class="st">"AOE"</span>,</span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a>                   <span class="at">tl.pos =</span> <span class="st">"td"</span>, </span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>                   <span class="at">tl.cex =</span> <span class="fl">0.5</span>, </span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>                   <span class="at">method =</span> <span class="st">"number"</span>, </span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a>                   <span class="at">type =</span> <span class="st">"upper"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<p><img src="Hands-on_Ex09_files/figure-html/unnamed-chunk-5-1.png" class="img-fluid" width="672"></p>
 </div>
 </div>
 <ul>
-<li>Six new fields RADIO_PR, TV_PR, LLPHONE_PR, MPHONE_PR, COMPUTER_PR, and INTERNET_PR.</li>
+<li>The correlation matrix above indicates all correlation values are below 0.8, so there is no sign of high multicolinearity.</li>
 </ul>
 </section>
-</section>
-<section id="exploratory-data-analysis" class="level1">
-<h1>Exploratory Data Analysis</h1>
-<section id="histogram" class="level2">
-<h2 class="anchored" data-anchor-id="histogram">Histogram</h2>
-<p>We can use a histogram to observe the overall distribution of the households with radio.</p>
+<section id="retrieving-stored-data" class="level1">
+<h1>Retrieving Stored Data</h1>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(<span class="at">data=</span>ict_derived, </span>
-<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>       <span class="fu">aes</span>(<span class="at">x=</span><span class="st">`</span><span class="at">RADIO</span><span class="st">`</span>)) <span class="sc">+</span></span>
-<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="at">bins=</span><span class="dv">20</span>, </span>
-<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>                 <span class="at">color=</span><span class="st">"black"</span>, </span>
-<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>                 <span class="at">fill=</span><span class="st">"light blue"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output-display">
-<p><img src="Hands-on_Ex09_files/figure-html/unnamed-chunk-8-1.png" class="img-fluid" width="672"></p>
-</div>
-</div>
-<ul>
-<li>A left-skewed histogram signifies that there are fewer households with more radios relative to most households.</li>
-</ul>
-<p>Then use a boxplot to detect if there are any outliers!</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(<span class="at">data=</span>ict_derived, </span>
-<span id="cb13-2"><a href="#cb13-2" aria-hidden="true" tabindex="-1"></a>       <span class="fu">aes</span>(<span class="at">x=</span><span class="st">`</span><span class="at">RADIO</span><span class="st">`</span>)) <span class="sc">+</span></span>
-<span id="cb13-3"><a href="#cb13-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_boxplot</span>(<span class="at">color=</span><span class="st">"black"</span>, </span>
-<span id="cb13-4"><a href="#cb13-4" aria-hidden="true" tabindex="-1"></a>               <span class="at">fill=</span><span class="st">"light blue"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output-display">
-<p><img src="Hands-on_Ex09_files/figure-html/unnamed-chunk-9-1.png" class="img-fluid" width="672"></p>
-</div>
-</div>
-<p>Now plot the distribution for the radio penetration rate.</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(<span class="at">data=</span>ict_derived, </span>
-<span id="cb14-2"><a href="#cb14-2" aria-hidden="true" tabindex="-1"></a>       <span class="fu">aes</span>(<span class="at">x=</span><span class="st">`</span><span class="at">RADIO_PR</span><span class="st">`</span>)) <span class="sc">+</span></span>
-<span id="cb14-3"><a href="#cb14-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="at">bins=</span><span class="dv">20</span>, </span>
-<span id="cb14-4"><a href="#cb14-4" aria-hidden="true" tabindex="-1"></a>                 <span class="at">color=</span><span class="st">"black"</span>, </span>
-<span id="cb14-5"><a href="#cb14-5" aria-hidden="true" tabindex="-1"></a>                 <span class="at">fill=</span><span class="st">"light blue"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output-display">
-<p><img src="Hands-on_Ex09_files/figure-html/unnamed-chunk-10-1.png" class="img-fluid" width="672"></p>
-</div>
-</div>
-<p>The outliers can be plotted as such.</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(<span class="at">data=</span>ict_derived, </span>
-<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>       <span class="fu">aes</span>(<span class="at">x=</span><span class="st">`</span><span class="at">RADIO_PR</span><span class="st">`</span>)) <span class="sc">+</span></span>
-<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_boxplot</span>(<span class="at">color=</span><span class="st">"black"</span>, </span>
-<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>               <span class="at">fill=</span><span class="st">"light blue"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output-display">
-<p><img src="Hands-on_Ex09_files/figure-html/unnamed-chunk-11-1.png" class="img-fluid" width="672"></p>
-</div>
-</div>
-<p>For a better overview, we can build a collage of histograms for the various penetration rates.</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a>radio <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(<span class="at">data=</span>ict_derived, </span>
-<span id="cb16-2"><a href="#cb16-2" aria-hidden="true" tabindex="-1"></a>             <span class="fu">aes</span>(<span class="at">x=</span> <span class="st">`</span><span class="at">RADIO_PR</span><span class="st">`</span>)) <span class="sc">+</span></span>
-<span id="cb16-3"><a href="#cb16-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="at">bins=</span><span class="dv">20</span>, </span>
-<span id="cb16-4"><a href="#cb16-4" aria-hidden="true" tabindex="-1"></a>                 <span class="at">color=</span><span class="st">"black"</span>, </span>
-<span id="cb16-5"><a href="#cb16-5" aria-hidden="true" tabindex="-1"></a>                 <span class="at">fill=</span><span class="st">"light blue"</span>)</span>
-<span id="cb16-6"><a href="#cb16-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb16-7"><a href="#cb16-7" aria-hidden="true" tabindex="-1"></a>tv <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(<span class="at">data=</span>ict_derived, </span>
-<span id="cb16-8"><a href="#cb16-8" aria-hidden="true" tabindex="-1"></a>             <span class="fu">aes</span>(<span class="at">x=</span> <span class="st">`</span><span class="at">TV_PR</span><span class="st">`</span>)) <span class="sc">+</span></span>
-<span id="cb16-9"><a href="#cb16-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="at">bins=</span><span class="dv">20</span>, </span>
-<span id="cb16-10"><a href="#cb16-10" aria-hidden="true" tabindex="-1"></a>                 <span class="at">color=</span><span class="st">"black"</span>, </span>
-<span id="cb16-11"><a href="#cb16-11" aria-hidden="true" tabindex="-1"></a>                 <span class="at">fill=</span><span class="st">"light blue"</span>)</span>
-<span id="cb16-12"><a href="#cb16-12" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb16-13"><a href="#cb16-13" aria-hidden="true" tabindex="-1"></a>llphone <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(<span class="at">data=</span>ict_derived, </span>
-<span id="cb16-14"><a href="#cb16-14" aria-hidden="true" tabindex="-1"></a>             <span class="fu">aes</span>(<span class="at">x=</span> <span class="st">`</span><span class="at">LLPHONE_PR</span><span class="st">`</span>)) <span class="sc">+</span></span>
-<span id="cb16-15"><a href="#cb16-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="at">bins=</span><span class="dv">20</span>, </span>
-<span id="cb16-16"><a href="#cb16-16" aria-hidden="true" tabindex="-1"></a>                 <span class="at">color=</span><span class="st">"black"</span>, </span>
-<span id="cb16-17"><a href="#cb16-17" aria-hidden="true" tabindex="-1"></a>                 <span class="at">fill=</span><span class="st">"light blue"</span>)</span>
-<span id="cb16-18"><a href="#cb16-18" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb16-19"><a href="#cb16-19" aria-hidden="true" tabindex="-1"></a>mphone <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(<span class="at">data=</span>ict_derived, </span>
-<span id="cb16-20"><a href="#cb16-20" aria-hidden="true" tabindex="-1"></a>             <span class="fu">aes</span>(<span class="at">x=</span> <span class="st">`</span><span class="at">MPHONE_PR</span><span class="st">`</span>)) <span class="sc">+</span></span>
-<span id="cb16-21"><a href="#cb16-21" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="at">bins=</span><span class="dv">20</span>, </span>
-<span id="cb16-22"><a href="#cb16-22" aria-hidden="true" tabindex="-1"></a>                 <span class="at">color=</span><span class="st">"black"</span>, </span>
-<span id="cb16-23"><a href="#cb16-23" aria-hidden="true" tabindex="-1"></a>                 <span class="at">fill=</span><span class="st">"light blue"</span>)</span>
-<span id="cb16-24"><a href="#cb16-24" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb16-25"><a href="#cb16-25" aria-hidden="true" tabindex="-1"></a>computer <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(<span class="at">data=</span>ict_derived, </span>
-<span id="cb16-26"><a href="#cb16-26" aria-hidden="true" tabindex="-1"></a>             <span class="fu">aes</span>(<span class="at">x=</span> <span class="st">`</span><span class="at">COMPUTER_PR</span><span class="st">`</span>)) <span class="sc">+</span></span>
-<span id="cb16-27"><a href="#cb16-27" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="at">bins=</span><span class="dv">20</span>, </span>
-<span id="cb16-28"><a href="#cb16-28" aria-hidden="true" tabindex="-1"></a>                 <span class="at">color=</span><span class="st">"black"</span>, </span>
-<span id="cb16-29"><a href="#cb16-29" aria-hidden="true" tabindex="-1"></a>                 <span class="at">fill=</span><span class="st">"light blue"</span>)</span>
-<span id="cb16-30"><a href="#cb16-30" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb16-31"><a href="#cb16-31" aria-hidden="true" tabindex="-1"></a>internet <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(<span class="at">data=</span>ict_derived, </span>
-<span id="cb16-32"><a href="#cb16-32" aria-hidden="true" tabindex="-1"></a>             <span class="fu">aes</span>(<span class="at">x=</span> <span class="st">`</span><span class="at">INTERNET_PR</span><span class="st">`</span>)) <span class="sc">+</span></span>
-<span id="cb16-33"><a href="#cb16-33" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="at">bins=</span><span class="dv">20</span>, </span>
-<span id="cb16-34"><a href="#cb16-34" aria-hidden="true" tabindex="-1"></a>                 <span class="at">color=</span><span class="st">"black"</span>, </span>
-<span id="cb16-35"><a href="#cb16-35" aria-hidden="true" tabindex="-1"></a>                 <span class="at">fill=</span><span class="st">"light blue"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</div>
-<p>The key function to build the collage will be <em>ggarrange()</em>.</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="fu">ggarrange</span>(radio, tv, llphone, mphone, computer, internet, </span>
-<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a>          <span class="at">ncol =</span> <span class="dv">3</span>, </span>
-<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>          <span class="at">nrow =</span> <span class="dv">2</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output-display">
-<p><img src="Hands-on_Ex09_files/figure-html/unnamed-chunk-13-1.png" class="img-fluid" width="672"></p>
-</div>
+<div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a>train_data <span class="ot">&lt;-</span> <span class="fu">read_rds</span>(<span class="st">"data/aspatial/train_data.rds"</span>)</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>test_data <span class="ot">&lt;-</span> <span class="fu">read_rds</span>(<span class="st">"data/aspatial/test_data.rds"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 </section>
-<section id="choropleth-map" class="level2">
-<h2 class="anchored" data-anchor-id="choropleth-map">Choropleth map</h2>
-<p>We need to collate the aspatial penetration rates and join them into our geospatial data.</p>
+<section id="non-spatial-multiple-linear-regression" class="level1">
+<h1>Non-spatial multiple linear regression</h1>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>shan_sf <span class="ot">&lt;-</span> <span class="fu">left_join</span>(shan_sf, </span>
-<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>                     ict_derived, <span class="at">by=</span><span class="fu">c</span>(<span class="st">"TS_PCODE"</span><span class="ot">=</span><span class="st">"TS_PCODE"</span>))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</div>
-<ul>
-<li>TS_PCODE, the postal code, is the common identifier used to perform the left-join.</li>
-</ul>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb19"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb19-1"><a href="#cb19-1" aria-hidden="true" tabindex="-1"></a><span class="fu">write_rds</span>(shan_sf, <span class="st">"data/rds/shan_sf.rds"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-</div>
-<p>A quick view of the choropleth map can be performed using <em>qtm()</em>.</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="fu">qtm</span>(shan_sf, <span class="st">"RADIO_PR"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output-display">
-<p><img src="Hands-on_Ex09_files/figure-html/unnamed-chunk-16-1.png" class="img-fluid" width="672"></p>
-</div>
-</div>
-<p>The problem with the above map is that it is subjected to the bias to the total number of households. This bias can be verified by comparing the total number of households per town and the total number of households with radios.</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb21"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb21-1"><a href="#cb21-1" aria-hidden="true" tabindex="-1"></a>TT_HOUSEHOLDS.map <span class="ot">&lt;-</span> <span class="fu">tm_shape</span>(shan_sf) <span class="sc">+</span> </span>
-<span id="cb21-2"><a href="#cb21-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_fill</span>(<span class="at">col =</span> <span class="st">"TT_HOUSEHOLDS"</span>,</span>
-<span id="cb21-3"><a href="#cb21-3" aria-hidden="true" tabindex="-1"></a>          <span class="at">n =</span> <span class="dv">5</span>,</span>
-<span id="cb21-4"><a href="#cb21-4" aria-hidden="true" tabindex="-1"></a>          <span class="at">style =</span> <span class="st">"jenks"</span>, </span>
-<span id="cb21-5"><a href="#cb21-5" aria-hidden="true" tabindex="-1"></a>          <span class="at">title =</span> <span class="st">"Total households"</span>) <span class="sc">+</span> </span>
-<span id="cb21-6"><a href="#cb21-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_borders</span>(<span class="at">alpha =</span> <span class="fl">0.5</span>) </span>
-<span id="cb21-7"><a href="#cb21-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb21-8"><a href="#cb21-8" aria-hidden="true" tabindex="-1"></a>RADIO.map <span class="ot">&lt;-</span> <span class="fu">tm_shape</span>(shan_sf) <span class="sc">+</span> </span>
-<span id="cb21-9"><a href="#cb21-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_fill</span>(<span class="at">col =</span> <span class="st">"RADIO"</span>,</span>
-<span id="cb21-10"><a href="#cb21-10" aria-hidden="true" tabindex="-1"></a>          <span class="at">n =</span> <span class="dv">5</span>,</span>
-<span id="cb21-11"><a href="#cb21-11" aria-hidden="true" tabindex="-1"></a>          <span class="at">style =</span> <span class="st">"jenks"</span>,</span>
-<span id="cb21-12"><a href="#cb21-12" aria-hidden="true" tabindex="-1"></a>          <span class="at">title =</span> <span class="st">"Number Radio "</span>) <span class="sc">+</span> </span>
-<span id="cb21-13"><a href="#cb21-13" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_borders</span>(<span class="at">alpha =</span> <span class="fl">0.5</span>) </span>
-<span id="cb21-14"><a href="#cb21-14" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb21-15"><a href="#cb21-15" aria-hidden="true" tabindex="-1"></a><span class="fu">tmap_arrange</span>(TT_HOUSEHOLDS.map, RADIO.map,</span>
-<span id="cb21-16"><a href="#cb21-16" aria-hidden="true" tabindex="-1"></a>             <span class="at">asp=</span><span class="cn">NA</span>, <span class="at">ncol=</span><span class="dv">2</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output-display">
-<p><img src="Hands-on_Ex09_files/figure-html/unnamed-chunk-17-1.png" class="img-fluid" width="672"></p>
-</div>
-</div>
-<ul>
-<li>As we can see, the choropleth maps show that townships with more households tend to have more radio ownership.</li>
-</ul>
-<p>As such, let’s compare the distribution fo total number of households and the radio penetration rate.</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a><span class="fu">tm_shape</span>(shan_sf) <span class="sc">+</span></span>
-<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>    <span class="fu">tm_polygons</span>(<span class="fu">c</span>(<span class="st">"TT_HOUSEHOLDS"</span>, <span class="st">"RADIO_PR"</span>),</span>
-<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>                <span class="at">style=</span><span class="st">"jenks"</span>) <span class="sc">+</span></span>
-<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>    <span class="fu">tm_facets</span>(<span class="at">sync =</span> <span class="cn">TRUE</span>, <span class="at">ncol =</span> <span class="dv">2</span>) <span class="sc">+</span></span>
-<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_legend</span>(<span class="at">legend.position =</span> <span class="fu">c</span>(<span class="st">"right"</span>, <span class="st">"bottom"</span>))<span class="sc">+</span></span>
-<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tm_layout</span>(<span class="at">outer.margins=</span><span class="dv">0</span>, <span class="at">asp=</span><span class="dv">0</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output-display">
-<p><img src="Hands-on_Ex09_files/figure-html/unnamed-chunk-18-1.png" class="img-fluid" width="672"></p>
-</div>
-</div>
-<ul>
-<li>Less densely populated towns may have higher radio penetration rates.</li>
-</ul>
-</section>
-</section>
-<section id="correlation-analysis" class="level1">
-<h1>Correlation analysis</h1>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb23"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb23-1"><a href="#cb23-1" aria-hidden="true" tabindex="-1"></a>cluster_vars.cor <span class="ot">=</span> <span class="fu">cor</span>(ict_derived[,<span class="dv">12</span><span class="sc">:</span><span class="dv">17</span>])</span>
-<span id="cb23-2"><a href="#cb23-2" aria-hidden="true" tabindex="-1"></a><span class="fu">corrplot.mixed</span>(cluster_vars.cor,</span>
-<span id="cb23-3"><a href="#cb23-3" aria-hidden="true" tabindex="-1"></a>         <span class="at">lower =</span> <span class="st">"ellipse"</span>, </span>
-<span id="cb23-4"><a href="#cb23-4" aria-hidden="true" tabindex="-1"></a>               <span class="at">upper =</span> <span class="st">"number"</span>,</span>
-<span id="cb23-5"><a href="#cb23-5" aria-hidden="true" tabindex="-1"></a>               <span class="at">tl.pos =</span> <span class="st">"lt"</span>,</span>
-<span id="cb23-6"><a href="#cb23-6" aria-hidden="true" tabindex="-1"></a>               <span class="at">diag =</span> <span class="st">"l"</span>,</span>
-<span id="cb23-7"><a href="#cb23-7" aria-hidden="true" tabindex="-1"></a>               <span class="at">tl.col =</span> <span class="st">"black"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output-display">
-<p><img src="Hands-on_Ex09_files/figure-html/unnamed-chunk-19-1.png" class="img-fluid" width="672"></p>
-</div>
-</div>
-</section>
-<section id="hierarchy-cluster-analyssis" class="level1">
-<h1>Hierarchy Cluster Analyssis</h1>
-<section id="extracting-cluster-variables" class="level2">
-<h2 class="anchored" data-anchor-id="extracting-cluster-variables">Extracting cluster variables</h2>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>cluster_vars <span class="ot">&lt;-</span> shan_sf <span class="sc">%&gt;%</span></span>
-<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">st_set_geometry</span>(<span class="cn">NULL</span>) <span class="sc">%&gt;%</span></span>
-<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="st">"TS.x"</span>, <span class="st">"RADIO_PR"</span>, <span class="st">"TV_PR"</span>, <span class="st">"LLPHONE_PR"</span>, <span class="st">"MPHONE_PR"</span>, <span class="st">"COMPUTER_PR"</span>)</span>
-<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(cluster_vars,<span class="dv">10</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>price_mlr <span class="ot">&lt;-</span> <span class="fu">lm</span>(resale_price <span class="sc">~</span> floor_area_sqm <span class="sc">+</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>                  storey_order <span class="sc">+</span> remaining_lease_mths <span class="sc">+</span></span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>                  PROX_CBD <span class="sc">+</span> PROX_ELDERLYCARE <span class="sc">+</span> PROX_HAWKER <span class="sc">+</span></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>                  PROX_MRT <span class="sc">+</span> PROX_PARK <span class="sc">+</span> PROX_MALL <span class="sc">+</span> </span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>                  PROX_SUPERMARKET <span class="sc">+</span> WITHIN_350M_KINDERGARTEN <span class="sc">+</span></span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>                  WITHIN_350M_CHILDCARE <span class="sc">+</span> WITHIN_350M_BUS <span class="sc">+</span></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>                  WITHIN_1KM_PRISCH,</span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a>                <span class="at">data=</span>train_data)</span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(price_mlr)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>        TS.x RADIO_PR    TV_PR LLPHONE_PR MPHONE_PR COMPUTER_PR
-1    Mongmit 286.1852 554.1313   35.30618  260.6944    12.15939
-2    Pindaya 417.4647 505.1300   19.83584  162.3917    12.88190
-3    Ywangan 484.5215 260.5734   11.93591  120.2856     4.41465
-4   Pinlaung 231.6499 541.7189   28.54454  249.4903    13.76255
-5     Mabein 449.4903 708.6423   72.75255  392.6089    16.45042
-6      Kalaw 280.7624 611.6204   42.06478  408.7951    29.63160
-7      Pekon 318.6118 535.8494   39.83270  214.8476    18.97032
-8   Lawksawk 387.1017 630.0035   31.51366  320.5686    21.76677
-9  Nawnghkio 349.3359 547.9456   38.44960  323.0201    15.76465
-10   Kyaukme 210.9548 601.1773   39.58267  372.4930    30.94709</code></pre>
+<pre><code>
+Call:
+lm(formula = resale_price ~ floor_area_sqm + storey_order + remaining_lease_mths + 
+    PROX_CBD + PROX_ELDERLYCARE + PROX_HAWKER + PROX_MRT + PROX_PARK + 
+    PROX_MALL + PROX_SUPERMARKET + WITHIN_350M_KINDERGARTEN + 
+    WITHIN_350M_CHILDCARE + WITHIN_350M_BUS + WITHIN_1KM_PRISCH, 
+    data = train_data)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-205193  -39120   -1930   36545  472355 
+
+Coefficients:
+                           Estimate Std. Error t value Pr(&gt;|t|)    
+(Intercept)              107601.073  10601.261  10.150  &lt; 2e-16 ***
+floor_area_sqm             2780.698     90.579  30.699  &lt; 2e-16 ***
+storey_order              14299.298    339.115  42.167  &lt; 2e-16 ***
+remaining_lease_mths        344.490      4.592  75.027  &lt; 2e-16 ***
+PROX_CBD                 -16930.196    201.254 -84.124  &lt; 2e-16 ***
+PROX_ELDERLYCARE         -14441.025    994.867 -14.516  &lt; 2e-16 ***
+PROX_HAWKER              -19265.648   1273.597 -15.127  &lt; 2e-16 ***
+PROX_MRT                 -32564.272   1744.232 -18.670  &lt; 2e-16 ***
+PROX_PARK                 -5712.625   1483.885  -3.850 0.000119 ***
+PROX_MALL                -14717.388   2007.818  -7.330 2.47e-13 ***
+PROX_SUPERMARKET         -26881.938   4189.624  -6.416 1.46e-10 ***
+WITHIN_350M_KINDERGARTEN   8520.472    632.812  13.464  &lt; 2e-16 ***
+WITHIN_350M_CHILDCARE     -4510.650    354.015 -12.741  &lt; 2e-16 ***
+WITHIN_350M_BUS             813.493    222.574   3.655 0.000259 ***
+WITHIN_1KM_PRISCH         -8010.834    491.512 -16.298  &lt; 2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+Residual standard error: 61650 on 10320 degrees of freedom
+Multiple R-squared:  0.7373,    Adjusted R-squared:  0.737 
+F-statistic:  2069 on 14 and 10320 DF,  p-value: &lt; 2.2e-16</code></pre>
 </div>
 </div>
-<p>Change the rows by township name.</p>
+</section>
+<section id="gwr-prediction" class="level1">
+<h1>GWR Prediction</h1>
+<p>Let’s predict HDB resale prices using geographically weighted regression with the help of the GWmodel package!</p>
+<section id="converting-sf-data-frame-to-spatialpointdataframe" class="level2">
+<h2 class="anchored" data-anchor-id="converting-sf-data-frame-to-spatialpointdataframe">Converting sf data frame to SPatialPointDataFrame</h2>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb26"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb26-1"><a href="#cb26-1" aria-hidden="true" tabindex="-1"></a><span class="fu">row.names</span>(cluster_vars) <span class="ot">&lt;-</span> cluster_vars<span class="sc">$</span><span class="st">"TS.x"</span></span>
-<span id="cb26-2"><a href="#cb26-2" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(cluster_vars,<span class="dv">10</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>train_data_sp <span class="ot">&lt;-</span> <span class="fu">as_Spatial</span>(train_data)</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a>train_data_sp</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>               TS.x RADIO_PR    TV_PR LLPHONE_PR MPHONE_PR COMPUTER_PR
-Mongmit     Mongmit 286.1852 554.1313   35.30618  260.6944    12.15939
-Pindaya     Pindaya 417.4647 505.1300   19.83584  162.3917    12.88190
-Ywangan     Ywangan 484.5215 260.5734   11.93591  120.2856     4.41465
-Pinlaung   Pinlaung 231.6499 541.7189   28.54454  249.4903    13.76255
-Mabein       Mabein 449.4903 708.6423   72.75255  392.6089    16.45042
-Kalaw         Kalaw 280.7624 611.6204   42.06478  408.7951    29.63160
-Pekon         Pekon 318.6118 535.8494   39.83270  214.8476    18.97032
-Lawksawk   Lawksawk 387.1017 630.0035   31.51366  320.5686    21.76677
-Nawnghkio Nawnghkio 349.3359 547.9456   38.44960  323.0201    15.76465
-Kyaukme     Kyaukme 210.9548 601.1773   39.58267  372.4930    30.94709</code></pre>
+<pre><code>class       : SpatialPointsDataFrame 
+features    : 10335 
+extent      : 11597.31, 42623.63, 28217.39, 48741.06  (xmin, xmax, ymin, ymax)
+crs         : +proj=tmerc +lat_0=1.36666666666667 +lon_0=103.833333333333 +k=1 +x_0=28001.642 +y_0=38744.572 +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs 
+variables   : 17
+names       : resale_price, floor_area_sqm, storey_order, remaining_lease_mths,          PROX_CBD,     PROX_ELDERLYCARE,        PROX_HAWKER,           PROX_MRT,          PROX_PARK,   PROX_GOOD_PRISCH,        PROX_MALL,            PROX_CHAS,     PROX_SUPERMARKET, WITHIN_350M_KINDERGARTEN, WITHIN_350M_CHILDCARE, ... 
+min values  :       218000,             74,            1,                  555, 0.999393538715878, 1.98943787433087e-08, 0.0333358643817954, 0.0220407324774434, 0.0441643212802781, 0.0652540365486641,                0, 6.20621206270077e-09, 1.21715176356525e-07,                        0,                     0, ... 
+max values  :      1186888,            133,           17,                 1164,  19.6500691667807,     3.30163731686804,   2.86763031236184,   2.13060636038504,   2.41313695915468,   10.6223726149914, 2.27100643784442,    0.808332738794272,     1.57131703651196,                        7,                    20, ... </code></pre>
 </div>
 </div>
-<p>Delete the TS.x field.</p>
+</section>
+<section id="compute-adaptive-bandwidth" class="level2">
+<h2 class="anchored" data-anchor-id="compute-adaptive-bandwidth">Compute adaptive bandwidth</h2>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb28"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb28-1"><a href="#cb28-1" aria-hidden="true" tabindex="-1"></a>shan_ict <span class="ot">&lt;-</span> <span class="fu">select</span>(cluster_vars, <span class="fu">c</span>(<span class="dv">2</span><span class="sc">:</span><span class="dv">6</span>))</span>
-<span id="cb28-2"><a href="#cb28-2" aria-hidden="true" tabindex="-1"></a><span class="fu">head</span>(shan_ict, <span class="dv">10</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>bw_adaptive <span class="ot">&lt;-</span> <span class="fu">bw.gwr</span>(resale_price <span class="sc">~</span> floor_area_sqm <span class="sc">+</span></span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>                  storey_order <span class="sc">+</span> remaining_lease_mths <span class="sc">+</span></span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>                  PROX_CBD <span class="sc">+</span> PROX_ELDERLYCARE <span class="sc">+</span> PROX_HAWKER <span class="sc">+</span></span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>                  PROX_MRT <span class="sc">+</span> PROX_PARK <span class="sc">+</span> PROX_MALL <span class="sc">+</span> </span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>                  PROX_SUPERMARKET <span class="sc">+</span> WITHIN_350M_KINDERGARTEN <span class="sc">+</span></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>                  WITHIN_350M_CHILDCARE <span class="sc">+</span> WITHIN_350M_BUS <span class="sc">+</span></span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a>                  WITHIN_1KM_PRISCH,</span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>                  <span class="at">data=</span>train_data_sp,</span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a>                  <span class="at">approach=</span><span class="st">"CV"</span>,</span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a>                  <span class="at">kernel=</span><span class="st">"gaussian"</span>,</span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a>                  <span class="at">adaptive=</span><span class="cn">TRUE</span>,</span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>                  <span class="at">longlat=</span><span class="cn">FALSE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>          RADIO_PR    TV_PR LLPHONE_PR MPHONE_PR COMPUTER_PR
-Mongmit   286.1852 554.1313   35.30618  260.6944    12.15939
-Pindaya   417.4647 505.1300   19.83584  162.3917    12.88190
-Ywangan   484.5215 260.5734   11.93591  120.2856     4.41465
-Pinlaung  231.6499 541.7189   28.54454  249.4903    13.76255
-Mabein    449.4903 708.6423   72.75255  392.6089    16.45042
-Kalaw     280.7624 611.6204   42.06478  408.7951    29.63160
-Pekon     318.6118 535.8494   39.83270  214.8476    18.97032
-Lawksawk  387.1017 630.0035   31.51366  320.5686    21.76677
-Nawnghkio 349.3359 547.9456   38.44960  323.0201    15.76465
-Kyaukme   210.9548 601.1773   39.58267  372.4930    30.94709</code></pre>
+<pre><code>Take a cup of tea and have a break, it will take a few minutes.
+          -----A kind suggestion from GWmodel development group
+Adaptive bandwidth: 6395 CV score: 3.60536e+13 
+Adaptive bandwidth: 3960 CV score: 3.320316e+13 
+Adaptive bandwidth: 2455 CV score: 2.928339e+13 
+Adaptive bandwidth: 1524 CV score: 2.550957e+13 
+Adaptive bandwidth: 950 CV score: 1.95632e+13 
+Adaptive bandwidth: 593 CV score: 1.58347e+13 
+Adaptive bandwidth: 375 CV score: 1.310042e+13 
+Adaptive bandwidth: 237 CV score: 1.113152e+13 
+Adaptive bandwidth: 155 CV score: 9.572037e+12 
+Adaptive bandwidth: 101 CV score: 8.457003e+12 
+Adaptive bandwidth: 71 CV score: 7.605058e+12 
+Adaptive bandwidth: 49 CV score: 6.965752e+12 
+Adaptive bandwidth: 38 CV score: 8.249935e+12 
+Adaptive bandwidth: 58 CV score: 7.275234e+12 
+Adaptive bandwidth: 45 CV score: 6.871439e+12 
+Adaptive bandwidth: 41 CV score: 6.7928e+12 
+Adaptive bandwidth: 40 CV score: 6.780447e+12 
+Adaptive bandwidth: 38 CV score: 8.249935e+12 
+Adaptive bandwidth: 40 CV score: 6.780447e+12 </code></pre>
 </div>
 </div>
-</section>
-<section id="data-standardisation" class="level2">
-<h2 class="anchored" data-anchor-id="data-standardisation">Data standardisation</h2>
-<p>Data standardisation is important to avoid biases in clustering.</p>
-</section>
-<section id="min-max-standardisation" class="level2">
-<h2 class="anchored" data-anchor-id="min-max-standardisation">Min-Max standardisation</h2>
-<p>From <em>heatmaply</em>, <em>normalize()</em> is used for standardisation of clustering variables using the Min-Max method.</p>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb30"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb30-1"><a href="#cb30-1" aria-hidden="true" tabindex="-1"></a>shan_ict.std <span class="ot">&lt;-</span> <span class="fu">normalize</span>(shan_ict)</span>
-<span id="cb30-2"><a href="#cb30-2" aria-hidden="true" tabindex="-1"></a><span class="fu">summary</span>(shan_ict.std)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a><span class="fu">write_rds</span>(bw_adaptive, <span class="st">"data/aspatial/bw_adaptive.rds"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="construct-adaptive-bandwidth-gwr-model" class="level2">
+<h2 class="anchored" data-anchor-id="construct-adaptive-bandwidth-gwr-model">Construct adaptive bandwidth GWR model</h2>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb14"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb14-1"><a href="#cb14-1" aria-hidden="true" tabindex="-1"></a>bw_adaptive <span class="ot">&lt;-</span> <span class="fu">read_rds</span>(<span class="st">"data/aspatial/bw_adaptive.rds"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<p>Calibrate gwr-based hedonic pricing model using adaptive bandwidth and Gaussian kernel.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>gwr_adaptive <span class="ot">&lt;-</span> <span class="fu">gwr.basic</span>(<span class="at">formula =</span> resale_price <span class="sc">~</span></span>
+<span id="cb15-2"><a href="#cb15-2" aria-hidden="true" tabindex="-1"></a>                            floor_area_sqm <span class="sc">+</span> storey_order <span class="sc">+</span></span>
+<span id="cb15-3"><a href="#cb15-3" aria-hidden="true" tabindex="-1"></a>                            remaining_lease_mths <span class="sc">+</span> PROX_CBD <span class="sc">+</span> </span>
+<span id="cb15-4"><a href="#cb15-4" aria-hidden="true" tabindex="-1"></a>                            PROX_ELDERLYCARE <span class="sc">+</span> PROX_HAWKER <span class="sc">+</span></span>
+<span id="cb15-5"><a href="#cb15-5" aria-hidden="true" tabindex="-1"></a>                            PROX_MRT <span class="sc">+</span> PROX_PARK <span class="sc">+</span> PROX_MALL <span class="sc">+</span> </span>
+<span id="cb15-6"><a href="#cb15-6" aria-hidden="true" tabindex="-1"></a>                            PROX_SUPERMARKET <span class="sc">+</span> WITHIN_350M_KINDERGARTEN <span class="sc">+</span></span>
+<span id="cb15-7"><a href="#cb15-7" aria-hidden="true" tabindex="-1"></a>                            WITHIN_350M_CHILDCARE <span class="sc">+</span> WITHIN_350M_BUS <span class="sc">+</span></span>
+<span id="cb15-8"><a href="#cb15-8" aria-hidden="true" tabindex="-1"></a>                            WITHIN_1KM_PRISCH,</span>
+<span id="cb15-9"><a href="#cb15-9" aria-hidden="true" tabindex="-1"></a>                          <span class="at">data=</span>train_data_sp,</span>
+<span id="cb15-10"><a href="#cb15-10" aria-hidden="true" tabindex="-1"></a>                          <span class="at">bw=</span>bw_adaptive, </span>
+<span id="cb15-11"><a href="#cb15-11" aria-hidden="true" tabindex="-1"></a>                          <span class="at">kernel =</span> <span class="st">'gaussian'</span>, </span>
+<span id="cb15-12"><a href="#cb15-12" aria-hidden="true" tabindex="-1"></a>                          <span class="at">adaptive=</span><span class="cn">TRUE</span>,</span>
+<span id="cb15-13"><a href="#cb15-13" aria-hidden="true" tabindex="-1"></a>                          <span class="at">longlat =</span> <span class="cn">FALSE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb16"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb16-1"><a href="#cb16-1" aria-hidden="true" tabindex="-1"></a><span class="fu">write_rds</span>(gwr_adaptive, <span class="st">"data/aspatial/gwr_adaptive.rds"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+</section>
+<section id="retrieve-gwr-output-object" class="level2">
+<h2 class="anchored" data-anchor-id="retrieve-gwr-output-object">Retrieve GWR output object</h2>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a>gwr_adaptive <span class="ot">&lt;-</span> <span class="fu">read_rds</span>(<span class="st">"data/aspatial/gwr_adaptive.rds"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a>gwr_adaptive</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>    RADIO_PR          TV_PR          LLPHONE_PR       MPHONE_PR     
- Min.   :0.0000   Min.   :0.0000   Min.   :0.0000   Min.   :0.0000  
- 1st Qu.:0.2544   1st Qu.:0.4600   1st Qu.:0.1123   1st Qu.:0.2199  
- Median :0.4097   Median :0.5523   Median :0.1948   Median :0.3846  
- Mean   :0.4199   Mean   :0.5416   Mean   :0.2703   Mean   :0.3972  
- 3rd Qu.:0.5330   3rd Qu.:0.6750   3rd Qu.:0.3746   3rd Qu.:0.5608  
- Max.   :1.0000   Max.   :1.0000   Max.   :1.0000   Max.   :1.0000  
-  COMPUTER_PR     
- Min.   :0.00000  
- 1st Qu.:0.09598  
- Median :0.17607  
- Mean   :0.23692  
- 3rd Qu.:0.29868  
- Max.   :1.00000  </code></pre>
+<pre><code>   ***********************************************************************
+   *                       Package   GWmodel                             *
+   ***********************************************************************
+   Program starts at: 2024-03-15 12:09:58.690682 
+   Call:
+   gwr.basic(formula = resale_price ~ floor_area_sqm + storey_order + 
+    remaining_lease_mths + PROX_CBD + PROX_ELDERLYCARE + PROX_HAWKER + 
+    PROX_MRT + PROX_PARK + PROX_MALL + PROX_SUPERMARKET + WITHIN_350M_KINDERGARTEN + 
+    WITHIN_350M_CHILDCARE + WITHIN_350M_BUS + WITHIN_1KM_PRISCH, 
+    data = train_data_sp, bw = bw_adaptive, kernel = "gaussian", 
+    adaptive = TRUE, longlat = FALSE)
+
+   Dependent (y) variable:  resale_price
+   Independent variables:  floor_area_sqm storey_order remaining_lease_mths PROX_CBD PROX_ELDERLYCARE PROX_HAWKER PROX_MRT PROX_PARK PROX_MALL PROX_SUPERMARKET WITHIN_350M_KINDERGARTEN WITHIN_350M_CHILDCARE WITHIN_350M_BUS WITHIN_1KM_PRISCH
+   Number of data points: 10335
+   ***********************************************************************
+   *                    Results of Global Regression                     *
+   ***********************************************************************
+
+   Call:
+    lm(formula = formula, data = data)
+
+   Residuals:
+    Min      1Q  Median      3Q     Max 
+-205193  -39120   -1930   36545  472355 
+
+   Coefficients:
+                              Estimate Std. Error t value Pr(&gt;|t|)    
+   (Intercept)              107601.073  10601.261  10.150  &lt; 2e-16 ***
+   floor_area_sqm             2780.698     90.579  30.699  &lt; 2e-16 ***
+   storey_order              14299.298    339.115  42.167  &lt; 2e-16 ***
+   remaining_lease_mths        344.490      4.592  75.027  &lt; 2e-16 ***
+   PROX_CBD                 -16930.196    201.254 -84.124  &lt; 2e-16 ***
+   PROX_ELDERLYCARE         -14441.025    994.867 -14.516  &lt; 2e-16 ***
+   PROX_HAWKER              -19265.648   1273.597 -15.127  &lt; 2e-16 ***
+   PROX_MRT                 -32564.272   1744.232 -18.670  &lt; 2e-16 ***
+   PROX_PARK                 -5712.625   1483.885  -3.850 0.000119 ***
+   PROX_MALL                -14717.388   2007.818  -7.330 2.47e-13 ***
+   PROX_SUPERMARKET         -26881.938   4189.624  -6.416 1.46e-10 ***
+   WITHIN_350M_KINDERGARTEN   8520.472    632.812  13.464  &lt; 2e-16 ***
+   WITHIN_350M_CHILDCARE     -4510.650    354.015 -12.741  &lt; 2e-16 ***
+   WITHIN_350M_BUS             813.493    222.574   3.655 0.000259 ***
+   WITHIN_1KM_PRISCH         -8010.834    491.512 -16.298  &lt; 2e-16 ***
+
+   ---Significance stars
+   Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1 
+   Residual standard error: 61650 on 10320 degrees of freedom
+   Multiple R-squared: 0.7373
+   Adjusted R-squared: 0.737 
+   F-statistic:  2069 on 14 and 10320 DF,  p-value: &lt; 2.2e-16 
+   ***Extra Diagnostic information
+   Residual sum of squares: 3.922202e+13
+   Sigma(hat): 61610.08
+   AIC:  257320.2
+   AICc:  257320.3
+   BIC:  247249
+   ***********************************************************************
+   *          Results of Geographically Weighted Regression              *
+   ***********************************************************************
+
+   *********************Model calibration information*********************
+   Kernel function: gaussian 
+   Adaptive bandwidth: 40 (number of nearest neighbours)
+   Regression points: the same locations as observations are used.
+   Distance metric: Euclidean distance metric is used.
+
+   ****************Summary of GWR coefficient estimates:******************
+                                   Min.     1st Qu.      Median     3rd Qu.
+   Intercept                -3.2478e+08 -4.7727e+05 -8.3004e+03  5.5025e+05
+   floor_area_sqm           -2.8714e+04  1.4475e+03  2.3011e+03  3.3900e+03
+   storey_order              3.3186e+03  8.5899e+03  1.0826e+04  1.3397e+04
+   remaining_lease_mths     -1.4431e+03  2.6063e+02  3.9048e+02  5.2865e+02
+   PROX_CBD                 -1.0837e+07 -5.7697e+04 -1.3787e+04  2.6552e+04
+   PROX_ELDERLYCARE         -3.2195e+07 -4.0643e+04  1.0562e+04  6.1054e+04
+   PROX_HAWKER              -2.3985e+08 -5.1365e+04  3.0026e+03  6.4287e+04
+   PROX_MRT                 -1.1632e+07 -1.0488e+05 -4.9373e+04  5.1037e+03
+   PROX_PARK                -6.5961e+06 -4.8671e+04 -8.8128e+02  5.3498e+04
+   PROX_MALL                -1.8112e+07 -7.4238e+04 -1.3982e+04  4.9779e+04
+   PROX_SUPERMARKET         -4.5761e+06 -6.3461e+04 -1.7429e+04  3.5616e+04
+   WITHIN_350M_KINDERGARTEN -4.1823e+05 -6.0040e+03  9.0209e+01  4.7127e+03
+   WITHIN_350M_CHILDCARE    -1.0273e+05 -2.2375e+03  2.6668e+02  2.6388e+03
+   WITHIN_350M_BUS          -1.1757e+05 -1.4719e+03  1.1626e+02  1.7584e+03
+   WITHIN_1KM_PRISCH        -6.6465e+05 -5.5959e+03  2.6916e+02  5.7500e+03
+                                  Max.
+   Intercept                1.6493e+08
+   floor_area_sqm           5.0907e+04
+   storey_order             2.9537e+04
+   remaining_lease_mths     1.8119e+03
+   PROX_CBD                 2.2411e+07
+   PROX_ELDERLYCARE         8.2444e+07
+   PROX_HAWKER              5.9654e+06
+   PROX_MRT                 2.0189e+08
+   PROX_PARK                1.5188e+07
+   PROX_MALL                1.0443e+07
+   PROX_SUPERMARKET         3.8330e+06
+   WITHIN_350M_KINDERGARTEN 6.6799e+05
+   WITHIN_350M_CHILDCARE    1.0802e+05
+   WITHIN_350M_BUS          3.7313e+04
+   WITHIN_1KM_PRISCH        5.0231e+05
+   ************************Diagnostic information*************************
+   Number of data points: 10335 
+   Effective number of parameters (2trace(S) - trace(S'S)): 1730.101 
+   Effective degrees of freedom (n-2trace(S) + trace(S'S)): 8604.899 
+   AICc (GWR book, Fotheringham, et al. 2002, p. 61, eq 2.33): 238871.9 
+   AIC (GWR book, Fotheringham, et al. 2002,GWR p. 96, eq. 4.22): 237036.9 
+   BIC (GWR book, Fotheringham, et al. 2002,GWR p. 61, eq. 2.34): 238209.1 
+   Residual sum of squares: 4.829191e+12 
+   R-square value:  0.967657 
+   Adjusted R-square value:  0.9611534 
+
+   ***********************************************************************
+   Program stops at: 2024-03-15 12:11:03.505472 </code></pre>
 </div>
 </div>
 </section>
-<section id="z-score-standardisation" class="level2">
-<h2 class="anchored" data-anchor-id="z-score-standardisation">Z-score standardisation</h2>
-<p>Z-score standardisation can be performed using <em>scale()</em>.</p>
+<section id="convert-test-data-from-sf-data-frame-to-spatialpointdataframe" class="level2">
+<h2 class="anchored" data-anchor-id="convert-test-data-from-sf-data-frame-to-spatialpointdataframe">Convert test data from sf data frame to SpatialPointDataFrame</h2>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb32"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb32-1"><a href="#cb32-1" aria-hidden="true" tabindex="-1"></a>shan_ict.z <span class="ot">&lt;-</span> <span class="fu">scale</span>(shan_ict)</span>
-<span id="cb32-2"><a href="#cb32-2" aria-hidden="true" tabindex="-1"></a><span class="fu">describe</span>(shan_ict.z)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a>test_data_sp <span class="ot">&lt;-</span> test_data <span class="sc">%&gt;%</span></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>  <span class="fu">as_Spatial</span>()</span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>test_data_sp</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>            vars  n mean sd median trimmed  mad   min  max range  skew kurtosis
-RADIO_PR       1 55    0  1  -0.04   -0.06 0.94 -1.85 2.55  4.40  0.48    -0.27
-TV_PR          2 55    0  1   0.05    0.04 0.78 -2.47 2.09  4.56 -0.38    -0.23
-LLPHONE_PR     3 55    0  1  -0.33   -0.15 0.68 -1.19 3.20  4.39  1.37     1.49
-MPHONE_PR      4 55    0  1  -0.05   -0.06 1.01 -1.58 2.40  3.98  0.48    -0.34
-COMPUTER_PR    5 55    0  1  -0.26   -0.18 0.64 -1.03 3.31  4.34  1.80     2.96
-              se
-RADIO_PR    0.13
-TV_PR       0.13
-LLPHONE_PR  0.13
-MPHONE_PR   0.13
-COMPUTER_PR 0.13</code></pre>
+<pre><code>class       : SpatialPointsDataFrame 
+features    : 5566 
+extent      : 11597.31, 42623.63, 28287.8, 48669.59  (xmin, xmax, ymin, ymax)
+crs         : +proj=tmerc +lat_0=1.36666666666667 +lon_0=103.833333333333 +k=1 +x_0=28001.642 +y_0=38744.572 +ellps=WGS84 +towgs84=0,0,0,0,0,0,0 +units=m +no_defs 
+variables   : 17
+names       : resale_price, floor_area_sqm, storey_order, remaining_lease_mths,         PROX_CBD,     PROX_ELDERLYCARE,        PROX_HAWKER,           PROX_MRT,          PROX_PARK,   PROX_GOOD_PRISCH,        PROX_MALL,            PROX_CHAS,     PROX_SUPERMARKET, WITHIN_350M_KINDERGARTEN, WITHIN_350M_CHILDCARE, ... 
+min values  :       230888,             74,            1,                  546, 1.00583660772922, 3.34897933104965e-07, 0.0474019664161957, 0.0414043955932523, 0.0502664084494264, 0.0907500295577619,                0, 4.55547870890763e-09, 1.21715176356525e-07,                        0,                     0, ... 
+max values  :      1050000,            138,           14,                 1151,  19.632402730488,     3.30163731686804,   2.83106651960209,   2.13060636038504,   2.41313695915468,   10.6169590126272, 2.26056404492346,     0.79249074802552,     1.53786629004208,                        7,                    16, ... </code></pre>
 </div>
 </div>
 </section>
-<section id="visualising-the-standardised-clustering-variables" class="level2">
-<h2 class="anchored" data-anchor-id="visualising-the-standardised-clustering-variables">Visualising the standardised clustering variables</h2>
+<section id="computing-adaptive-bandwidth-for-test-data" class="level2">
+<h2 class="anchored" data-anchor-id="computing-adaptive-bandwidth-for-test-data">Computing adaptive bandwidth for test data</h2>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb34"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb34-1"><a href="#cb34-1" aria-hidden="true" tabindex="-1"></a>r <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(<span class="at">data=</span>ict_derived, </span>
-<span id="cb34-2"><a href="#cb34-2" aria-hidden="true" tabindex="-1"></a>             <span class="fu">aes</span>(<span class="at">x=</span> <span class="st">`</span><span class="at">RADIO_PR</span><span class="st">`</span>)) <span class="sc">+</span></span>
-<span id="cb34-3"><a href="#cb34-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="at">bins=</span><span class="dv">20</span>, </span>
-<span id="cb34-4"><a href="#cb34-4" aria-hidden="true" tabindex="-1"></a>                 <span class="at">color=</span><span class="st">"black"</span>, </span>
-<span id="cb34-5"><a href="#cb34-5" aria-hidden="true" tabindex="-1"></a>                 <span class="at">fill=</span><span class="st">"light blue"</span>) <span class="sc">+</span></span>
-<span id="cb34-6"><a href="#cb34-6" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggtitle</span>(<span class="st">"Raw values without standardisation"</span>)</span>
-<span id="cb34-7"><a href="#cb34-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb34-8"><a href="#cb34-8" aria-hidden="true" tabindex="-1"></a>shan_ict_s_df <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(shan_ict.std)</span>
-<span id="cb34-9"><a href="#cb34-9" aria-hidden="true" tabindex="-1"></a>s <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(<span class="at">data=</span>shan_ict_s_df, </span>
-<span id="cb34-10"><a href="#cb34-10" aria-hidden="true" tabindex="-1"></a>       <span class="fu">aes</span>(<span class="at">x=</span><span class="st">`</span><span class="at">RADIO_PR</span><span class="st">`</span>)) <span class="sc">+</span></span>
-<span id="cb34-11"><a href="#cb34-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="at">bins=</span><span class="dv">20</span>, </span>
-<span id="cb34-12"><a href="#cb34-12" aria-hidden="true" tabindex="-1"></a>                 <span class="at">color=</span><span class="st">"black"</span>, </span>
-<span id="cb34-13"><a href="#cb34-13" aria-hidden="true" tabindex="-1"></a>                 <span class="at">fill=</span><span class="st">"light blue"</span>) <span class="sc">+</span></span>
-<span id="cb34-14"><a href="#cb34-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggtitle</span>(<span class="st">"Min-Max Standardisation"</span>)</span>
-<span id="cb34-15"><a href="#cb34-15" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb34-16"><a href="#cb34-16" aria-hidden="true" tabindex="-1"></a>shan_ict_z_df <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(shan_ict.z)</span>
-<span id="cb34-17"><a href="#cb34-17" aria-hidden="true" tabindex="-1"></a>z <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(<span class="at">data=</span>shan_ict_z_df, </span>
-<span id="cb34-18"><a href="#cb34-18" aria-hidden="true" tabindex="-1"></a>       <span class="fu">aes</span>(<span class="at">x=</span><span class="st">`</span><span class="at">RADIO_PR</span><span class="st">`</span>)) <span class="sc">+</span></span>
-<span id="cb34-19"><a href="#cb34-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_histogram</span>(<span class="at">bins=</span><span class="dv">20</span>, </span>
-<span id="cb34-20"><a href="#cb34-20" aria-hidden="true" tabindex="-1"></a>                 <span class="at">color=</span><span class="st">"black"</span>, </span>
-<span id="cb34-21"><a href="#cb34-21" aria-hidden="true" tabindex="-1"></a>                 <span class="at">fill=</span><span class="st">"light blue"</span>) <span class="sc">+</span></span>
-<span id="cb34-22"><a href="#cb34-22" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggtitle</span>(<span class="st">"Z-score Standardisation"</span>)</span>
-<span id="cb34-23"><a href="#cb34-23" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb34-24"><a href="#cb34-24" aria-hidden="true" tabindex="-1"></a><span class="fu">ggarrange</span>(r, s, z,</span>
-<span id="cb34-25"><a href="#cb34-25" aria-hidden="true" tabindex="-1"></a>          <span class="at">ncol =</span> <span class="dv">3</span>,</span>
-<span id="cb34-26"><a href="#cb34-26" aria-hidden="true" tabindex="-1"></a>          <span class="at">nrow =</span> <span class="dv">1</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output-display">
-<p><img src="Hands-on_Ex09_files/figure-html/unnamed-chunk-25-1.png" class="img-fluid" width="672"></p>
-</div>
-</div>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb35"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb35-1"><a href="#cb35-1" aria-hidden="true" tabindex="-1"></a>r <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(<span class="at">data=</span>ict_derived, </span>
-<span id="cb35-2"><a href="#cb35-2" aria-hidden="true" tabindex="-1"></a>             <span class="fu">aes</span>(<span class="at">x=</span> <span class="st">`</span><span class="at">RADIO_PR</span><span class="st">`</span>)) <span class="sc">+</span></span>
-<span id="cb35-3"><a href="#cb35-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_density</span>(<span class="at">color=</span><span class="st">"black"</span>,</span>
-<span id="cb35-4"><a href="#cb35-4" aria-hidden="true" tabindex="-1"></a>               <span class="at">fill=</span><span class="st">"light blue"</span>) <span class="sc">+</span></span>
-<span id="cb35-5"><a href="#cb35-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggtitle</span>(<span class="st">"Raw values without standardisation"</span>)</span>
-<span id="cb35-6"><a href="#cb35-6" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb35-7"><a href="#cb35-7" aria-hidden="true" tabindex="-1"></a>shan_ict_s_df <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(shan_ict.std)</span>
-<span id="cb35-8"><a href="#cb35-8" aria-hidden="true" tabindex="-1"></a>s <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(<span class="at">data=</span>shan_ict_s_df, </span>
-<span id="cb35-9"><a href="#cb35-9" aria-hidden="true" tabindex="-1"></a>       <span class="fu">aes</span>(<span class="at">x=</span><span class="st">`</span><span class="at">RADIO_PR</span><span class="st">`</span>)) <span class="sc">+</span></span>
-<span id="cb35-10"><a href="#cb35-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_density</span>(<span class="at">color=</span><span class="st">"black"</span>,</span>
-<span id="cb35-11"><a href="#cb35-11" aria-hidden="true" tabindex="-1"></a>               <span class="at">fill=</span><span class="st">"light blue"</span>) <span class="sc">+</span></span>
-<span id="cb35-12"><a href="#cb35-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggtitle</span>(<span class="st">"Min-Max Standardisation"</span>)</span>
-<span id="cb35-13"><a href="#cb35-13" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb35-14"><a href="#cb35-14" aria-hidden="true" tabindex="-1"></a>shan_ict_z_df <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(shan_ict.z)</span>
-<span id="cb35-15"><a href="#cb35-15" aria-hidden="true" tabindex="-1"></a>z <span class="ot">&lt;-</span> <span class="fu">ggplot</span>(<span class="at">data=</span>shan_ict_z_df, </span>
-<span id="cb35-16"><a href="#cb35-16" aria-hidden="true" tabindex="-1"></a>       <span class="fu">aes</span>(<span class="at">x=</span><span class="st">`</span><span class="at">RADIO_PR</span><span class="st">`</span>)) <span class="sc">+</span></span>
-<span id="cb35-17"><a href="#cb35-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_density</span>(<span class="at">color=</span><span class="st">"black"</span>,</span>
-<span id="cb35-18"><a href="#cb35-18" aria-hidden="true" tabindex="-1"></a>               <span class="at">fill=</span><span class="st">"light blue"</span>) <span class="sc">+</span></span>
-<span id="cb35-19"><a href="#cb35-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ggtitle</span>(<span class="st">"Z-score Standardisation"</span>)</span>
-<span id="cb35-20"><a href="#cb35-20" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb35-21"><a href="#cb35-21" aria-hidden="true" tabindex="-1"></a><span class="fu">ggarrange</span>(r, s, z,</span>
-<span id="cb35-22"><a href="#cb35-22" aria-hidden="true" tabindex="-1"></a>          <span class="at">ncol =</span> <span class="dv">3</span>,</span>
-<span id="cb35-23"><a href="#cb35-23" aria-hidden="true" tabindex="-1"></a>          <span class="at">nrow =</span> <span class="dv">1</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output-display">
-<p><img src="Hands-on_Ex09_files/figure-html/unnamed-chunk-26-1.png" class="img-fluid" width="672"></p>
-</div>
-</div>
-</section>
-<section id="computing-proximity-matrix" class="level2">
-<h2 class="anchored" data-anchor-id="computing-proximity-matrix">Computing proximity matrix</h2>
-<p>Many packages provide functions to calculate distance matrix and one of which is using <em>dist()</em>.</p>
-<p>The distance proximity calculations supported are:</p>
-<ul>
-<li><p>Euclidean (default)</p></li>
-<li><p>Maximum</p></li>
-<li><p>Manhattan</p></li>
-<li><p>Canberra</p></li>
-<li><p>Binary</p></li>
-<li><p>Minkowski</p></li>
-</ul>
-<div class="cell">
+<div class="sourceCode cell-code" id="cb22"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb22-1"><a href="#cb22-1" aria-hidden="true" tabindex="-1"></a>gwr_bw_test_adaptive <span class="ot">&lt;-</span> <span class="fu">bw.gwr</span>(resale_price <span class="sc">~</span> floor_area_sqm <span class="sc">+</span></span>
+<span id="cb22-2"><a href="#cb22-2" aria-hidden="true" tabindex="-1"></a>                  storey_order <span class="sc">+</span> remaining_lease_mths <span class="sc">+</span></span>
+<span id="cb22-3"><a href="#cb22-3" aria-hidden="true" tabindex="-1"></a>                  PROX_CBD <span class="sc">+</span> PROX_ELDERLYCARE <span class="sc">+</span> PROX_HAWKER <span class="sc">+</span></span>
+<span id="cb22-4"><a href="#cb22-4" aria-hidden="true" tabindex="-1"></a>                  PROX_MRT <span class="sc">+</span> PROX_PARK <span class="sc">+</span> PROX_MALL <span class="sc">+</span> </span>
+<span id="cb22-5"><a href="#cb22-5" aria-hidden="true" tabindex="-1"></a>                  PROX_SUPERMARKET <span class="sc">+</span> WITHIN_350M_KINDERGARTEN <span class="sc">+</span></span>
+<span id="cb22-6"><a href="#cb22-6" aria-hidden="true" tabindex="-1"></a>                  WITHIN_350M_CHILDCARE <span class="sc">+</span> WITHIN_350M_BUS <span class="sc">+</span></span>
+<span id="cb22-7"><a href="#cb22-7" aria-hidden="true" tabindex="-1"></a>                  WITHIN_1KM_PRISCH,</span>
+<span id="cb22-8"><a href="#cb22-8" aria-hidden="true" tabindex="-1"></a>                  <span class="at">data=</span>test_data_sp,</span>
+<span id="cb22-9"><a href="#cb22-9" aria-hidden="true" tabindex="-1"></a>                  <span class="at">approach=</span><span class="st">"CV"</span>,</span>
+<span id="cb22-10"><a href="#cb22-10" aria-hidden="true" tabindex="-1"></a>                  <span class="at">kernel=</span><span class="st">"gaussian"</span>,</span>
+<span id="cb22-11"><a href="#cb22-11" aria-hidden="true" tabindex="-1"></a>                  <span class="at">adaptive=</span><span class="cn">TRUE</span>,</span>
+<span id="cb22-12"><a href="#cb22-12" aria-hidden="true" tabindex="-1"></a>                  <span class="at">longlat=</span><span class="cn">FALSE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 <div class="cell-output cell-output-stdout">
-<pre><code>             Mongmit   Pindaya   Ywangan  Pinlaung    Mabein     Kalaw
-Pindaya    171.86828                                                  
-Ywangan    381.88259 257.31610                                        
-Pinlaung    57.46286 208.63519 400.05492                              
-Mabein     263.37099 313.45776 529.14689 312.66966                    
-Kalaw      160.05997 302.51785 499.53297 181.96406 198.14085          
-Pekon       59.61977 117.91580 336.50410  94.61225 282.26877 211.91531
-Lawksawk   140.11550 204.32952 432.16535 192.57320 130.36525 140.01101
-Nawnghkio   89.07103 180.64047 377.87702 139.27495 204.63154 127.74787
-Kyaukme    144.02475 311.01487 505.89191 139.67966 264.88283  79.42225
-Muse       563.01629 704.11252 899.44137 571.58335 453.27410 412.46033
-Laihka     141.87227 298.61288 491.83321 101.10150 345.00222 197.34633
-Mongnai    115.86190 258.49346 422.71934  64.52387 358.86053 200.34668
-Mawkmai    434.92968 437.99577 397.03752 398.11227 693.24602 562.59200
-Kutkai      97.61092 212.81775 360.11861  78.07733 340.55064 204.93018
-Mongton    192.67961 283.35574 361.23257 163.42143 425.16902 267.87522
-Mongyai    256.72744 287.41816 333.12853 220.56339 516.40426 386.74701
-Mongkaing  503.61965 481.71125 364.98429 476.29056 747.17454 625.24500
-Lashio     251.29457 398.98167 602.17475 262.51735 231.28227 106.69059
-Mongpan    193.32063 335.72896 483.68125 192.78316 301.52942 114.69105
-Matman     401.25041 354.39039 255.22031 382.40610 637.53975 537.63884
-Tachileik  529.63213 635.51774 807.44220 555.01039 365.32538 373.64459
-Narphan    406.15714 474.50209 452.95769 371.26895 630.34312 463.53759
-Mongkhet   349.45980 391.74783 408.97731 305.86058 610.30557 465.52013
-Hsipaw     118.18050 245.98884 388.63147  76.55260 366.42787 212.36711
-Monghsat   214.20854 314.71506 432.98028 160.44703 470.48135 317.96188
-Mongmao    242.54541 402.21719 542.85957 217.58854 384.91867 195.18913
-Nansang    104.91839 275.44246 472.77637  85.49572 287.92364 124.30500
-Laukkaing  568.27732 726.85355 908.82520 563.81750 520.67373 427.77791
-Pangsang   272.67383 428.24958 556.82263 244.47146 418.54016 224.03998
-Namtu      179.62251 225.40822 444.66868 170.04533 366.16094 307.27427
-Monghpyak  177.76325 221.30579 367.44835 222.20020 212.69450 167.08436
-Konkyan    403.39082 500.86933 528.12533 365.44693 613.51206 444.75859
-Mongping   265.12574 310.64850 337.94020 229.75261 518.16310 375.64739
-Hopong     136.93111 223.06050 352.85844  98.14855 398.00917 264.16294
-Nyaungshwe  99.38590 216.52463 407.11649 138.12050 210.21337  95.66782
-Hsihseng   131.49728 172.00796 342.91035 111.61846 381.20187 287.11074
-Mongla     384.30076 549.42389 728.16301 372.59678 406.09124 260.26411
-Hseni      189.37188 337.98982 534.44679 204.47572 213.61240  38.52842
-Kunlong    224.12169 355.47066 531.63089 194.76257 396.61508 273.01375
-Hopang     281.05362 443.26362 596.19312 265.96924 368.55167 185.14704
-Namhkan    386.02794 543.81859 714.43173 382.78835 379.56035 246.39577
-Kengtung   246.45691 385.68322 573.23173 263.48638 219.47071  88.29335
-Langkho    164.26299 323.28133 507.78892 168.44228 253.84371  67.19580
-Monghsu    109.15790 198.35391 340.42789  80.86834 367.19820 237.34578
-Taunggyi   399.84278 503.75471 697.98323 429.54386 226.24011 252.26066
-Pangwaun   381.51246 512.13162 580.13146 356.37963 523.44632 338.35194
-Kyethi     202.92551 175.54012 287.29358 189.47065 442.07679 360.17247
-Loilen     145.48666 293.61143 469.51621  91.56527 375.06406 217.19877
-Manton     430.64070 402.42888 306.16379 405.83081 674.01120 560.16577
-Mongyang   309.51302 475.93982 630.71590 286.03834 411.88352 233.56349
-Kunhing    173.50424 318.23811 449.67218 141.58836 375.82140 197.63683
-Mongyawng  214.21738 332.92193 570.56521 235.55497 193.49994 173.43078
-Tangyan    195.92520 208.43740 324.77002 169.50567 448.59948 348.06617
-Namhsan    237.78494 228.41073 286.16305 214.33352 488.33873 385.88676
-               Pekon  Lawksawk Nawnghkio   Kyaukme      Muse    Laihka
-Pindaya                                                               
-Ywangan                                                               
-Pinlaung                                                              
-Mabein                                                                
-Kalaw                                                                 
-Pekon                                                                 
-Lawksawk   157.51129                                                  
-Nawnghkio  113.15370  90.82891                                        
-Kyaukme    202.12206 186.29066 157.04230                              
-Muse       614.56144 510.13288 533.68806 434.75768                    
-Laihka     182.23667 246.74469 211.88187 128.24979 526.65211          
-Mongnai    151.60031 241.71260 182.21245 142.45669 571.97975 100.53457
-Mawkmai    416.00669 567.52693 495.15047 512.02846 926.93007 429.96554
-Kutkai     114.98048 224.64646 147.44053 170.93318 592.90743 144.67198
-Mongton    208.14888 311.07742 225.81118 229.28509 634.71074 212.07320
-Mongyai    242.52301 391.26989 319.57938 339.27780 763.91399 264.13364
-Mongkaing  480.23965 625.18712 546.69447 586.05094 995.66496 522.96309
-Lashio     303.80011 220.75270 230.55346 129.95255 313.15288 238.64533
-Mongpan    243.30037 228.54223 172.84425 110.37831 447.49969 210.76951
-Matman     368.25761 515.39711 444.05061 505.52285 929.11283 443.25453
-Tachileik  573.39528 441.82621 470.45533 429.15493 221.19950 549.08985
-Narphan    416.84901 523.69580 435.59661 420.30003 770.40234 392.32592
-Mongkhet   342.08722 487.41102 414.10280 409.03553 816.44931 324.97428
-Hsipaw     145.37542 249.35081 176.09570 163.95741 591.03355 128.42987
-Monghsat   225.64279 352.31496 289.83220 253.25370 663.76026 158.93517
-Mongmao    293.70625 314.64777 257.76465 146.09228 451.82530 185.99082
-Nansang    160.37607 188.78869 151.13185  60.32773 489.35308  78.78999
-Laukkaing  624.82399 548.83928 552.65554 428.74978 149.26996 507.39700
-Pangsang   321.81214 345.91486 287.10769 175.35273 460.24292 214.19291
-Namtu      165.02707 260.95300 257.52713 270.87277 659.16927 185.86794
-Monghpyak  190.93173 142.31691  93.03711 217.64419 539.43485 293.22640
-Konkyan    421.48797 520.31264 439.34272 393.79911 704.86973 351.75354
-Mongping   259.68288 396.47081 316.14719 330.28984 744.44948 272.82761
-Hopong     138.86577 274.91604 204.88286 218.84211 648.68011 157.48857
-Nyaungshwe 139.31874 104.17830  43.26545 126.50414 505.88581 201.71653
-Hsihseng   105.30573 257.11202 209.88026 250.27059 677.66886 175.89761
-Mongla     441.20998 393.18472 381.40808 241.58966 256.80556 315.93218
-Hseni      243.98001 171.50398 164.05304  81.20593 381.30567 204.49010
-Kunlong    249.36301 318.30406 285.04608 215.63037 547.24297 122.68682
-Hopang     336.38582 321.16462 279.84188 154.91633 377.44407 230.78652
-Namhkan    442.77120 379.41126 367.33575 247.81990 238.67060 342.43665
-Kengtung   297.67761 209.38215 208.29647 136.23356 330.08211 258.23950
-Langkho    219.21623 190.30257 156.51662  51.67279 413.64173 160.94435
-Monghsu    113.84636 242.04063 170.09168 200.77712 633.21624 163.28926
-Taunggyi   440.66133 304.96838 344.79200 312.60547 250.81471 425.36916
-Pangwaun   423.81347 453.02765 381.67478 308.31407 541.97887 351.78203
-Kyethi     162.43575 317.74604 267.21607 328.14177 757.16745 255.83275
-Loilen     181.94596 265.29318 219.26405 146.92675 560.43400  59.69478
-Manton     403.82131 551.13000 475.77296 522.86003 941.49778 458.30232
-Mongyang   363.58788 363.37684 323.32123 188.59489 389.59919 229.71502
-Kunhing    213.46379 278.68953 206.15773 145.00266 533.00162 142.03682
-Mongyawng  248.43910 179.07229 220.61209 181.55295 422.37358 211.99976
-Tangyan    167.79937 323.14701 269.07880 306.78359 736.93741 224.29176
-Namhsan    207.16559 362.84062 299.74967 347.85944 778.52971 273.79672
-             Mongnai   Mawkmai    Kutkai   Mongton   Mongyai Mongkaing
-Pindaya                                                               
-Ywangan                                                               
-Pinlaung                                                              
-Mabein                                                                
-Kalaw                                                                 
-Pekon                                                                 
-Lawksawk                                                              
-Nawnghkio                                                             
-Kyaukme                                                               
-Muse                                                                  
-Laihka                                                                
-Mongnai                                                               
-Mawkmai    374.50873                                                  
-Kutkai      91.15307 364.95519                                        
-Mongton    131.67061 313.35220 107.06341                              
-Mongyai    203.23607 178.70499 188.94166 159.79790                    
-Mongkaing  456.00842 133.29995 428.96133 365.50032 262.84016          
-Lashio     270.86983 638.60773 289.82513 347.11584 466.36472 708.65819
-Mongpan    178.09554 509.99632 185.18173 200.31803 346.39710 563.56780
-Matman     376.33870 147.83545 340.86349 303.04574 186.95158 135.51424
-Tachileik  563.95232 919.38755 568.99109 608.76740 750.29555 967.14087
-Narphan    329.31700 273.75350 314.27683 215.97925 248.82845 285.65085
-Mongkhet   275.76855 115.58388 273.91673 223.22828 104.98924 222.60577
-Hsipaw      52.68195 351.34601  51.46282  90.69766 177.33790 423.77868
-Monghsat   125.25968 275.09705 154.32012 150.98053 127.35225 375.60376
-Mongmao    188.29603 485.52853 204.69232 206.57001 335.61300 552.31959
-Nansang     92.79567 462.41938 130.04549 199.58124 288.55962 542.16609
-Laukkaing  551.56800 882.51110 580.38112 604.66190 732.68347 954.11795
-Pangsang   204.25746 484.14757 228.33583 210.77938 343.30638 548.40662
-Namtu      209.35473 427.95451 225.28268 308.71751 278.02761 525.04057
-Monghpyak  253.26470 536.71695 206.61627 258.04282 370.01575 568.21089
-Konkyan    328.82831 339.01411 310.60810 248.25265 287.87384 380.92091
-Mongping   202.99615 194.31049 182.75266 119.86993  65.38727 257.18572
-Hopong      91.53795 302.84362  73.45899 106.21031 124.62791 379.37916
-Nyaungshwe 169.63695 502.99026 152.15482 219.72196 327.13541 557.32112
-Hsihseng   142.36728 329.29477 128.21054 194.64317 162.27126 411.59788
-Mongla     354.10985 686.88950 388.40984 411.06668 535.28615 761.48327
-Hseni      216.81639 582.53670 229.37894 286.75945 408.23212 648.04408
-Kunlong    202.92529 446.53763 204.54010 270.02165 299.36066 539.91284
-Hopang     243.00945 561.24281 263.31986 273.50305 408.73288 626.17673
-Namhkan    370.05669 706.47792 392.48568 414.53594 550.62819 771.39688
-Kengtung   272.28711 632.54638 279.19573 329.38387 460.39706 692.74693
-Langkho    174.67678 531.08019 180.51419 236.70878 358.95672 597.42714
-Monghsu     84.11238 332.07962  62.60859 107.04894 154.86049 400.71816
-Taunggyi   448.55282 810.74692 450.33382 508.40925 635.94105 866.21117
-Pangwaun   312.13429 500.68857 321.80465 257.50434 394.07696 536.95736
-Kyethi     210.50453 278.85535 184.23422 222.52947 137.79420 352.06533
-Loilen      58.41263 388.73386 131.56529 176.16001 224.79239 482.18190
-Manton     391.54062 109.08779 361.82684 310.20581 195.59882  81.75337
-Mongyang   260.39387 558.83162 285.33223 295.60023 414.31237 631.91325
-Kunhing    110.55197 398.43973 108.84990 114.03609 238.99570 465.03971
-Mongyawng  275.77546 620.04321 281.03383 375.22688 445.78964 700.98284
-Tangyan    180.37471 262.66006 166.61820 198.88460 109.08506 348.56123
-Namhsan    218.10003 215.19289 191.32762 196.76188  77.35900 288.66231
-              Lashio   Mongpan    Matman Tachileik   Narphan  Mongkhet
-Pindaya                                                               
-Ywangan                                                               
-Pinlaung                                                              
-Mabein                                                                
-Kalaw                                                                 
-Pekon                                                                 
-Lawksawk                                                              
-Nawnghkio                                                             
-Kyaukme                                                               
-Muse                                                                  
-Laihka                                                                
-Mongnai                                                               
-Mawkmai                                                               
-Kutkai                                                                
-Mongton                                                               
-Mongyai                                                               
-Mongkaing                                                             
-Lashio                                                                
-Mongpan    172.33279                                                  
-Matman     628.11049 494.81014                                        
-Tachileik  311.95286 411.03849 890.12935                              
-Narphan    525.63854 371.13393 312.05193 760.29566                    
-Mongkhet   534.44463 412.17123 203.02855 820.50164 217.28718          
-Hsipaw     290.86435 179.52054 344.45451 576.18780 295.40170 253.80950
-Monghsat   377.86793 283.30992 313.59911 677.09508 278.21548 167.98445
-Mongmao    214.23677 131.59966 501.59903 472.95568 331.42618 375.35820
-Nansang    184.47950 144.77393 458.06573 486.77266 398.13308 360.99219
-Laukkaing  334.65738 435.58047 903.72094 325.06329 708.82887 769.06406
-Pangsang   236.72516 140.23910 506.29940 481.31907 316.30314 375.58139
-Namtu      365.88437 352.91394 416.65397 659.56458 494.36143 355.99713
-Monghpyak  262.09281 187.85699 470.46845 444.04411 448.40651 462.63265
-Konkyan    485.51312 365.87588 392.40306 730.92980 158.82353 254.24424
-Mongping   454.52548 318.47482 201.65224 727.08969 188.64567 113.80917
-Hopong     345.31042 239.43845 291.84351 632.45718 294.40441 212.99485
-Nyaungshwe 201.58191 137.29734 460.91883 445.81335 427.94086 417.08639
-Hsihseng   369.00833 295.87811 304.02806 658.87060 377.52977 256.70338
-Mongla     179.95877 253.20001 708.17595 347.33155 531.46949 574.40292
-Hseni       79.41836 120.66550 564.64051 354.90063 474.12297 481.88406
-Kunlong    295.23103 288.03320 468.27436 595.70536 413.07823 341.68641
-Hopang     170.63913 135.62913 573.55355 403.82035 397.85908 451.51070
-Namhkan    173.27153 240.34131 715.42102 295.91660 536.85519 596.19944
-Kengtung    59.85893 142.21554 613.01033 295.90429 505.40025 531.35998
-Langkho    115.18145  94.98486 518.86151 402.33622 420.65204 428.08061
-Monghsu    325.71557 216.25326 308.13805 605.02113 311.92379 247.73318
-Taunggyi   195.14541 319.81385 778.45810 150.84117 684.20905 712.80752
-Pangwaun   362.45608 232.52209 523.43600 540.60474 264.64997 407.02947
-Kyethi     447.10266 358.89620 233.83079 728.87329 374.90376 233.25039
-Loilen     268.92310 207.25000 406.56282 573.75476 354.79137 284.76895
-Manton     646.66493 507.96808  59.52318 910.23039 280.26395 181.33894
-Mongyang   209.33700 194.93467 585.61776 448.79027 401.39475 445.40621
-Kunhing    255.10832 137.85278 403.66587 532.26397 281.62645 292.49814
-Mongyawng  172.70139 275.15989 601.80824 432.10118 572.76394 522.91815
-Tangyan    429.84475 340.39128 242.78233 719.84066 348.84991 201.49393
-Namhsan    472.04024 364.77086 180.09747 754.03913 316.54695 170.90848
-              Hsipaw  Monghsat   Mongmao   Nansang Laukkaing  Pangsang
-Pindaya                                                               
-Ywangan                                                               
-Pinlaung                                                              
-Mabein                                                                
-Kalaw                                                                 
-Pekon                                                                 
-Lawksawk                                                              
-Nawnghkio                                                             
-Kyaukme                                                               
-Muse                                                                  
-Laihka                                                                
-Mongnai                                                               
-Mawkmai                                                               
-Kutkai                                                                
-Mongton                                                               
-Mongyai                                                               
-Mongkaing                                                             
-Lashio                                                                
-Mongpan                                                               
-Matman                                                                
-Tachileik                                                             
-Narphan                                                               
-Mongkhet                                                              
-Hsipaw                                                                
-Monghsat   121.78922                                                  
-Mongmao    185.99483 247.17708                                        
-Nansang    120.24428 201.92690 164.99494                              
-Laukkaing  569.06099 626.44910 404.00848 480.60074                    
-Pangsang   205.04337 256.37933  57.60801 193.36162 408.04016          
-Namtu      229.44658 231.78673 365.03882 217.61884 664.06286 392.97391
-Monghpyak  237.67919 356.84917 291.88846 227.52638 565.84279 315.11651
-Konkyan    296.74316 268.25060 281.87425 374.70456 635.92043 274.81900
-Mongping   168.92101 140.95392 305.57166 287.36626 708.13447 308.33123
-Hopong      62.86179 100.45714 244.16253 167.66291 628.48557 261.51075
-Nyaungshwe 169.92664 286.37238 230.45003 131.18943 520.24345 257.77823
-Hsihseng   136.54610 153.49551 311.98001 193.53779 670.74564 335.52974
-Mongla     373.47509 429.00536 216.24705 289.45119 202.55831 217.88123
-Hseni      231.48538 331.22632 184.67099 136.45492 391.74585 214.66375
-Kunlong    205.10051 202.31862 224.43391 183.01388 521.88657 258.49342
-Hopang     248.72536 317.64824  78.29342 196.47091 331.67199  92.57672
-Namhkan    382.79302 455.10875 223.32205 302.89487 196.46063 231.38484
-Kengtung   284.08582 383.72138 207.58055 193.67980 351.48520 229.85484
-Langkho    183.05109 279.52329 134.50170  99.39859 410.41270 167.65920
-Monghsu     58.55724 137.24737 242.43599 153.59962 619.01766 260.52971
-Taunggyi   462.31183 562.88102 387.33906 365.04897 345.98041 405.59730
-Pangwaun   298.12447 343.53898 187.40057 326.12960 470.63605 157.48757
-Kyethi     195.17677 190.50609 377.89657 273.02385 749.99415 396.89963
-Loilen      98.04789 118.65144 190.26490  94.23028 535.57527 207.94433
-Manton     359.60008 317.15603 503.79786 476.55544 907.38406 504.75214
-Mongyang   267.10497 312.64797  91.06281 218.49285 326.19219 108.37735
-Kunhing     90.77517 165.38834 103.91040 128.20940 500.41640 123.18870
-Mongyawng  294.70967 364.40429 296.40789 191.11990 454.80044 336.16703
-Tangyan    167.69794 144.59626 347.14183 249.70235 722.40954 364.76893
-Namhsan    194.47928 169.56962 371.71448 294.16284 760.45960 385.65526
-               Namtu Monghpyak   Konkyan  Mongping    Hopong Nyaungshwe
-Pindaya                                                                
-Ywangan                                                                
-Pinlaung                                                               
-Mabein                                                                 
-Kalaw                                                                  
-Pekon                                                                  
-Lawksawk                                                               
-Nawnghkio                                                              
-Kyaukme                                                                
-Muse                                                                   
-Laihka                                                                 
-Mongnai                                                                
-Mawkmai                                                                
-Kutkai                                                                 
-Mongton                                                                
-Mongyai                                                                
-Mongkaing                                                              
-Lashio                                                                 
-Mongpan                                                                
-Matman                                                                 
-Tachileik                                                              
-Narphan                                                                
-Mongkhet                                                               
-Hsipaw                                                                 
-Monghsat                                                               
-Mongmao                                                                
-Nansang                                                                
-Laukkaing                                                              
-Pangsang                                                               
-Namtu                                                                  
-Monghpyak  346.57799                                                   
-Konkyan    478.37690 463.39594                                         
-Mongping   321.66441 354.76537 242.02901                               
-Hopong     206.82668 267.95563 304.49287 134.00139                     
-Nyaungshwe 271.41464 103.97300 432.35040 319.32583 209.32532           
-Hsihseng   131.89940 285.37627 383.49700 199.64389  91.65458  225.80242
-Mongla     483.49434 408.03397 468.09747 512.61580 432.31105  347.60273
-Hseni      327.41448 200.26876 448.84563 395.58453 286.41193  130.86310
-Kunlong    233.60474 357.44661 329.11433 309.05385 219.06817  285.13095
-Hopang     408.24516 304.26577 348.18522 379.27212 309.77356  247.19891
-Namhkan    506.32466 379.50202 481.59596 523.74815 444.13246  333.32428
-Kengtung   385.33554 221.47613 474.82621 442.80821 340.47382  177.75714
-Langkho    305.03473 200.27496 386.95022 343.96455 239.63685  128.26577
-Monghsu    209.64684 232.17823 331.72187 158.90478  43.40665  173.82799
-Taunggyi   518.72748 334.17439 650.56905 621.53039 513.76415  325.09619
-Pangwaun   517.03554 381.95144 263.97576 340.37881 346.00673  352.92324
-Kyethi     186.90932 328.16234 400.10989 187.43974 136.49038  288.06872
-Loilen     194.24075 296.99681 334.19820 231.99959 124.74445  206.40432
-Manton     448.58230 502.20840 366.66876 200.48082 310.58885  488.79874
-Mongyang   413.26052 358.17599 329.39338 387.80686 323.35704  294.29500
-Kunhing    296.43996 250.74435 253.74202 212.59619 145.15617  189.97131
-Mongyawng  262.24331 285.56475 522.38580 455.59190 326.59925  218.12104
-Tangyan    178.69483 335.26416 367.46064 161.67411 106.82328  284.14692
-Namhsan    240.95555 352.70492 352.20115 130.23777 132.70541  315.91750
-            Hsihseng    Mongla     Hseni   Kunlong    Hopang   Namhkan
-Pindaya                                                               
-Ywangan                                                               
-Pinlaung                                                              
-Mabein                                                                
-Kalaw                                                                 
-Pekon                                                                 
-Lawksawk                                                              
-Nawnghkio                                                             
-Kyaukme                                                               
-Muse                                                                  
-Laihka                                                                
-Mongnai                                                               
-Mawkmai                                                               
-Kutkai                                                                
-Mongton                                                               
-Mongyai                                                               
-Mongkaing                                                             
-Lashio                                                                
-Mongpan                                                               
-Matman                                                                
-Tachileik                                                             
-Narphan                                                               
-Mongkhet                                                              
-Hsipaw                                                                
-Monghsat                                                              
-Mongmao                                                               
-Nansang                                                               
-Laukkaing                                                             
-Pangsang                                                              
-Namtu                                                                 
-Monghpyak                                                             
-Konkyan                                                               
-Mongping                                                              
-Hopong                                                                
-Nyaungshwe                                                            
-Hsihseng                                                              
-Mongla     478.66210                                                  
-Hseni      312.74375 226.82048                                        
-Kunlong    231.85967 346.46200 276.19175                              
-Hopang     370.01334 147.02444 162.80878 271.34451                    
-Namhkan    492.09476  77.21355 212.11323 375.73885 146.18632          
-Kengtung   370.72441 202.45004  66.12817 317.14187 164.29921 175.63015
-Langkho    276.27441 229.01675  66.66133 224.52741 134.24847 224.40029
-Monghsu     97.82470 424.51868 262.28462 239.89665 301.84458 431.32637
-Taunggyi   528.14240 297.09863 238.19389 471.29032 329.95252 257.29147
-Pangwaun   433.06326 319.18643 330.70182 392.45403 206.98364 310.44067
-Kyethi      84.04049 556.02500 388.33498 298.55859 440.48114 567.86202
-Loilen     158.84853 338.67408 227.10984 166.53599 242.89326 364.90647
-Manton     334.87758 712.51416 584.63341 479.76855 577.52046 721.86149
-Mongyang   382.59743 146.66661 210.19929 247.22785  69.25859 167.72448
-Kunhing    220.15490 306.47566 206.47448 193.77551 172.96164 314.92119
-Mongyawng  309.51462 315.57550 173.86004 240.39800 290.51360 321.21112
-Tangyan     70.27241 526.80849 373.07575 268.07983 412.22167 542.64078
-Namhsan    125.74240 564.02740 411.96125 310.40560 440.51555 576.42717
-            Kengtung   Langkho   Monghsu  Taunggyi  Pangwaun    Kyethi
-Pindaya                                                               
-Ywangan                                                               
-Pinlaung                                                              
-Mabein                                                                
-Kalaw                                                                 
-Pekon                                                                 
-Lawksawk                                                              
-Nawnghkio                                                             
-Kyaukme                                                               
-Muse                                                                  
-Laihka                                                                
-Mongnai                                                               
-Mawkmai                                                               
-Kutkai                                                                
-Mongton                                                               
-Mongyai                                                               
-Mongkaing                                                             
-Lashio                                                                
-Mongpan                                                               
-Matman                                                                
-Tachileik                                                             
-Narphan                                                               
-Mongkhet                                                              
-Hsipaw                                                                
-Monghsat                                                              
-Mongmao                                                               
-Nansang                                                               
-Laukkaing                                                             
-Pangsang                                                              
-Namtu                                                                 
-Monghpyak                                                             
-Konkyan                                                               
-Mongping                                                              
-Hopong                                                                
-Nyaungshwe                                                            
-Hsihseng                                                              
-Mongla                                                                
-Hseni                                                                 
-Kunlong                                                               
-Hopang                                                                
-Namhkan                                                               
-Kengtung                                                              
-Langkho    107.16213                                                  
-Monghsu    316.91914 221.84918                                        
-Taunggyi   186.28225 288.27478 486.91951                              
-Pangwaun   337.48335 295.38434 343.38498 497.61245                    
-Kyethi     444.26274 350.91512 146.61572 599.57407 476.62610          
-Loilen     282.22935 184.10672 131.55208 455.91617 331.69981 232.32965
-Manton     631.99123 535.95620 330.76503 803.08034 510.79265 272.03299
-Mongyang   217.08047 175.35413 323.95988 374.58247 225.25026 453.86726
-Kunhing    245.95083 146.38284 146.78891 429.98509 229.09986 278.95182
-Mongyawng  203.87199 186.11584 312.85089 287.73864 475.33116 387.71518
-Tangyan    429.95076 332.02048 127.42203 592.65262 447.05580  47.79331
-Namhsan    466.20497 368.20978 153.22576 631.49232 448.58030  68.67929
-              Loilen    Manton  Mongyang   Kunhing Mongyawng   Tangyan
-Pindaya                                                               
-Ywangan                                                               
-Pinlaung                                                              
-Mabein                                                                
-Kalaw                                                                 
-Pekon                                                                 
-Lawksawk                                                              
-Nawnghkio                                                             
-Kyaukme                                                               
-Muse                                                                  
-Laihka                                                                
-Mongnai                                                               
-Mawkmai                                                               
-Kutkai                                                                
-Mongton                                                               
-Mongyai                                                               
-Mongkaing                                                             
-Lashio                                                                
-Mongpan                                                               
-Matman                                                                
-Tachileik                                                             
-Narphan                                                               
-Mongkhet                                                              
-Hsipaw                                                                
-Monghsat                                                              
-Mongmao                                                               
-Nansang                                                               
-Laukkaing                                                             
-Pangsang                                                              
-Namtu                                                                 
-Monghpyak                                                             
-Konkyan                                                               
-Mongping                                                              
-Hopong                                                                
-Nyaungshwe                                                            
-Hsihseng                                                              
-Mongla                                                                
-Hseni                                                                 
-Kunlong                                                               
-Hopang                                                                
-Namhkan                                                               
-Kengtung                                                              
-Langkho                                                               
-Monghsu                                                               
-Taunggyi                                                              
-Pangwaun                                                              
-Kyethi                                                                
-Loilen                                                                
-Manton     419.06087                                                  
-Mongyang   246.76592 585.70558                                        
-Kunhing    130.39336 410.49230 188.89405                              
-Mongyawng  261.75211 629.43339 304.21734 295.35984                    
-Tangyan    196.60826 271.82672 421.06366 249.74161 377.52279          
-Namhsan    242.15271 210.48485 450.97869 270.79121 430.02019  63.67613</code></pre>
+<pre><code>Take a cup of tea and have a break, it will take a few minutes.
+          -----A kind suggestion from GWmodel development group
+Adaptive bandwidth: 3447 CV score: 1.902155e+13 
+Adaptive bandwidth: 2138 CV score: 1.752645e+13 
+Adaptive bandwidth: 1328 CV score: 1.556299e+13 
+Adaptive bandwidth: 828 CV score: 1.357498e+13 
+Adaptive bandwidth: 518 CV score: 1.030751e+13 
+Adaptive bandwidth: 327 CV score: 8.348364e+12 
+Adaptive bandwidth: 208 CV score: 6.860544e+12 
+Adaptive bandwidth: 135 CV score: 5.969504e+12 
+Adaptive bandwidth: 89 CV score: 5.242221e+12 
+Adaptive bandwidth: 62 CV score: 4.742767e+12 
+Adaptive bandwidth: 43 CV score: 4.357839e+12 
+Adaptive bandwidth: 34 CV score: 4.125848e+12 
+Adaptive bandwidth: 25 CV score: 4.04299e+12 
+Adaptive bandwidth: 23 CV score: 1.549626e+13 
+Adaptive bandwidth: 30 CV score: 4.074906e+12 
+Adaptive bandwidth: 25 CV score: 4.04299e+12 </code></pre>
 </div>
-</div>
-</section>
-<section id="computing-hierarchical-clustering" class="level2">
-<h2 class="anchored" data-anchor-id="computing-hierarchical-clustering">Computing hierarchical clustering</h2>
-<p>There are eight clustering algorithms supported by <em>hclust()</em>:</p>
-<ul>
-<li><p>ward.D</p></li>
-<li><p>ward.D2</p></li>
-<li><p>single</p></li>
-<li><p>complete</p></li>
-<li><p>average(UPGMA)</p></li>
-<li><p>mcquitty(WPGMA)</p></li>
-<li><p>median(WPGMC)</p></li>
-</ul>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb37"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb37-1"><a href="#cb37-1" aria-hidden="true" tabindex="-1"></a>hclust_ward <span class="ot">&lt;-</span> <span class="fu">hclust</span>(proxmat, <span class="at">method =</span> <span class="st">'ward.D'</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <div class="cell">
-<div class="sourceCode cell-code" id="cb38"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb38-1"><a href="#cb38-1" aria-hidden="true" tabindex="-1"></a><span class="fu">plot</span>(hclust_ward, <span class="at">cex =</span> <span class="fl">0.6</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output-display">
-<p><img src="Hands-on_Ex09_files/figure-html/unnamed-chunk-29-1.png" class="img-fluid" width="672"></p>
+<div class="sourceCode cell-code" id="cb24"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb24-1"><a href="#cb24-1" aria-hidden="true" tabindex="-1"></a>gwr_pred <span class="ot">&lt;-</span> <span class="fu">gwr.predict</span>(resale_price <span class="sc">~</span></span>
+<span id="cb24-2"><a href="#cb24-2" aria-hidden="true" tabindex="-1"></a>                          floor_area_sqm <span class="sc">+</span> storey_order <span class="sc">+</span></span>
+<span id="cb24-3"><a href="#cb24-3" aria-hidden="true" tabindex="-1"></a>                          remaining_lease_mths <span class="sc">+</span> PROX_CBD <span class="sc">+</span> </span>
+<span id="cb24-4"><a href="#cb24-4" aria-hidden="true" tabindex="-1"></a>                          PROX_ELDERLYCARE <span class="sc">+</span> PROX_HAWKER <span class="sc">+</span> </span>
+<span id="cb24-5"><a href="#cb24-5" aria-hidden="true" tabindex="-1"></a>                          PROX_MRT <span class="sc">+</span> PROX_PARK <span class="sc">+</span> PROX_MALL <span class="sc">+</span> </span>
+<span id="cb24-6"><a href="#cb24-6" aria-hidden="true" tabindex="-1"></a>                          PROX_SUPERMARKET <span class="sc">+</span> WITHIN_350M_KINDERGARTEN <span class="sc">+</span></span>
+<span id="cb24-7"><a href="#cb24-7" aria-hidden="true" tabindex="-1"></a>                          WITHIN_350M_CHILDCARE <span class="sc">+</span> WITHIN_350M_BUS <span class="sc">+</span> </span>
+<span id="cb24-8"><a href="#cb24-8" aria-hidden="true" tabindex="-1"></a>                          WITHIN_1KM_PRISCH, </span>
+<span id="cb24-9"><a href="#cb24-9" aria-hidden="true" tabindex="-1"></a>                        <span class="at">data=</span>train_data_sp, </span>
+<span id="cb24-10"><a href="#cb24-10" aria-hidden="true" tabindex="-1"></a>                        <span class="at">predictdata =</span> test_data_sp, </span>
+<span id="cb24-11"><a href="#cb24-11" aria-hidden="true" tabindex="-1"></a>                        <span class="at">bw=</span><span class="dv">25</span>, </span>
+<span id="cb24-12"><a href="#cb24-12" aria-hidden="true" tabindex="-1"></a>                        <span class="at">kernel =</span> <span class="st">'gaussian'</span>, </span>
+<span id="cb24-13"><a href="#cb24-13" aria-hidden="true" tabindex="-1"></a>                        <span class="at">adaptive=</span><span class="cn">TRUE</span>, </span>
+<span id="cb24-14"><a href="#cb24-14" aria-hidden="true" tabindex="-1"></a>                        <span class="at">longlat =</span> <span class="cn">FALSE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-</div>
-</section>
-<section id="selecting-optimal-clustering-algorithm" class="level2">
-<h2 class="anchored" data-anchor-id="selecting-optimal-clustering-algorithm">Selecting optimal clustering algorithm</h2>
-<p>A challenge in performing hierarchical clustering is to identify stronger clustering structures. The issue can be solved by using use agnes() function of cluster package. It functions like hclus(), however, with the agnes() function you can also get the agglomerative coefficient, which measures the amount of clustering structure found (values closer to 1 suggest strong clustering structure).</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb39"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb39-1"><a href="#cb39-1" aria-hidden="true" tabindex="-1"></a>m <span class="ot">&lt;-</span> <span class="fu">c</span>( <span class="st">"average"</span>, <span class="st">"single"</span>, <span class="st">"complete"</span>, <span class="st">"ward"</span>)</span>
-<span id="cb39-2"><a href="#cb39-2" aria-hidden="true" tabindex="-1"></a><span class="fu">names</span>(m) <span class="ot">&lt;-</span> <span class="fu">c</span>( <span class="st">"average"</span>, <span class="st">"single"</span>, <span class="st">"complete"</span>, <span class="st">"ward"</span>)</span>
-<span id="cb39-3"><a href="#cb39-3" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb39-4"><a href="#cb39-4" aria-hidden="true" tabindex="-1"></a>ac <span class="ot">&lt;-</span> <span class="cf">function</span>(x) {</span>
-<span id="cb39-5"><a href="#cb39-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">agnes</span>(shan_ict, <span class="at">method =</span> x)<span class="sc">$</span>ac</span>
-<span id="cb39-6"><a href="#cb39-6" aria-hidden="true" tabindex="-1"></a>}</span>
-<span id="cb39-7"><a href="#cb39-7" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb39-8"><a href="#cb39-8" aria-hidden="true" tabindex="-1"></a><span class="fu">map_dbl</span>(m, ac)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>  average    single  complete      ward 
-0.8131144 0.6628705 0.8950702 0.9427730 </code></pre>
-</div>
-</div>
-<ul>
-<li>Ward’s method will be used since it gives the strongest clustering structure.</li>
-</ul>
-</section>
-<section id="determining-optimal-clusters" class="level2">
-<h2 class="anchored" data-anchor-id="determining-optimal-clusters">Determining optimal clusters</h2>
-<section id="gap-staistic-method" class="level3">
-<h3 class="anchored" data-anchor-id="gap-staistic-method">Gap staistic method</h3>
-<p>The gap statistic compares the total within intra-cluster variation for different values of k with their expected values under null reference distribution of the data. The estimate of the optimal clusters will be value that maximize the gap statistic (i.e., that yields the largest gap statistic). This means that the clustering structure is far away from the random uniform distribution of points.</p>
-<p><em>clusGap()</em> of <strong>cluster</strong> package will be used to compute the gap statistic.</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb41"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb41-1"><a href="#cb41-1" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">12345</span>)</span>
-<span id="cb41-2"><a href="#cb41-2" aria-hidden="true" tabindex="-1"></a>gap_stat <span class="ot">&lt;-</span> <span class="fu">clusGap</span>(shan_ict, </span>
-<span id="cb41-3"><a href="#cb41-3" aria-hidden="true" tabindex="-1"></a>                    <span class="at">FUN =</span> hcut, </span>
-<span id="cb41-4"><a href="#cb41-4" aria-hidden="true" tabindex="-1"></a>                    <span class="at">nstart =</span> <span class="dv">25</span>, </span>
-<span id="cb41-5"><a href="#cb41-5" aria-hidden="true" tabindex="-1"></a>                    <span class="at">K.max =</span> <span class="dv">10</span>, </span>
-<span id="cb41-6"><a href="#cb41-6" aria-hidden="true" tabindex="-1"></a>                    <span class="at">B =</span> <span class="dv">50</span>)</span>
-<span id="cb41-7"><a href="#cb41-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Print the result</span></span>
-<span id="cb41-8"><a href="#cb41-8" aria-hidden="true" tabindex="-1"></a><span class="fu">print</span>(gap_stat, <span class="at">method =</span> <span class="st">"firstmax"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output cell-output-stdout">
-<pre><code>Clustering Gap statistic ["clusGap"] from call:
-clusGap(x = shan_ict, FUNcluster = hcut, K.max = 10, B = 50, nstart = 25)
-B=50 simulated reference sets, k = 1..10; spaceH0="scaledPCA"
- --&gt; Number of clusters (method 'firstmax'): 1
-          logW   E.logW       gap     SE.sim
- [1,] 8.407129 8.680794 0.2736651 0.04460994
- [2,] 8.130029 8.350712 0.2206824 0.03880130
- [3,] 7.992265 8.202550 0.2102844 0.03362652
- [4,] 7.862224 8.080655 0.2184311 0.03784781
- [5,] 7.756461 7.978022 0.2215615 0.03897071
- [6,] 7.665594 7.887777 0.2221833 0.03973087
- [7,] 7.590919 7.806333 0.2154145 0.04054939
- [8,] 7.526680 7.731619 0.2049390 0.04198644
- [9,] 7.458024 7.660795 0.2027705 0.04421874
-[10,] 7.377412 7.593858 0.2164465 0.04540947</code></pre>
-</div>
-</div>
-<p>Visualise the plot.</p>
-<div class="cell">
-<div class="sourceCode cell-code" id="cb43"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb43-1"><a href="#cb43-1" aria-hidden="true" tabindex="-1"></a><span class="fu">fviz_gap_stat</span>(gap_stat)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
-<div class="cell-output-display">
-<p><img src="Hands-on_Ex09_files/figure-html/unnamed-chunk-32-1.png" class="img-fluid" width="672"></p>
-</div>
-</div>
-<ul>
-<li><em>fviz_gap_stat()</em> is from the <strong>factoextra</strong> package.</li>
-</ul>
 
 
-</section>
 </section>
 </section>
 
