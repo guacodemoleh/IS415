@@ -12,10 +12,9 @@ date-modified: "last-modified"
 
 # Overview
 
-Predictive modelling utilises statistical or machine learning techniques to predict outcomes. A seet of known outcomes and predictors are used to calibrate predice models.
+Predictive modelling utilises statistical or machine learning techniques to predict outcomes. A set of known outcomes and predictors are used to calibrate predice models.
 
 When the occurrences of events are limited in distribution, geospatial predictive modelling can be used if the data has geospatial characteristics. These occurrences of events are not uniform nor random in distribution over space. In geospatial context, geospatial factors like topography, hydrology, infrastructure, slope aspect, etc. can have influence on where these events occur. Geospatial predictive modelling attempts to describe the constraints and influence where the locations occurs.
-
 
 ## Learning Outcome
 
@@ -29,52 +28,45 @@ This exercise aims to build predictive models using geographical random forest. 
 
 -   Predicting future outcomes using the best calibrated model
 
-
 # Data
 
--   [Aspatial] HDB Resale data: list of HDB resale transaction prices from Jan 2017 in a csv (Source: data.gov.sg)
+-   \[Aspatial\] HDB Resale data: list of HDB resale transaction prices from Jan 2017 in a csv (Source: data.gov.sg)
 
+-   \[Geospatial\] MP14_SUBZONE_WEB_PL: a polygon feature data providing information of URA 2014 Master Plan Planning Subzone boundary data in shapefile format (Source: data.gov.sg)
 
--   [Geospatial] MP14_SUBZONE_WEB_PL: a polygon feature data providing information of URA 2014 Master Plan Planning Subzone boundary data in shapefile format (Source: data.gov.sg)
+-   Locational factors with geographical coordinates
 
+-   Eldercare data in shapefile format (Source: data.gov.sg)
 
--   Locational factors with geographical coordinates 
+-   Hawker Centre data in geojson format (Source: data.gov.sg)
 
-  -   Eldercare data in shapefile format (Source: data.gov.sg)
-  
-  -   Hawker Centre data in geojson format (Source: data.gov.sg)
-  
-  -   Supermarket data in geojson format (Source: data.gov.sg)
-  
-  -   CHAS clinics in geojson format (Source: data.gov.sg)
-  
-  -   Childcare services in geojson format (Source: data.gov.sg)
-  
-  -   Kindergartens in geojson format (Source: data.gov.sg)
-  
-  -   MRT data in shapefile format (Source: datamall.lta.gov.sg)
-  
-  - Bus stops data in shapefile format (Source: datamall.lta.gov.sg)
-  
+-   Supermarket data in geojson format (Source: data.gov.sg)
+
+-   CHAS clinics in geojson format (Source: data.gov.sg)
+
+-   Childcare services in geojson format (Source: data.gov.sg)
+
+-   Kindergartens in geojson format (Source: data.gov.sg)
+
+-   MRT data in shapefile format (Source: datamall.lta.gov.sg)
+
+-   Bus stops data in shapefile format (Source: datamall.lta.gov.sg)
 
 -   Locational factors without geographic coordinates
 
-  -   Primary school data extracted from General information of schools (Source: data.gov.sg)
-  
-  -   CBD coordinates data (Source: Google)
-  
-  -   Shopping malls data (Source: Wikipedia)
-  
-  -   Good primary schools (Source: Local Salary Forum)
-  
-  
+-   Primary school data extracted from General information of schools (Source: data.gov.sg)
+
+-   CBD coordinates data (Source: Google)
+
+-   Shopping malls data (Source: Wikipedia)
+
+-   Good primary schools (Source: Local Salary Forum)
 
 # Install required packages
 
 ```{r}
 pacman::p_load(sf, spdep, GWmodel, SpatialML, tmap, rsample, Metrics, tidyverse)
 ```
-
 
 # Data Preparation
 
@@ -83,7 +75,6 @@ pacman::p_load(sf, spdep, GWmodel, SpatialML, tmap, rsample, Metrics, tidyverse)
 ```{r}
 mdata <- read_rds("data/aspatial/mdata.rds")
 ```
-
 
 ## Data Sampling
 
@@ -95,11 +86,12 @@ train_data <- training(resale_split)
 test_data <- testing(resale_split)
 ```
 
-
 ```{r}
+#| eval: false
 write_rds(train_data, "data/aspatial/train_data.rds")
 write_rds(test_data, "data/aspatial/test_data.rds")
 ```
+
 
 
 # Computing Correlation Matrix
@@ -120,14 +112,12 @@ corrplot::corrplot(cor(mdata_nogeo[, 2:17]),
 
 -   The correlation matrix above indicates all correlation values are below 0.8, so there is no sign of high multicolinearity.
 
-
 # Retrieving Stored Data
 
 ```{r}
 train_data <- read_rds("data/aspatial/train_data.rds")
 test_data <- read_rds("data/aspatial/test_data.rds")
 ```
-
 
 # Non-spatial multiple linear regression
 
@@ -143,11 +133,9 @@ price_mlr <- lm(resale_price ~ floor_area_sqm +
 summary(price_mlr)
 ```
 
-
 # GWR Prediction
 
 Let's predict HDB resale prices using geographically weighted regression with the help of the GWmodel package!
-
 
 ## Converting sf data frame to SPatialPointDataFrame
 
@@ -156,10 +144,10 @@ train_data_sp <- as_Spatial(train_data)
 train_data_sp
 ```
 
-
 ## Compute adaptive bandwidth
 
 ```{r}
+#| eval: false
 bw_adaptive <- bw.gwr(resale_price ~ floor_area_sqm +
                   storey_order + remaining_lease_mths +
                   PROX_CBD + PROX_ELDERLYCARE + PROX_HAWKER +
@@ -175,6 +163,7 @@ bw_adaptive <- bw.gwr(resale_price ~ floor_area_sqm +
 ```
 
 ```{r}
+#| eval: false
 write_rds(bw_adaptive, "data/aspatial/bw_adaptive.rds")
 ```
 
@@ -182,12 +171,13 @@ write_rds(bw_adaptive, "data/aspatial/bw_adaptive.rds")
 
 ```{r}
 bw_adaptive <- read_rds("data/aspatial/bw_adaptive.rds")
+bw_adaptive
 ```
-
 
 Calibrate gwr-based hedonic pricing model using adaptive bandwidth and Gaussian kernel.
 
 ```{r}
+#| eval: false
 gwr_adaptive <- gwr.basic(formula = resale_price ~
                             floor_area_sqm + storey_order +
                             remaining_lease_mths + PROX_CBD + 
@@ -203,11 +193,10 @@ gwr_adaptive <- gwr.basic(formula = resale_price ~
                           longlat = FALSE)
 ```
 
-
 ```{r}
+#| eval: false
 write_rds(gwr_adaptive, "data/aspatial/gwr_adaptive.rds")
 ```
-
 
 ## Retrieve GWR output object
 
@@ -215,11 +204,9 @@ write_rds(gwr_adaptive, "data/aspatial/gwr_adaptive.rds")
 gwr_adaptive <- read_rds("data/aspatial/gwr_adaptive.rds")
 ```
 
-
 ```{r}
 gwr_adaptive
 ```
-
 
 ## Convert test data from sf data frame to SpatialPointDataFrame
 
@@ -229,10 +216,10 @@ test_data_sp <- test_data %>%
 test_data_sp
 ```
 
-
 ## Computing adaptive bandwidth for test data
 
 ```{r}
+#| eval: false
 gwr_bw_test_adaptive <- bw.gwr(resale_price ~ floor_area_sqm +
                   storey_order + remaining_lease_mths +
                   PROX_CBD + PROX_ELDERLYCARE + PROX_HAWKER +
@@ -247,6 +234,14 @@ gwr_bw_test_adaptive <- bw.gwr(resale_price ~ floor_area_sqm +
                   longlat=FALSE)
 ```
 
+```{r}
+#| eval: false
+write_rds(gwr_bw_test_adaptive, "data/aspatial/gwr_bw_test_adaptive.rds")
+```
+
+```{r}
+gwr_bw_test_adaptive <- read_rds("data/aspatial/gwr_bw_test_adaptive.rds")
+```
 
 ```{r}
 #| eval: false
@@ -265,5 +260,163 @@ gwr_pred <- gwr.predict(resale_price ~
                         adaptive=TRUE, 
                         longlat = FALSE)
 ```
+
+# Preparing coordinates data
+
+## Extracting coordinates data
+
+The training and test data sets require x and y coordinates.
+
+```{r}
+coords <- st_coordinates(mdata)
+coords_train <- st_coordinates(train_data)
+coords_test <- st_coordinates(test_data)
+```
+
+Save the output into rds for future use.
+
+```{r}
+#| eval: false
+coords_train <- write_rds(coords_train, "data/geospatial/coords_train.rds")
+coords_test <- write_rds(coords_test, "data/geospatial/coords_test.rds")
+```
+
+```{r}
+coords_train <- read_rds("data/geospatial/coords_train.rds")
+coords_test <- read_rds("data/geospatial/coords_test.rds")
+```
+
+## Dropping geometry field
+
+```{r}
+train_data <- train_data %>% 
+  st_drop_geometry()
+```
+
+# Calibrating Random Forest Model
+
+Here, I will calibrate a model to predict the HDB resale price with random forest using the [*ranger()*](https://cran.r-project.org/web/packages/ranger/) function.
+
+```{r}
+#| eval: false
+set.seed(1234)
+rf <- ranger(resale_price ~ floor_area_sqm + storey_order + 
+               remaining_lease_mths + PROX_CBD + PROX_ELDERLYCARE + 
+               PROX_HAWKER + PROX_MRT + PROX_PARK + PROX_MALL + 
+               PROX_SUPERMARKET + WITHIN_350M_KINDERGARTEN +
+               WITHIN_350M_CHILDCARE + WITHIN_350M_BUS + 
+               WITHIN_1KM_PRISCH,
+             data=train_data)
+```
+
+```{r}
+#| eval: false
+write_rds(rf, "data/aspatial/rf.rds")
+```
+
+```{r}
+rf <- read_rds("data/aspatial/rf.rds")
+rf
+```
+
+
+## Calibrating using training data
+
+We can also calibrate the training data using a geographic random forest model with the help of the *grf* function of **SpatialML**.
+
+```{r}
+#| eval: false
+set.seed(1234)
+gwRF_adaptive <- grf(formula = resale_price ~ floor_area_sqm + storey_order +
+                       remaining_lease_mths + PROX_CBD + PROX_ELDERLYCARE +
+                       PROX_HAWKER + PROX_MRT + PROX_PARK + PROX_MALL +
+                       PROX_SUPERMARKET + WITHIN_350M_KINDERGARTEN +
+                       WITHIN_350M_CHILDCARE + WITHIN_350M_BUS +
+                       WITHIN_1KM_PRISCH,
+                     dframe=train_data, 
+                     bw=55,
+                     kernel="adaptive",
+                     coords=coords_train)
+```
+
+```{r}
+#| eval: false
+write_rds(gwRF_adaptive, "data/aspatial/gwRF_adaptive.rds")
+```
+
+```{r}
+gwRF_adaptive <- read_rds("data/aspatial/gwRF_adaptive.rds")
+```
+
+## Predicting by using test data
+
+### Preparing the test data
+
+Combine the test data with the corresponding coordinates data. None of the rows from our data sets were sorted, so using *cbind()* is sufficient.
+
+```{r}
+test_data <- cbind(test_data, coords_test) %>%
+  st_drop_geometry()
+```
+
+### Predicting with test data
+
+The function *predict.grf()* of SpatialML will be used to predict the resale value which uses the test data and gwRF_adaptive model calibrated earlier.
+
+```{r}
+#| eval: false
+gwRF_pred <- predict.grf(gwRF_adaptive, 
+                           test_data, 
+                           x.var.name="X",
+                           y.var.name="Y", 
+                           local.w=1,
+                           global.w=0)
+```
+
+```{r}
+#| eval: false
+GRF_pred <- write_rds(gwRF_pred, "data/aspatial/GRF_pred.rds")
+```
+
+### Converting predictive output into data frame
+
+```{r}
+GRF_pred <- read_rds("data/aspatial/GRF_pred.rds")
+GRF_pred_df <- as.data.frame(GRF_pred)
+```
+
+Use *cbind()* to append the predicted values into the test data.
+
+```{r}
+test_data_p <- cbind(test_data, GRF_pred_df)
+```
+
+```{r}
+write_rds(test_data_p, "data/aspatial/test_data_p.rds")
+```
+
+## Calculating Root Mean Square Error
+
+RMSE measures how far the predicted values are from the observed values in a regression analysis. The Metrics package contains the *rmse()* function which can be used to compute RMSE.
+
+```{r}
+rmse(test_data_p$resale_price, 
+     test_data_p$GRF_pred)
+```
+
+## Visualising Predicted Values
+
+The individual prices can be plotted in the scatterplot, where plots further away from the regression line were not as well predicted than plot prices closer to the regression line.
+
+```{r}
+test_data_p <- test_data_p[, !(names(test_data_p) %in% c("X.1", "Y.1"))]
+ggplot(data = test_data_p,
+       aes(x = GRF_pred,
+           y = resale_price)) +
+  geom_point(alpha=0.5) +
+  geom_abline(slope = 1, intercept = 0, color = "red", linetype = "solid")
+```
+
+
 
 
