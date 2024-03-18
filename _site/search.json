@@ -2392,5 +2392,33 @@
     "title": "IS415-GAA",
     "section": "",
     "text": "&lt;!DOCTYPE qgis PUBLIC ‘http://mrcc.com/qgis.dtd’ ‘SYSTEM’&gt;     dataset\n\n\n      GEOGCRS[“WGS 84”,ENSEMBLE[“World Geodetic System 1984 ensemble”,MEMBER[“World Geodetic System 1984 (Transit)”],MEMBER[“World Geodetic System 1984 (G730)”],MEMBER[“World Geodetic System 1984 (G873)”],MEMBER[“World Geodetic System 1984 (G1150)”],MEMBER[“World Geodetic System 1984 (G1674)”],MEMBER[“World Geodetic System 1984 (G1762)”],MEMBER[“World Geodetic System 1984 (G2139)”],ELLIPSOID[“WGS 84”,6378137,298.257223563,LENGTHUNIT[“metre”,1]],ENSEMBLEACCURACY[2.0]],PRIMEM[“Greenwich”,0,ANGLEUNIT[“degree”,0.0174532925199433]],CS[ellipsoidal,2],AXIS[“geodetic latitude (Lat)”,north,ORDER[1],ANGLEUNIT[“degree”,0.0174532925199433]],AXIS[“geodetic longitude (Lon)”,east,ORDER[2],ANGLEUNIT[“degree”,0.0174532925199433]],USAGE[SCOPE[“Horizontal component of 3D system.”],AREA[“World.”],BBOX[-90,-180,90,180]],ID[“EPSG”,4326]] +proj=longlat +datum=WGS84 +no_defs 3452 4326 EPSG:4326 WGS 84 longlat EPSG:7030 true"
+  },
+  {
+    "objectID": "In-class_Ex/In-class_Ex09/In-class_Ex09.html",
+    "href": "In-class_Ex/In-class_Ex09/In-class_Ex09.html",
+    "title": "In-class Exercise 9: Geographically Weighted Predictive Models",
+    "section": "",
+    "text": "pacman::p_load(sf, spdep, GWmodel, SpatialML, tmap, rsample, tidymodels, tidyverse, gtsummary, rpart, rpart.plot, ggstatsplot, performance)"
+  },
+  {
+    "objectID": "In-class_Ex/In-class_Ex09/In-class_Ex09.html#revision",
+    "href": "In-class_Ex/In-class_Ex09/In-class_Ex09.html#revision",
+    "title": "In-class Exercise 9: Geographically Weighted Predictive Models",
+    "section": "Revision",
+    "text": "Revision\n\ntrain_df &lt;- train_df %&gt;%\n  select(-c(PROX_CHAS))\ntrain_sf &lt;- train_sf %&gt;%\n  select(-c(PROX_CHAS))\ntest_df &lt;- test_df %&gt;%\n  select(-c(PROX_CHAS))\ntest_sf &lt;- test_sf %&gt;%\n  select(-c(PROX_CHAS))\n\n\n\n\n\n\n\nNote\n\n\n\nCHAS clinics are clinics under a government subsidy scheme for a selected population eligible for various tiered subsidies.\n\n\n\nrs_mlr &lt;- lm(RESALE_PRICE ~ FLOOR_AREA_SQM +\n                  STOREY_ORDER + \n               REMAINING_LEASE_MTHS +\n                  PROX_CBD + \n               PROX_ELDERLYCARE + \n               PROX_HAWKER +\n                  PROX_MRT + \n               PROX_PARK + \n               PROX_MALL + \n                  PROX_SUPERMARKET + \n               WITHIN_350M_KINDERGARTEN +\n                  WITHIN_350M_CHILDCARE + \n               WITHIN_350M_BUS +\n                  WITHIN_1KM_PRISCH,\n                data=train_df)"
+  },
+  {
+    "objectID": "In-class_Ex/In-class_Ex09/In-class_Ex09.html#variable-importance",
+    "href": "In-class_Ex/In-class_Ex09/In-class_Ex09.html#variable-importance",
+    "title": "In-class Exercise 9: Geographically Weighted Predictive Models",
+    "section": "Variable Importance",
+    "text": "Variable Importance\nVariable importance or feature importance scores are indicative of how “important” the variable is to our model.\nBy using impurity importance argument in our ranger function earlier, rs_rf has contains the generated variable.importance. Now we will extract variable.importance and save it into vi.\n\nvi &lt;- as.data.frame(rs_rf$variable.importance)\nvi$variables &lt;- rownames(vi)\nvi &lt;- vi%&gt;%\n  rename(vi = \"rs_rf$variable.importance\")\n\nPlot the graph.\n\nggplot(data = vi,\n       aes(x = vi,\n           y = reorder(variables, vi))) +\n  geom_bar(stat=\"identity\", color = \"black\", fill = \"blue\")\n\n\n\n\n\nSince there is no sign of quasi-complete or complete separation, we can proceed to calibrate our bandwidth."
+  },
+  {
+    "objectID": "In-class_Ex/In-class_Ex09/In-class_Ex09.html#saving-outputs",
+    "href": "In-class_Ex/In-class_Ex09/In-class_Ex09.html#saving-outputs",
+    "title": "In-class Exercise 9: Geographically Weighted Predictive Models",
+    "section": "Saving outputs",
+    "text": "Saving outputs\n\nrf_pred &lt;- predict(rs_rf, test_df)\n\n\nrf_pred_df &lt;- as.data.frame(rf_pred$predictions) %&gt;% \n  rename(rf_pred = \"rf_pred$predictions\")\n\n\nmlr_pred &lt;- predict(rs_mlr, test_df)\n\n\nmlr_pred_df &lt;- as.data.frame(mlr_pred) %&gt;%\n  rename(mlr_pred = \"mlr_pred\")\n\n\ntest_pred &lt;- cbind(test_pred, rf_pred_df)\ntest_pred &lt;- cbind(test_pred, mlr_pred_df)\n\n\nyardstick::rmse(test_pred,\n                RESALE_PRICE,\n                mlr_pred)\n\n# A tibble: 1 × 3\n  .metric .estimator .estimate\n  &lt;chr&gt;   &lt;chr&gt;          &lt;dbl&gt;\n1 rmse    standard      61821.\n\n\n\nmc &lt;- test_pred %&gt;%\n  pivot_longer(cols = c(2:4),\n               names_to = \"models\",\n               values_to = \"predicted\")\n\n\nggplot(data = mc,\n       aes(x=predicted,\n           y=RESALE_PRICE))  +\n  geom_point()\n\n\n\n\n\nThere are some outliers observed."
   }
 ]

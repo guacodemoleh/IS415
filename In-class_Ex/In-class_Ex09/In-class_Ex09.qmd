@@ -1,0 +1,361 @@
+---
+title: "In-class Exercise 9: Geographically Weighted Predictive Models"
+author: "Victoria Grace ANN"
+execute: 
+  warning: false
+  eval: true
+  echo: true
+  freeze: true
+date: "13 March, 2024"
+date-modified: "last-modified"
+---
+
+#  Installing Packages
+
+```{r}
+pacman::p_load(sf, spdep, GWmodel, SpatialML, tmap, rsample, tidymodels, tidyverse, gtsummary, rpart, rpart.plot, ggstatsplot, performance)
+```
+
+# Importing Data
+
+Read the input data sets that are in simple feature data frame.
+
+```{r}
+rs_sf <- read_rds("data/rds/HDB_resale.rds")
+```
+
+Reveal the properties of `rs_sf`.
+
+```{r}
+rs_sf
+```
+
+# Train-test Split
+
+```{r}
+set.seed(1234)
+resale_split <- initial_split(rs_sf, 
+                              prop = 5/10,)
+train_sf <- training(resale_split)
+test_sf <- testing(resale_split)
+```
+
+Save the train and test data.
+
+```{r}
+#| eval: false
+write_rds(train_sf, "data/rds/train_sf.rds")
+write_rds(test_sf, "data/rds/test_sf.rds")
+```
+
+```{r}
+train_sf <- read_rds("data/rds/train_sf.rds")
+test_sf <- read_rds("data/rds/test_sf.rds")
+```
+
+Remove the geometry attribute to create the tibble table frame for train and test.
+
+```{r}
+#| eval: false
+
+train_df <- train_sf %>%
+  st_drop_geometry() %>%
+  as.data.frame()
+
+test_df <- test_sf %>%
+  st_drop_geometry() %>%
+  as.data.frame()
+
+write_rds(train_df, "data/rds/train_df.rds")
+write_rds(test_df, "data/rds/test_df.rds")
+```
+
+```{r}
+train_df <- read_rds("data/rds/train_df.rds")
+test_df <- read_rds("data/rds/test_df.rds")
+```
+
+# Computing Correlation Matrix
+
+```{r}
+#| fig-width: 12
+#| Fig-height: 12
+
+rs_sf1 <- rs_sf %>%
+  st_drop_geometry()
+
+ggcorrmat(rs_sf1[,2:17])
+```
+
+-   This step is not critical for predictive modelling.
+
+# MLR Model
+
+```{r}
+rs_mlr <- lm(RESALE_PRICE ~ FLOOR_AREA_SQM +
+                  STOREY_ORDER + 
+               REMAINING_LEASE_MTHS +
+                  PROX_CBD + 
+               PROX_ELDERLYCARE + 
+               PROX_HAWKER +
+                  PROX_MRT + 
+               PROX_PARK + 
+               PROX_MALL + 
+                  PROX_SUPERMARKET +
+               PROX_CHAS +
+               WITHIN_350M_KINDERGARTEN +
+                  WITHIN_350M_CHILDCARE + 
+               WITHIN_350M_BUS +
+                  WITHIN_1KM_PRISCH,
+                data=train_df)
+```
+
+```{r}
+tbl_regression(rs_mlr)
+```
+
+-   All the variables are significant.
+
+## Revision
+
+```{r}
+train_df <- train_df %>%
+  select(-c(PROX_CHAS))
+train_sf <- train_sf %>%
+  select(-c(PROX_CHAS))
+test_df <- test_df %>%
+  select(-c(PROX_CHAS))
+test_sf <- test_sf %>%
+  select(-c(PROX_CHAS))
+```
+
+::: callout-note
+CHAS clinics are clinics under a government subsidy scheme for a selected population eligible for various tiered subsidies.
+:::
+
+```{r}
+rs_mlr <- lm(RESALE_PRICE ~ FLOOR_AREA_SQM +
+                  STOREY_ORDER + 
+               REMAINING_LEASE_MTHS +
+                  PROX_CBD + 
+               PROX_ELDERLYCARE + 
+               PROX_HAWKER +
+                  PROX_MRT + 
+               PROX_PARK + 
+               PROX_MALL + 
+                  PROX_SUPERMARKET + 
+               WITHIN_350M_KINDERGARTEN +
+                  WITHIN_350M_CHILDCARE + 
+               WITHIN_350M_BUS +
+                  WITHIN_1KM_PRISCH,
+                data=train_df)
+```
+
+# Extracting Coordinates 
+
+We need to get the coordinate pairs from the training and testing data set.
+
+```{r}
+
+coords <- st_coordinates(rs_sf)
+coords_train <- st_coordinates(train_sf)
+coords_test <- st_coordinates(test_sf)
+```
+
+# Building Recursive Partition Plot
+
+```{r}
+set.seed(1234)
+
+rs_rp <- rpart(
+  RESALE_PRICE  ~ FLOOR_AREA_SQM +
+                  STOREY_ORDER + 
+               REMAINING_LEASE_MTHS +
+                  PROX_CBD + 
+               PROX_ELDERLYCARE + 
+               PROX_HAWKER +
+                  PROX_MRT + 
+               PROX_PARK + 
+               PROX_MALL + 
+                  PROX_SUPERMARKET + 
+               WITHIN_350M_KINDERGARTEN +
+                  WITHIN_350M_CHILDCARE + 
+               WITHIN_350M_BUS +
+                  WITHIN_1KM_PRISCH,
+                data=train_df)
+```
+
+Plot the trees out.
+
+```{r}
+rpart.plot(rs_rp)
+```
+
+# Building the Random Forest
+
+```{r}
+#| eval: false
+set.seed(1234)
+rs_rf <- ranger(
+  RESALE_PRICE  ~ FLOOR_AREA_SQM +
+                  STOREY_ORDER + 
+               REMAINING_LEASE_MTHS +
+                  PROX_CBD + 
+               PROX_ELDERLYCARE + 
+               PROX_HAWKER +
+                  PROX_MRT + 
+               PROX_PARK + 
+               PROX_MALL + 
+                  PROX_SUPERMARKET + 
+               WITHIN_350M_KINDERGARTEN +
+                  WITHIN_350M_CHILDCARE + 
+               WITHIN_350M_BUS +
+                  WITHIN_1KM_PRISCH,
+                data=train_df,
+  importance = "impurity")
+
+write_rds(rs_rf, "data/models/rs_rf.rds")
+```
+
+-   The "impurity" measure is the Gini index for classification, the variance of the responses for regression and the sum of statistics for survival.
+
+```{r}
+rs_rf <- read_rds("data/models/rs_rf.rds")
+rs_rf
+```
+
+## Variable Importance
+
+Variable importance or feature importance scores are indicative of how "important" the variable is to our model.
+
+By using impurity importance argument in our ranger function earlier, `rs_rf` has contains the generated `variable.importance`. Now we will extract `variable.importance` and save it into `vi`.
+
+```{r}
+vi <- as.data.frame(rs_rf$variable.importance)
+vi$variables <- rownames(vi)
+vi <- vi%>%
+  rename(vi = "rs_rf$variable.importance")
+```
+
+Plot the graph.
+
+```{r}
+ggplot(data = vi,
+       aes(x = vi,
+           y = reorder(variables, vi))) +
+  geom_bar(stat="identity", color = "black", fill = "blue")
+```
+
+-   Since there is no sign of quasi-complete or complete separation, we can proceed to calibrate our bandwidth.
+
+# Calculating Adaptive Bandwidth
+
+```{r}
+#| eval: false
+set.seed(1234)
+gwRF_adaptive <- grf(formula = RESALE_PRICE ~ FLOOR_AREA_SQM + 
+                       STOREY_ORDER +
+                       REMAINING_LEASE_MTHS + 
+                       PROX_CBD + 
+                       PROX_ELDERLYCARE +
+                       PROX_HAWKER + 
+                       PROX_MRT + 
+                       PROX_PARK + 
+                       PROX_MALL +
+                       PROX_SUPERMARKET + 
+                       WITHIN_350M_KINDERGARTEN +
+                       WITHIN_350M_CHILDCARE + 
+                       WITHIN_350M_BUS +
+                       WITHIN_1KM_PRISCH,
+                     dframe=train_df, 
+                     bw = 55,
+                     step = 1,
+                     nthreads = 16,
+                     forest = FALSE,
+                     weighted = TRUE,
+                     kernel="adaptive",
+                     coords=coords_train)
+```
+
+```{r}
+#| eval: false
+rs_grf <- read_rds("data/models/rs_grf.rds")
+```
+
+```{r}
+test_df <- cbind(test_sf, coords_test) %>%
+  st_drop_geometry()
+
+write_rds(test_df, "data/rds/test_df")
+```
+
+# Predicting with test data
+
+Next, `predict.grf()` of spatialML will be used to predict the resale value by using the test data and gwRF_adaptive model calibrated earlier.
+
+```{r}
+grf_pred <- read_rds("data/models/grf_pred.rds")
+grf_pred_df <- as.data.frame(grf_pred)
+```
+
+
+Append the predicted values onto test_df.
+
+```{r}
+test_pred <- test_df %>%
+  select(RESALE_PRICE) %>%
+  cbind(grf_pred_df)
+```
+
+
+## Saving outputs
+
+```{r}
+rf_pred <- predict(rs_rf, test_df)
+```
+
+```{r}
+rf_pred_df <- as.data.frame(rf_pred$predictions) %>% 
+  rename(rf_pred = "rf_pred$predictions")
+```
+
+```{r}
+mlr_pred <- predict(rs_mlr, test_df)
+```
+
+```{r}
+mlr_pred_df <- as.data.frame(mlr_pred) %>%
+  rename(mlr_pred = "mlr_pred")
+```
+
+```{r}
+test_pred <- cbind(test_pred, rf_pred_df)
+test_pred <- cbind(test_pred, mlr_pred_df)
+```
+
+
+
+```{r}
+yardstick::rmse(test_pred,
+                RESALE_PRICE,
+                mlr_pred)
+```
+
+```{r}
+mc <- test_pred %>%
+  pivot_longer(cols = c(2:4),
+               names_to = "models",
+               values_to = "predicted")
+```
+
+
+
+
+```{r}
+ggplot(data = mc,
+       aes(x=predicted,
+           y=RESALE_PRICE))  +
+  geom_point()
+```
+
+-   There are some outliers observed.
