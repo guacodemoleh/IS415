@@ -404,6 +404,9 @@ rmse(test_data_p$resale_price,
      test_data_p$GRF_pred)
 ```
 
+The lower the RMSE value, the better the predictive model is.
+
+
 ## Visualising Predicted Values
 
 The individual prices can be plotted in the scatterplot, where plots further away from the regression line were not as well predicted than plot prices closer to the regression line.

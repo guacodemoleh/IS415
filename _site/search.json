@@ -2349,7 +2349,7 @@
     "href": "Hands-on_Ex/Hands-on_Ex09/Hands-on_Ex09.html#calculating-root-mean-square-error",
     "title": "Hands-on Exercise 9: Geographically Weighted Predictive Models",
     "section": "Calculating Root Mean Square Error",
-    "text": "Calculating Root Mean Square Error\nRMSE measures how far the predicted values are from the observed values in a regression analysis. The Metrics package contains the rmse() function which can be used to compute RMSE.\n\nrmse(test_data_p$resale_price, \n     test_data_p$GRF_pred)\n\n[1] 27302.9"
+    "text": "Calculating Root Mean Square Error\nRMSE measures how far the predicted values are from the observed values in a regression analysis. The Metrics package contains the rmse() function which can be used to compute RMSE.\n\nrmse(test_data_p$resale_price, \n     test_data_p$GRF_pred)\n\n[1] 27302.9\n\n\nThe lower the RMSE value, the better the predictive model is."
   },
   {
     "objectID": "Hands-on_Ex/Hands-on_Ex09/Hands-on_Ex09.html#visualising-predicted-values",
