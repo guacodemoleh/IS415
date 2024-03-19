@@ -640,6 +640,8 @@ flowLine8 <- od2line(flow = od_plot8,
 
 Use *tmap()* to visualise the resulting desire lines. For a clearer visualisation, only desire lines with at least 5000 trips are shown.
 
+The traffic density by desire lines may vary across the three months. Thus, the visualisations will be more intuitive if we further segment the data by months.
+
 ::: panel-tabset
 #### General Peak Morning
 
@@ -673,6 +675,7 @@ tm_shape() +
 Notable centroids where people are travelling to or from during weekday morning peak period include Tampines, Punggol, Jurong East, and even CBD. In terms of distances, there are several long distance routes linking the East to the North.
 :::
 
+
 #### November Peak Morning
 
 ```{r}
@@ -689,7 +692,7 @@ tm_shape() +
            style = "fixed",
            scale = c(1,2,3,4,5,7,9),
            n = 6, 
-           alpha = 0.7,
+           alpha = 0.4,
            title.lwd = "Total Trips") + 
   tm_layout(main.title = "Desire Lines with at least 5000 trips \nbetween Traffic Analysis Zones for Weekday Morning Peak Period (November '23)",
             main.title.position = "center",
@@ -715,7 +718,7 @@ tm_shape() +
            style = "fixed",
            scale = c(1,2,3,4,5,7,9),
            n = 6, 
-           alpha = 0.7,
+           alpha = 0.4,
            title.lwd = "Total Trips") + 
   tm_layout(main.title = "Desire Lines with at least 5000 trips \nbetween Traffic Analysis Zones for Weekday Morning Peak Period (December '23)",
             main.title.position = "center",
@@ -741,7 +744,7 @@ tm_shape() +
            style = "fixed",
            scale = c(1,2,3,4,5,7,9),
            n = 6, 
-           alpha = 0.7,
+           alpha = 0.4,
            title.lwd = "Total Trips") + 
   tm_layout(main.title = "Desire Lines with at least 5000 trips \nbetween Traffic Analysis Zones for Weekday Morning Peak Period (January '24)",
             main.title.position = "center",
@@ -769,7 +772,7 @@ tm_shape() +
            style = "fixed",
            scale = c(1,2,3,4,5,7,9),
            n = 6, 
-           alpha = 0.7,
+           alpha = 0.4,
            title.lwd = "Total Trips") + 
   tm_layout(main.title = "Desire Lines with at least 5000 trips \nbetween Traffic Analysis Zones for Weekday Morning Peak Period (General)",
             main.title.position = "center",
@@ -801,7 +804,7 @@ tm_shape() +
            style = "fixed",
            scale = c(1,2,3,4,5,7,9),
            n = 6, 
-           alpha = 0.7,
+           alpha = 0.4,
            title.lwd = "Total Trips") + 
   tm_layout(main.title = "Desire Lines with at least 5000 trips \nbetween Traffic Analysis Zones for Weekday Morning Peak Period (November '23)",
             main.title.position = "center",
@@ -827,7 +830,7 @@ tm_shape() +
            style = "fixed",
            scale = c(1,2,3,4,5,7,9),
            n = 6, 
-           alpha = 0.7,
+           alpha = 0.4,
            title.lwd = "Total Trips") + 
   tm_layout(main.title = "Desire Lines with at least 5000 trips \nbetween Traffic Analysis Zones for Weekday Morning Peak Period (December '23)",
             main.title.position = "center",
@@ -853,7 +856,7 @@ tm_shape() +
            style = "fixed",
            scale = c(1,2,3,4,5,7,9),
            n = 6, 
-           alpha = 0.7,
+           alpha = 0.4,
            title.lwd = "Total Trips") + 
   tm_layout(main.title = "Desire Lines with at least 5000 trips \nbetween Traffic Analysis Zones for Weekday Morning Peak Period (January '24)",
             main.title.position = "center",
@@ -864,7 +867,7 @@ tm_shape() +
 ```
 :::
 
-We can also zoom into individual planning areas of Singapore and observe commuting trends. A left join can be performed for `hex_grid_bounded3` and `mpsz` using *st_join()* and `left=TRUE`. \*\*
+We can also zoom into individual planning areas of Singapore and observe commuting trends. A left join can be performed for `hex_grid_bounded3` and `mpsz` using *st_join()* and `left=TRUE`. 
 
 ```{r}
 hex_grid_mpsz <- st_join(hex_grid_bounded2, mpsz3414, left = TRUE)
@@ -872,7 +875,8 @@ hex_grid_mpsz <- st_join(hex_grid_bounded2, mpsz3414, left = TRUE)
 tmap_mode("view")
 ```
 
-A filter can also then be applied on the PLN_AREA_N column to a specific planning area. Let's look at Tampines.
+A filter can also then be applied on the PLN_AREA_N column to a specific planning area. Let's look at some planning areas.
+
 
 ```{r}
 hex_grid_mpsz %>%
@@ -882,7 +886,7 @@ tm_shape() +
           palette = "Blues",
           style = "cont",
           title = "Bus Stop Density",
-          popup.vars = c("SUBZONE_N")) + 
+          popup.vars = c("PLN_AREA_N")) + 
   tm_view(set.zoom.limits = c(11,14)) + 
   tm_borders(col = "grey") +
 flowLine %>%  
@@ -899,6 +903,7 @@ tm_shape() +
 ```{r}
 tmap_mode("plot")
 ```
+
 
 ## Computing Distance Matrix
 
@@ -972,6 +977,20 @@ write_rds(distPair, "data/rds/distPair.rds")
 ```{r}
 distPair <- read_rds("data/rds/distPair.rds")
 ```
+
+# Spatial Push and Pull Factors
+
+Push factors are reasons for pushing people or passengers away from their location. Pull factors are reasons for attracting passenger to a location.
+
+-   **Population density** of an area has an impact on movement patterns as higher population density areas can act as a propulsive force. The HDB data will be used as a proxy for the population density, where a greater number of units will indicate a higher population density.
+
+-   **Employment opportunities density** of an area can also contribute a location's push or pull. An area with more businesses will attract more workers to the area and thus the registered business data will be used as a proxy.
+
+-   **School Density** can determine the volume of passengers commuting to an area as an area with more schools would attract more human traffic whilst an area with fewer or no schools will not attract students especially during school hours.
+
+-   **Financial Services Density** can contribute to the overall attractiveness of a destination of a destination for employment by offering convenience. 
+
+-   **Public Healthcare Density** can reflect the utility of polyclinics and public hospitals through the traffic network.
 
 # Population Density
 
@@ -1927,9 +1946,124 @@ flow_data8 <- flow_data8 %>%
 summary(flow_data2)
 ```
 
+## Applying log() transformation to explanatory variables
+
+```{r}
+flow_data_log <- flow_data %>%
+  mutate_at(vars(ends_with("_count")), log) %>%
+  mutate(dist = log(dist))
+
+summary(flow_data_log)
+```
+
+
+# Origin COnstrained Spatial Interaction Model
+
+Calibrate an unconstrained SIM by using `glm()` of Base Stats. The explanatory variables are all the origin and destination variables created earlier and distance between origin and destination.
+
+Generate propulsive (push) variable names
+
+```{r}
+origin_var <- propulsive %>%
+  select(-(index)) %>%
+  names()
+```
+
+Generate attractiveness (pull) variable names
+
+```{r}
+destin_var <- attractiveness %>%
+  select(-(index)) %>%
+  names()
+```
+
+
+For origin constrained SIM, only explanatory variables representing the attractiveness at the destinations will be used since these models emphasise the limitations or capacities of the origings rather than the demand or attractiveness of the destinations. The capacity or limitation at the origin sites determines the potential for generating interactions or flows.
+
+"-1" is also added to the formula to remove the intercept that is inserted by `glm` into the model by default. The concept of an intercept would not be relevant since the origin has already been constrained.
+
+Generate the formula dynamically
+
+```{r}
+formula_string <- paste("TOTAL_TRIPS ~ ORIGIN_hex +", 
+                        paste(destin_var, collapse = " + "), "+ dist - 1")
+```
+
+Convert the string to a formula
+
+```{r}
+formula <- as.formula(formula_string)
+```
+
+```{r}
+orcSIM <- glm(formula,
+              family = poisson(link = "log"),
+              data = flow_data_log,
+              na.action = na.exclude)
+
+orcSIM
+```
+
+::: .callout-note
+Positive coefficients suggest that as the counts of the explanatory variable increase by one unit, the number of trips is also expected to increase by the value of the coefficient, holding other variables constant. Conversely, negative coefficients suggest that as the counts of the explanatory variable increase by one unit, the number of trips is expected to decrease by the value of the coefficient, holding other variables constant.
+:::
+
+
+::: .callout-tip
+<ANALYSIS HERE>
+:::
+
+## Destination Constrained SIM
+
+```{r}
+# Generate the formula dynamically
+formula_string <- paste("TOTAL_TRIPS ~ DESTIN_hex +", 
+                        paste(origin_var, collapse = " + "), "+ dist - 1")
+
+# Convert the string to a formula
+formula <- as.formula(formula_string)
+
+decSIM <- glm(formula,
+              family = poisson(link = "log"),
+              data = flow_data_log,
+              na.action = na.exclude)
+
+decSIM$model
+```
+
+
+## Doubly Constrained SIM
+
+```{r}
+dbcSIM <- glm(formula = TOTAL_TRIPS ~ 
+                ORIGIN_hex + 
+                DESTIN_hex + 
+                dist,
+              family = poisson(link = "log"),
+              data = flow_data_log,
+              na.action = na.exclude)
+```
+
+
+```{r}
+model_list <- list(originConstrained=orcSIM,
+                   destinConstrained=decSIM,
+                   doublyConstrained=dbcSIM)
+```
+
+```{r}
+write_rds(orcSIM, "data/rds/orcSIM.rds")
+write_rds(decSIM, "data/rds/decSIM.rds")
+write_rds(dbcSIM, "data/rds/dbcSIM.rds")
+```
+
+```{r}
+orcSIM <- read_rds("data/rds/orcSIM.rds")
+decSIM <- read_rds("data/rds/decSIM.rds")
+dbcSIM <- read_rds("data/rds/dbcSIM.rds")
+```
 
 
 # References
 
 Jacek Chmielewski and Jan Kempa, 2020. Hexagonal Zones in Transport Demand Models, International Congress on Engineering -- Engineering for Evolution. Volume 2020.
-
