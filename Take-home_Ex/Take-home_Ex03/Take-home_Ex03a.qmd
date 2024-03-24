@@ -15,18 +15,40 @@ date-modified: "last-modified"
 editor: visual
 ---
 
-
 # Overview
 
 In this exercise, my focus would be on prototyping exploratory spatial data analysis, particularly density of spatial assets within hexagonal traffic analysis zones. In conventional geography, a traffic analysis zone is the unit most commonly used in transportation planning models and the size of it varies. Hexagonal traffic analysis zones has gained traction as the hexagons of the study area have a uniform size which are easily comparable with each other when determining transport attractiveness. It is also recommended that hexagon radius should be 125m for areas in high urbanisation and 250m in areas with less urbanisation (Chmielewski et al., 2020).
 
 The data preparation for this purpose also supports the preparation for calibrating spatial interaction models. For the prototyping, only exploratory spatial data analysis will be done.
 
-
 # Package Installation
 
+I will load up the below R packages for the following purposes:
+
+-   tmap: to visualise spatial data by creating thematic maps that could be interactive or static.
+
+-   sf: to manipulate spatial data.
+
+-   sp: to manipulate spatial data (older than sp).
+
+-   reshape2: to reshape and transform data frames; converting data between "wide" and "long" formats using functions like melt().
+
+-   ggplot2: to visualise data with plot types including bar plots.
+
+-   tidyverse: to clean and transform data and contains sub-packagess including tidyr, dplyr and readr.
+
+-   stplanr: to provide functions suitable for working with spatial transport data like networks, orgins-destinations matrices and travel time matrices; builds on the capabilities of sf and sp packages.
+
+-   knitr: to combine code into a single documents that can be easily converted to various output formats like html, pdf, or Word.
+
+-   
+
+    ```         
+    kableExtra: to further style any Kables.
+    ```
+
 ```{r}
-pacman::p_load(tmap, sf, sp, performance, reshape2, ggpubr, tidyverse, stplanr, knitr)
+pacman::p_load(tmap, sf, sp, reshape2, ggplot2, ggpubr, tidyverse, stplanr, knitr, kableExtra)
 ```
 
 # Data Preparation
@@ -53,8 +75,6 @@ Read the subzone layer
 #| eval: false
 mpsz <- st_read("data/geospatial/master-plan-2019-subzone-boundary-no-sea-kml.kml")
 ```
-
-
 
 Convert `mpsz` to 2D geometry.
 
@@ -103,8 +123,6 @@ Create the shapefile
 st_write(mpsz, "data/geospatial/mpsz_sf.shp")
 ```
 
-
-
 Read the updated shapefile.
 
 ```{r}
@@ -133,7 +151,6 @@ mpsz_border <- mpsz3414 %>% st_union()
 hex_grid_bounded <- st_intersection(hex_grid, mpsz_border)
 ```
 
-
 ```{r}
 # Check if hex grid intersects any polygons using st_intersects
 # Returns a list of intersecting hexagons
@@ -144,11 +161,13 @@ hex_grid_bounded2 = hex_grid %>%
   filter(index %in% intersection_list)
 
 tm_shape(hex_grid_bounded2) +
-  tm_polygons()
+  tm_polygons(alpha = 0.2) +
+  tm_basemap("OpenStreetMap")
 ```
 
 -   The map above now shows the complete analytical hexagon data of 375m (perpendicular distance between the centre of hexagon and its edges) that represents the TAZ.
 
+Map over SUBZONE_N and PLN_AREA_N to hex_grid_bounded2.
 
 ```{r}
 joined <- st_join(hex_grid_bounded2, mpsz3414, join = st_intersects, left = FALSE)
@@ -162,27 +181,33 @@ hex_grid_bounded2$SUBZONE_N <- aggregated$SUBZONE_N
 hex_grid_bounded2 <- hex_grid_bounded2 %>%
   mutate(index = as.factor(row_number()))
 
-```
+hex_grid_bounded2 <- hex_grid_bounded2[, c("SUBZONE_N", setdiff(names(hex_grid_bounded2), "SUBZONE_N"))]
 
-```{r}
-#| eval: false
-hex_grid_bounded2 <- hex_grid_bounded2 %>%
-  select(SUBZONE_N, everything())
-
-tmap_mode("view")
 tm_shape(hex_grid_bounded2) +
-  tm_polygons(col = "SUBZONE_N", style = "cat") +
-  tm_legend(legend.position = c("right", "top"))
+  tm_fill(col = "SUBZONE_N",
+          alpha = 0.7)
 ```
 
 ```{r}
-#| eval: false
-hex_grid_bounded2 <- hex_grid_bounded2 %>%
-  select(index, everything())
+aggregated <- joined %>%
+  group_by(index) %>%
+  summarise(PLN_AREA_N = first(PLN_AREA_N))
 
+hex_grid_bounded2$PLN_AREA_N <- aggregated$PLN_AREA_N
+
+hex_grid_bounded2 <- hex_grid_bounded2 %>%
+  mutate(index = as.factor(row_number()))
+
+hex_grid_bounded2 <- hex_grid_bounded2[, c("PLN_AREA_N", setdiff(names(hex_grid_bounded2), "PLN_AREA_N"))]
+
+tm_shape(hex_grid_bounded2) +
+  tm_fill(col = "PLN_AREA_N",
+          alpha = 0.7)
+```
+
+```{r}
 tmap_mode("plot")
 ```
-
 
 ## Bus Stop Locations
 
@@ -190,7 +215,6 @@ tmap_mode("plot")
 BusStop <- read.csv("data/aspatial/bus_coords_subzone_v2.csv") %>% st_as_sf(coords=c("Longitude", "Latitude"), crs=4326) %>%
   st_transform(crs=3414)
 ```
-
 
 ### Compute Bus Stop Density
 
@@ -210,7 +234,9 @@ tm_shape(hex_grid_bounded2) +
   tm_legend(position = c("RIGHT", "BOTTOM"))
 ```
 
-
+```{r}
+tail(hex_grid_bounded2,10)
+```
 
 ## Constructing O-D Matrix of commuter flow
 
@@ -220,8 +246,6 @@ od_bus_nov <- read_csv("data/OD Bus/merged_bus_nov_v2.csv")
 od_bus_dec <- read_csv("data/OD Bus/merged_bus_dec_v2.csv")
 od_bus_jan <- read_csv("data/OD Bus/merged_bus_jan_v2.csv")
 ```
-
-
 
 ```{r}
 #| eval: false
@@ -235,8 +259,6 @@ nrow(od_bus_nov) + nrow(od_bus_dec) + nrow(od_bus_jan) == nrow(OD) # evaluates t
 #| eval: false
 str(OD)
 ```
-
-
 
 `ORIGIN_PT_CODE` and `DESTINATION_PT_CODE` are listed as character variables. These variables should be transformed to factors so that R treats them as grouping variables.
 
@@ -260,7 +282,6 @@ write_rds(OD, "data/rds/odbus_combined.rds")
 odbus_combined <- readRDS("data/rds/odbus_combined.rds")
 ```
 
-
 # Commuting Flow Data
 
 ```{r}
@@ -270,33 +291,11 @@ od <- odbus_combined %>%
   ungroup()
 ```
 
-## Weekday
-
-```{r}
-od_wkday <- odbus_combined %>%
-  filter(DAY_TYPE == "WEEKDAY") %>%
-  group_by(ORIGIN_PT_CODE, DESTINATION_PT_CODE,TIME_PER_HOUR) %>%
-  summarise(TRIPS = sum(TOTAL_TRIPS)) %>%
-  ungroup()
-```
-
-## Weekends / Public Holiday
-
-```{r}
-od_wkend <- odbus_combined %>%
-  filter(DAY_TYPE == "WEEKENDS/HOLIDAY") %>%
-  group_by(ORIGIN_PT_CODE, DESTINATION_PT_CODE,TIME_PER_HOUR) %>%
-  summarise(TRIPS = sum(TOTAL_TRIPS)) %>%
-  ungroup()
-```
-
-
 ## Geospatial Data Wrangling
 
 Now we need to convert the od data from aspatial to geospatial data.
 
 First, we populate the hexagon grid indexes of `hex_grid_bounded2` sf data frame into `BusStop` sf data frame using *st_intersection()*.
-
 
 ```{r}
 BusStop_hex <- st_intersection(BusStop, hex_grid_bounded2) %>%
@@ -326,26 +325,7 @@ od_data <- left_join(od_data, BusStop_hex,
 cols_to_convert <- c("ORIGIN_hex", "DESTIN_hex")
 
 od_data[cols_to_convert] <- lapply(od_data[cols_to_convert], as.factor)
-```
-
-## Weekends/Holiday
-
-```{r}
-#| eval: false
-od_data_wkend <- left_join(od_wkend, BusStop_hex,
-            by = c("ORIGIN_PT_CODE" = "BusStopCode")) %>%
-  rename("ORIGIN_hex" = "index")
-
-od_data_wkend <- left_join(od_data_wkend, BusStop_hex,
-            by = c("DESTINATION_PT_CODE" = "BusStopCode")) %>%
-  rename("DESTIN_hex" = "index") %>%
-  drop_na() %>%
-  group_by(ORIGIN_hex, DESTIN_hex, TIME_PER_HOUR) %>%
-  summarise(TOTAL_TRIPS = sum(TRIPS))
-
-cols_to_convert <- c("ORIGIN_hex", "DESTIN_hex")
-
-od_data_wkend[cols_to_convert] <- lapply(od_data_wkend[cols_to_convert], as.factor)
+write_rds(od_data, "data/rds/od_data.rds")
 ```
 
 Check for duplicates
@@ -359,20 +339,18 @@ duplicate <- od_data %>%
 DT::datatable(duplicate)
 ```
 
-
 No duplicates found.
-
 
 ## Visualisation of O-D Flows
 
 Desire lines can be used to visualise the OD matrix, which are rays connecting a site to associated location points.
 
-
 ### Remove intra-zonal flows
 
-It is not meaningful to include trips that started and ended from the same point. 
+It is not meaningful to include trips that started and ended from the same point, so we will only include point pairs where the origin and destination of a trip are different.
 
 ```{r}
+#| eval: false
 od_plot <- od_data[od_data$ORIGIN_hex!=od_data$DESTIN_hex,]
 ```
 
@@ -396,7 +374,6 @@ write_rds(flowLine, "data/rds/flowLine.rds")
 flowLine <- read_rds("data/rds/flowLine.rds")
 ```
 
-
 ### Visualise desire lines
 
 Use *tmap()* to visualise the resulting desire lines. For a clearer visualisation, only desire lines with at least 5000 trips are shown.
@@ -406,7 +383,6 @@ The traffic density by desire lines may vary across time. Thus, the visualisatio
 #### Weekday
 
 ::: panel-tabset
-
 ##### 6 AM
 
 ```{r}
@@ -420,7 +396,7 @@ flowLine %>%
   filter(DAY_TYPE == "WEEKDAY", TOTAL_TRIPS >= 5000, TIME_PER_HOUR == 6) %>%
 tm_shape() +
   tm_lines(lwd = "TOTAL_TRIPS",
-           style = "fixed",
+           style = "fixed", 
            scale = c(1,2,3,4,5,7,9),
            n = 6, 
            alpha = 0.5,
@@ -431,7 +407,6 @@ tm_shape() +
             frame = TRUE) +
   tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4) 
 ```
-
 
 ##### 12 PM
 
@@ -457,7 +432,6 @@ tm_shape() +
             frame = TRUE) +
   tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4) 
 ```
-
 
 ##### 6 PM
 
@@ -509,12 +483,12 @@ tm_shape() +
   tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4) 
 ```
 
+-   It is logical that there is less bus traffic in the weehours since most of the population is either asleep or not working at this hour.
 :::
 
 #### Weekend/Holiday
 
 ::: panel-tabset
-
 ##### 6 AM
 
 ```{r}
@@ -539,7 +513,6 @@ tm_shape() +
             frame = TRUE) +
   tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4) 
 ```
-
 
 ##### 12 PM
 
@@ -566,7 +539,6 @@ tm_shape() +
   tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4) 
 ```
 
-
 ##### 6 PM
 
 ```{r}
@@ -585,30 +557,26 @@ tm_shape() +
            n = 6, 
            alpha = 0.5,
            title.lwd = "Total Trips") + 
-  tm_layout(main.title = "Desire Lines with at least 5000 trips \nbetween Traffic Analysis Zones for Weekday 6pm (Nov '23 - Jan '24)",
+  tm_layout(main.title = "Desire Lines with at least 5000 trips \nbetween Traffic Analysis Zones for Weekend 6pm (Nov '23 - Jan '24)",
             main.title.position = "center",
             main.title.size = 0.6,
             frame = TRUE) +
   tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4) 
 ```
-
 :::
-
 
 We can also focus on individual planning areas to observe more commuting trends within the planning area.
 
 ```{r}
-hex_grid_mpsz <- st_join(hex_grid_bounded2, mpsz3414, left = TRUE)
-
 tmap_mode("view")
-hex_grid_mpsz %>%
+hex_grid_bounded2 %>%
   filter(PLN_AREA_N == "JURONG EAST") %>% 
 tm_shape() +
   tm_fill(col = "busstop_count",
           palette = "Greens",
           style = "cont",
           title = "Bus Stop Density",
-          popup.vars = c("SUBZONE_N.y"),
+          popup.vars = c("SUBZONE_N"),
           alpha = 0.2) + 
   tm_view(set.zoom.limits = c(11,14)) + 
   tm_borders(col = "grey") +
@@ -643,7 +611,6 @@ dist <- spDists(mpsz_sp,
 head(dist, n=c(10,10))
 ```
 
-
 ### Label column and row headers of distance matrix
 
 Create a list sorted by planning subzone.
@@ -659,7 +626,6 @@ colnames(dist) <- paste0(sz_names)
 rownames(dist) <- paste0(sz_names)
 ```
 
-
 ### Pivoting distance value by SUBZONE_N
 
 Pivot the distance matrix into a long table by using the row and column subzone names.
@@ -672,7 +638,6 @@ head(distPair, 10)
 
 -   Notice that from the first row, the within zone distance is 0.
 
-
 ### Updating intra-zonal distances
 
 Append a constance value to replace the intra-zonal distance of 0.
@@ -682,7 +647,6 @@ distPair %>%
   filter(dist > 0) %>%
   summary()
 ```
-
 
 # Spatial Push and Pull Factors
 
@@ -694,7 +658,7 @@ Push factors are reasons for pushing people or passengers away from their locati
 
 -   **School Density** can determine the volume of passengers commuting to an area as an area with more schools would attract more human traffic whilst an area with fewer or no schools will not attract students especially during school hours.
 
--   **Financial Services Density** can contribute to the overall attractiveness of a destination of a destination for employment by offering convenience. 
+-   **Financial Services Density** can contribute to the overall attractiveness of a destination of a destination for employment by offering convenience.
 
 -   **Public Healthcare Density** can reflect the utility of polyclinics and public hospitals through the traffic network.
 
@@ -709,8 +673,6 @@ hdb <- read_csv("data/aspatial/hdb.csv")
 
 glimpse(hdb)
 ```
-
-
 
 For the purpose of computing a proxy for population density, the residential units will be extracted using *filter()* from the **dplyr** package.
 
@@ -796,6 +758,7 @@ str(hdb_residential_sf)
 Let's build the HDB residential population density map.
 
 ```{r}
+#| echo: false
 tm_shape(hex_grid_bounded2) +
   tm_fill(col = "busstop_count",
           palette = "Blues",
@@ -811,7 +774,7 @@ tm_shape(hdb_residential_sf) +
   tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4)
 ```
 
-### Performming in-polygon count
+### Performing in-polygon count
 
 ```{r}
 housing_count <- st_join(hex_grid_bounded2, hdb_residential_sf, 
@@ -831,6 +794,7 @@ summary(hex_grid_bounded3$housing_count)
 ```
 
 ```{r}
+#| echo: false
 tm_shape(hex_grid_bounded3) +
   tm_fill(col = "housing_count",
           palette = "Blues",
@@ -840,6 +804,7 @@ tm_shape(hex_grid_bounded3) +
   tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4)
 ```
 
+-   Housing density is greatest in the northeast, particularly the newer town areas like Punggol.
 
 # Employment Opportunities Density
 
@@ -850,6 +815,7 @@ biz <- st_read("data/geospatial/Business.shp") %>% st_transform(crs=3414)
 ```
 
 ```{r}
+#| echo: false
 tm_shape(hex_grid_bounded3) +
   tm_fill(col = "busstop_count",
           palette = "Blues",
@@ -940,7 +906,7 @@ tm_shape(hex_grid_bounded3) +
 
 # Financial Services Density
 
-## Importing Geospatial data: Fenancial Services
+## Importing Geospatial data: Financial Services
 
 ```{r}
 FinServ <- st_read(dsn = "data/geospatial", layer = "FinServ") %>%
@@ -995,7 +961,7 @@ public_hc2.sf <- st_as_sf(public_hc[43:1235,], wkt = "geometry", crs = 3414) # C
 
 public_hc.sf <- rbind(public_hc.sf, public_hc2.sf)
 
-write_rds(public_hc.sf, "data/geospatial/public_hc.sf")
+#write_rds(public_hc.sf, "data/geospatial/public_hc.sf")
 ```
 
 ## Perform point-in-polygon count
@@ -1003,7 +969,24 @@ write_rds(public_hc.sf, "data/geospatial/public_hc.sf")
 ```{r}
 hex_grid_bounded3$hc_count <- lengths(st_intersects(hex_grid_bounded3, public_hc.sf))
 
-summary(hex_grid_bounded3$fin_count)
+summary(hex_grid_bounded3$hc_count)
+```
+
+```{r}
+tm_shape(hex_grid_bounded3) +
+  tm_fill(col = "busstop_count",
+          palette = "Blues",
+          style = "cont",
+          title = "Bus Stop Density") +
+  tm_borders(col = "grey") +
+  
+tm_shape(public_hc.sf) +
+  tm_dots() + 
+  tm_layout(main.title = "Location of Affordable Healthcare Services",
+            main.title.position = "center",
+            main.title.size = 1,
+            frame = TRUE)  +
+  tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4)
 ```
 
 ```{r}
@@ -1057,8 +1040,6 @@ tm_shape(hex_grid_bounded3) +
   tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4)
 ```
 
-
-
 # Food & Beverage (F&B)
 
 ```{r}
@@ -1075,7 +1056,7 @@ tm_shape(hex_grid_bounded3) +
   
 tm_shape(food_bev) +
   tm_dots() + 
-  tm_layout(main.title = "Location of Leisure & Recreation",
+  tm_layout(main.title = "Location of Food & Beverage",
             main.title.position = "center",
             main.title.size = 1,
             frame = TRUE)  +
@@ -1099,8 +1080,6 @@ tm_shape(hex_grid_bounded3) +
   tm_borders(col = "grey")  +
   tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4)
 ```
-
-
 
 # Retail
 
@@ -1143,8 +1122,6 @@ tm_shape(hex_grid_bounded3) +
   tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4)
 ```
 
-
-
 # Entertainment
 
 ```{r}
@@ -1186,14 +1163,14 @@ tm_shape(hex_grid_bounded3) +
   tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4)
 ```
 
-
 # Prepare Origin & Destination Variables
 
 ## Origin
+
 ```{r}
 propulsive <- hex_grid_bounded3 %>%
   st_drop_geometry() %>%
-  select(index, biz_count, school_count, fin_count, hc_count, busstop_count, housing_count, leisure_recre_count, retail_count, entertn_count)
+  select(index, biz_count, school_count, fin_count, hc_count, busstop_count, housing_count, leisure_recre_count, retail_count, entertn_count, food_bev_count)
   
 
 origin <- names(propulsive) %>%
@@ -1203,12 +1180,12 @@ origin <- names(propulsive) %>%
 names(propulsive) <- origin
 ```
 
-
 ## Destination
+
 ```{r}
 attractiveness <- hex_grid_bounded3 %>%
   st_drop_geometry() %>%
-  select(index, biz_count, school_count, fin_count, hc_count, busstop_count, housing_count, leisure_recre_count, retail_count, entertn_count)
+  select(index, biz_count, school_count, fin_count, hc_count, busstop_count, housing_count, leisure_recre_count, retail_count, entertn_count, food_bev_count)
   
 
 destin <- names(propulsive) %>%
@@ -1217,7 +1194,6 @@ destin <- names(propulsive) %>%
 # Assign modified names back to the data frame
 names(attractiveness) <- destin
 ```
-
 
 # Compute Distance Matrix
 
@@ -1229,7 +1205,6 @@ In view of time, we will use sp rather than sf.
 hex_grid_sp <- as(hex_grid_bounded2, "Spatial")
 ```
 
-
 ```{r}
 dist <- spDists(hex_grid_sp, longlat = FALSE)
 
@@ -1239,7 +1214,6 @@ head(dist, n=c(10, 10))
 
 The result is a matrix object class and the column and row headers are not labeled with the hexagon grid index representing the TAZ.
 
-
 ## Label column and row headers
 
 Create a list sorted according to the distance matrix by Traffic Analytical Zones.
@@ -1247,7 +1221,6 @@ Create a list sorted according to the distance matrix by Traffic Analytical Zone
 ```{r}
 hex_names <- hex_grid_bounded2$index
 ```
-
 
 Attach the hexagon grid index to the rows and columns for distance matrix matching.
 
@@ -1269,7 +1242,6 @@ head(distPair, 10)
 
 -   The intra-zonal distances are 0.
 
-
 ## Update intra-zonal distances
 
 Check for the lowest non-zero distance value.
@@ -1280,9 +1252,7 @@ distPair %>%
   summary()
 ```
 
-
 Since the lowest is 750m, any distance less than 750m can represent the intra-zonal distance. For consistency, 375m is appended to intra-zonal distances.
-
 
 ```{r}
 distPair$dist <- ifelse(distPair$dist == 0,
@@ -1290,7 +1260,6 @@ distPair$dist <- ifelse(distPair$dist == 0,
 
 summary(distPair)
 ```
-
 
 Rename the origin and destination fields and convert into factor data type.
 
@@ -1300,7 +1269,6 @@ distPair <- distPair %>%
          dest = Var2) %>%
   mutate(across(c(orig, dest), as.factor))
 ```
-
 
 # Separating intra-flow from passenger volume
 
@@ -1318,7 +1286,6 @@ od_data <- od_data%>%
   filter(FlowNoIntra > 0)
 ```
 
-
 ## Combining passenger volume data with distance value
 
 Convert the data value type into factor for the origin and destination hex indexes.
@@ -1327,7 +1294,6 @@ Convert the data value type into factor for the origin and destination hex index
 od_data$ORIGIN_hex <- as.factor(od_data$ORIGIN_hex)
 od_data$DESTIN_hex <- as.factor(od_data$DESTIN_hex)
 ```
-
 
 Then perform a left join to join the OD data and distPair. Store it under `flow_data`.
 
@@ -1338,8 +1304,6 @@ flow_data <- od_data %>%
                     "DESTIN_hex" = "dest"))
 ```
 
-
-
 ## Preparing origin attributes
 
 ```{r}
@@ -1348,7 +1312,6 @@ flow_data <- flow_data %>%
              by = c("ORIGIN_hex" = "index"))
 ```
 
-
 ## Preparing destination attributes
 
 ```{r}
@@ -1356,7 +1319,6 @@ flow_data <- flow_data %>%
   left_join (attractiveness,
              by = c("DESTIN_hex" = "index"))
 ```
-
 
 ## Check for variables with zero values
 
@@ -1374,14 +1336,12 @@ All except the bus stop count variables contain zero values and need to be repla
 flow_data <- flow_data %>%
   mutate_at(vars(ends_with("_count")), ~ ifelse(. == 0, 0.99, .))
 
-write_rds(flow_data, "data/rds/flow_data")
+write_rds(flow_data, "data/rds/flow_data.rds")
 ```
-
 
 ```{r}
-flow_data <- read_rds("data/rds/flow_data")
+flow_data <- read_rds("data/rds/flow_data.rds")
 ```
-
 
 ## Apply log transformation
 
@@ -1394,7 +1354,6 @@ flow_data_log <- flow_data %>%
 
 summary(flow_data_log)
 ```
-
 
 # Spatial Interaction Modelling
 
@@ -1416,7 +1375,6 @@ destin_var <- attractiveness %>%
   names()
 ```
 
-
 ## Origin Constrained Model
 
 ```{r}
@@ -1435,7 +1393,6 @@ orcSIM <- glm(formula,
 
 write_rds(orcSIM, "data/rds/decSIM.rds")
 ```
-
 
 ```{r}
 #| eval: false
@@ -1462,7 +1419,6 @@ decSIM <- glm(formula,
 write_rds(decSIM, "data/rds/decSIM.rds")
 ```
 
-
 ```{r}
 #| eval: false
 decSIM <- read_rds("data/rds/decSIM.rds")
@@ -1484,7 +1440,6 @@ dbcSIM <- glm(formula = TOTAL_TRIPS ~
 write_rds(dbcSIM, "data/rds/dbcSIM.rds")
 ```
 
-
 ```{r}
 #| eval: false
 dbcSIM <- read_rds("data/rds/decSIM.rds")
@@ -1493,179 +1448,441 @@ summary(dbcSIM)
 
 # Prototype for Exploratory Spatial Data Analysis
 
-In light of our class project, I aim to test the feasibility of plotting out the various commuting flow maps. 
+In light of our class project, I aim to test the feasibility of plotting out the various commuting flow maps.
 
 Specifically, the maps can focus on the various areas of interest and plot the flow lines originating and ending in AOIs of ranged densities.
 
+The analytical unit could be planning area, subzone or even hexagonal.
 
-## School
+Before diving into these analytical units, we can have a look at the general inflow and outflows from origins and destinations.
 
-Using schools as an example, I will use `flowLine` since it is more typical for passengers to travel to school on weekdays.
+# Level 1: General Perspective
 
-::: panel-tabset
-### Origin
-Origin: Weekday 6pm, School Hexagon Density of 3.
+The `TOTAL_TRIPS` is set to 3000 at minimum due to computational time taken to run the below code chunks.
+
+## General Outflows from Origins (Propulsive)
+
+Here, I assume that the user is interested in bus traffic flows and where buses typically leave.
 
 ```{r}
-#| echo: false
-tmap_mode("plot")
+flowLine_org <- filter(flowLine, ORIGIN_hex %in% hex_grid_bounded3$index)
+org_hex <- filter(hex_grid_bounded3, index %in% flowLine_org$ORIGIN_hex)
 
-sch_hex_3 <- hex_grid_bounded3 %>% filter(school_count == 3)
-
-flowLine_org_sch_3 <- filter(flowLine, ORIGIN_hex %in% sch_hex_3$index)
+org_hex_3000 <- org_hex[org_hex$index %in% flowLine_org$ORIGIN_hex[flowLine_org$TOTAL_TRIPS >= 3000], ]
 
 tm_shape(hex_grid_bounded3) +
   tm_borders(col = "grey") +
-tm_shape(sch_hex_3) + 
-  tm_fill(col = "school_count",
-          palette = "Blues",
-          style = "cont",
-          title = "School Density") +
+tm_shape(org_hex_3000) + 
+  tm_fill(col = "skyblue", alpha = 0.5) +
   tm_borders(col = "grey") +
-flowLine_org_sch_3 %>%  
-  filter(DAY_TYPE == "WEEKDAY", TOTAL_TRIPS >= 5000, TIME_PER_HOUR == 18) %>%
+flowLine_org %>%  
+  filter(TOTAL_TRIPS >= 3000) %>%
 tm_shape() +
   tm_lines(lwd = "TOTAL_TRIPS",
-           style = "fixed",
            scale = c(1,2,3,4,5,7,9),
            n = 6, 
            alpha = 0.5,
-           title.lwd = "Total Trips") + 
-  tm_layout(main.title = "Origin School Density: Desire Lines with at least 5000 trips \nbetween Traffic Analysis Zones for Weekday 6pm \n(Nov '23 - Jan '24)",
+           title.lwd = "Total Trips"
+           ) + 
+  tm_layout(main.title = "Origin: Desire Lines Traffic Analysis Zones \n(Nov '23 - Jan '24)",
+            main.title.position = "center",
+            main.title.size = 0.6,
+            frame = TRUE) +
+  tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4) 
+  
+```
+
+The potential user interface for the above scenario may look like this:
+
+![](img/Commute Flow Map (2).png)
+
+Table for Top Five Propulsive Hexagons (TBC)
+
+```{r}
+#| eval: false
+#| echo: false
+top_hexagons <- st_join(flowLine_org, org_hex_3000, 
+                        left_on = "ORIGIN_hex", right_on = "index") %>%
+  filter(TOTAL_TRIPS >= 3000) 
+
+write_rds(top_hexagons, "data/rds/org_hex_3000_detailed")
+```
+
+```{r}
+#| eval: false
+#| echo: false
+org_hex_3000_detailed <- read_rds("data/rds/org_hex_3000_detailed")
+
+aggregated <- org_hex_3000_detailed %>%
+  group_by(index) %>%
+  summarise(SUBZONE_N = first(SUBZONE_N))
+
+top_hexagons <- org_hex_3000_detailed %>%
+  select(ORIGIN_hex, PLN_AREA_N, SUBZONE_N, TOTAL_TRIPS) %>%
+  arrange(desc(TOTAL_TRIPS)) %>%
+  head(5)
+
+kable(top_hexagons, caption = "Top 5 Most Propulsive Hexagons", row.names = FALSE) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+```
+
+## Inflows to Destinations (Attractive)
+
+This scenario assumes that the user is interested in the popular bus destinations, i.e. `TOTAL_TRIPS` is minmally **8000** on **weekdays**.
+
+```{r}
+flowLine_dest <- filter(flowLine, DESTIN_hex %in% hex_grid_bounded3$index)
+dest_hex <- filter(hex_grid_bounded3, index %in% flowLine_dest$DESTIN_hex)
+
+dest_hex_8000 <- dest_hex[dest_hex$index %in% flowLine_dest$DESTIN_hex[flowLine_dest$TOTAL_TRIPS >= 8000], ]
+
+tm_shape(hex_grid_bounded3) +
+  tm_borders(col = "grey") +
+tm_shape(dest_hex_8000) + 
+  tm_fill(col = "skyblue", alpha = 0.5) +
+  tm_borders(col = "grey") +
+flowLine_dest %>%  
+  filter(DAY_TYPE == "WEEKDAY", TOTAL_TRIPS >= 8000) %>%
+tm_shape() +
+  tm_lines(lwd = "TOTAL_TRIPS",
+           scale = c(1,2,3,4,5,7,9),
+           n = 6, 
+           alpha = 0.5,
+           title.lwd = "Total Trips"
+           ) + 
+  tm_layout(main.title = "Destinations: Desire Lines with at least 8000 trips \nbetween Traffic Analysis Zones for Weekdays \n(Nov '23 - Jan '24)",
+            main.title.position = "center",
+            main.title.size = 0.6,
+            frame = TRUE) +
+  tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4) 
+  
+```
+
+The potential user interface for the above scenario may look like this:
+
+![](img/Commute Flow Map (3).png)
+
+## Weekday vs Weekend/Holiday
+
+This scenario simulates the user wanting to find out how do bus destinations differ on **weekends** compared to **weekdays**.
+
+```{r}
+tm_shape(hex_grid_bounded3) +
+  tm_borders(col = "grey") +
+tm_shape(dest_hex_8000) + 
+  tm_fill(col = "skyblue", alpha = 0.5) +
+  tm_borders(col = "grey") +
+flowLine_dest %>%  
+  filter(DAY_TYPE == "WEEKENDS/HOLIDAY", TOTAL_TRIPS >= 8000) %>%
+tm_shape() +
+  tm_lines(lwd = "TOTAL_TRIPS",
+           scale = c(1,2,3,4,5,7,9),
+           n = 6, 
+           alpha = 0.5,
+           title.lwd = "Total Trips"
+           ) + 
+  tm_layout(main.title = "Destinations: Desire Lines with at least 8000 trips \nbetween Traffic Analysis Zones for Weekends \n(Nov '23 - Jan '24)",
+            main.title.position = "center",
+            main.title.size = 0.6,
+            frame = TRUE) +
+  tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4) 
+  
+```
+
+-   Hexagons linked to desire lines reveal that they are more popular starting or destination locations for bus rides.
+
+-   There are many trips made to destinations in the north, which is around Tuas Checkpoint.
+
+The potential user interface for the above scenario may look like this:
+
+![](img/Commute Flow Map (4).png)
+
+## Specific Hour of the Day
+
+A user might be curious about bus traffic flows and where they start on weekdays at 8am.
+
+```{r}
+flowLine_org <- filter(flowLine, ORIGIN_hex %in% hex_grid_bounded3$index)
+org_hex <- filter(hex_grid_bounded3, index %in% flowLine_org$ORIGIN_hex)
+
+org_hex_3000 <- org_hex[org_hex$index %in% flowLine_org$ORIGIN_hex[flowLine_org$TOTAL_TRIPS >= 3000], ]
+
+tm_shape(hex_grid_bounded3) +
+  tm_borders(col = "grey") +
+tm_shape(org_hex_3000) + 
+  tm_fill(col = "skyblue", alpha = 0.5) +
+  tm_borders(col = "grey") +
+flowLine_org %>%  
+  filter(TOTAL_TRIPS >= 3000, TIME_PER_HOUR == 8) %>%
+tm_shape() +
+  tm_lines(lwd = "TOTAL_TRIPS",
+           scale = c(1,2,3,4,5,7,9),
+           n = 6, 
+           alpha = 0.5,
+           title.lwd = "Total Trips"
+           ) + 
+  tm_layout(main.title = "Origin: Desire Lines Traffic Analysis Zones Weekdays, 8am \n(Nov '23 - Jan '24)",
+            main.title.position = "center",
+            main.title.size = 0.6,
+            frame = TRUE) +
+  tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4) 
+  
+```
+
+The potential user interface for the above scenario may look like this:
+
+![](img/Commute Flow Map (5).png)
+
+Since too many desire lines are plotted, the user can narrow the minimum number of total trips per origin-destination hexagon pair to 10000.
+
+```{r}
+flowLine_org <- filter(flowLine, ORIGIN_hex %in% hex_grid_bounded3$index)
+org_hex <- filter(hex_grid_bounded3, index %in% flowLine_org$ORIGIN_hex)
+
+org_hex_10000 <- org_hex[org_hex$index %in% flowLine_org$ORIGIN_hex[flowLine_org$TOTAL_TRIPS >= 10000], ]
+
+tm_shape(hex_grid_bounded3) +
+  tm_borders(col = "grey") +
+tm_shape(org_hex_10000) + 
+  tm_fill(col = "skyblue", alpha = 0.5) +
+  tm_borders(col = "grey") +
+flowLine_org %>%  
+  filter(TOTAL_TRIPS >= 10000, TIME_PER_HOUR == 8) %>%
+tm_shape() +
+  tm_lines(lwd = "TOTAL_TRIPS",
+           scale = c(1,2,3,4,5,7,9),
+           n = 6, 
+           alpha = 0.5,
+           title.lwd = "Total Trips"
+           ) + 
+  tm_layout(main.title = "Origin: Desire Lines between Traffic Analysis Zones with >10000 Trips \n(Nov '23 - Jan '24)",
             main.title.position = "center",
             main.title.size = 0.6,
             frame = TRUE) +
   tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4) 
 ```
 
+The potential user interface for the above scenario may look like this:
 
-### Destination
+![](img/Commute Flow Map (6).png)
 
-Weekday 7am, School Hexagon Density of 3.
+# Level 2: Planning Area
+
+The below scenario is whereby a user is interested in looking at bus trips starting from a Planning Area like Bedok at 8am on a weekday.
 
 ```{r}
-#| echo: false
-tmap_mode("plot")
-sch_hex_3 <- hex_grid_bounded3 %>% filter(school_count == 3)
+tmap_mode("view")
+flowLine_org <- filter(flowLine, ORIGIN_hex %in% hex_grid_bounded3$index)
+org_hex <- filter(hex_grid_bounded3, index %in% flowLine_org$ORIGIN_hex)
 
-flowLine_des_sch_3 <- filter(flowLine, DESTIN_hex %in% sch_hex_3$index)
+org_hex_3000 <- org_hex[org_hex$index %in% flowLine_org$ORIGIN_hex[flowLine_org$TOTAL_TRIPS >= 3000], ]
 
 tm_shape(hex_grid_bounded3) +
   tm_borders(col = "grey") +
-tm_shape(sch_hex_3) + 
-  tm_fill(col = "school_count",
-          palette = "Blues",
-          style = "cont",
-          title = "School Density") +
+org_hex_3000 %>%
+  filter(PLN_AREA_N == "BEDOK") %>%
+tm_shape() + 
+  tm_fill(col = "skyblue", alpha = 0.5) +
   tm_borders(col = "grey") +
-flowLine_des_sch_3 %>%  
-  filter(DAY_TYPE == "WEEKDAY", TOTAL_TRIPS >= 5000, TIME_PER_HOUR == 18) %>%
+flowLine_org %>%
+  filter(ORIGIN_hex %in% org_hex_3000$index[org_hex_3000$PLN_AREA_N == "BEDOK"]) %>%  
+  filter(TOTAL_TRIPS >= 3000, TIME_PER_HOUR == 8) %>%
 tm_shape() +
   tm_lines(lwd = "TOTAL_TRIPS",
-           style = "fixed",
            scale = c(1,2,3,4,5,7,9),
            n = 6, 
            alpha = 0.5,
-           title.lwd = "Total Trips") + 
-  tm_layout(main.title = "Destination School Density: Desire Lines with at least 5000 trips \nbetween Traffic Analysis Zones for Weekday 7am \n(Nov '23 - Jan '24)",
-            main.title.position = "center",
-            main.title.size = 0.6,
-            frame = TRUE) +
-  tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4)
-```
-:::
-
-
-## Entertainment
-We can also have a look at entertainment.
-
-::: panel-tabset
-
-### Origin
-
-Weekday 5pm, Entertainment Hexagon Density.
-
-```{r}
-#| echo: false
-tmap_mode("plot")
-
-etn_hex <- hex_grid_bounded3 %>% filter(entertn_count >0)
-
-flowLine_org_etn <- filter(flowLine, ORIGIN_hex %in% etn_hex$index)
-
-tm_shape(hex_grid_bounded3) +
-  tm_borders(col = "grey") +
-tm_shape(etn_hex) + 
-  tm_fill(col = "entertn_count",
-          palette = "Blues",
-          style = "cont",
-          title = "Entertainment Density") +
-  tm_borders(col = "grey") +
-flowLine_org_etn %>%  
-  filter(DAY_TYPE == "WEEKDAY", TOTAL_TRIPS >= 5000, TIME_PER_HOUR == 17) %>%
-tm_shape() +
-  tm_lines(lwd = "TOTAL_TRIPS",
-           style = "fixed",
-           scale = c(1,2,3,4,5,7,9),
-           n = 6, 
-           alpha = 0.5,
-           title.lwd = "Total Trips") + 
-  tm_layout(main.title = "Origin Entertainment Density: Desire Lines with at least 5000 trips \nbetween Traffic Analysis Zones for Weekday 5pm \n(Nov '23 - Jan '24)",
+           title.lwd = "Total Trips"
+           ) + 
+  tm_layout(main.title = "Bedok Origin: Desire Lines between Traffic Analysis Zones with >3000 Trips \n(Nov '23 - Jan '24)",
             main.title.position = "center",
             main.title.size = 0.6,
             frame = TRUE) +
   tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4) 
 ```
 
+-   The majority of bus trips at 8 am starting from Bedok Planning Area mostly end within the Planning Area too.
 
-## Destination
+The potential user interface for the above scenario may look like this:
 
-Weekend 1pm, Entertainment Hexagon Density.
+![](img/Commute Flow Map (7).png)
+
+Multiple starting planning areas for bus trips can also be observed.
 
 ```{r}
-#| echo: false
-tmap_mode("plot")
+tmap_mode("view")
+flowLine_org <- filter(flowLine, ORIGIN_hex %in% hex_grid_bounded3$index)
+org_hex <- filter(hex_grid_bounded3, index %in% flowLine_org$ORIGIN_hex)
 
-etn_hex <- hex_grid_bounded3 %>% filter(entertn_count > 0)
-
-flowLine_des_etn <-filter(flowLine, DESTIN_hex %in% etn_hex$index)
+org_hex_3000 <- org_hex[org_hex$index %in% flowLine_org$ORIGIN_hex[flowLine_org$TOTAL_TRIPS >= 3000], ]
 
 tm_shape(hex_grid_bounded3) +
   tm_borders(col = "grey") +
-tm_shape(etn_hex) + 
-  tm_fill(col = "entertn_count",
-          palette = "Blues",
-          style = "cont",
-          title = "Entertainment Density") +
+org_hex_3000 %>%
+  filter(PLN_AREA_N %in% c("BEDOK", "PUNGGOL", "PAYA LEBAR")) %>%
+tm_shape() + 
+  tm_fill(col = "PLN_AREA_N", palette = "Dark2", alpha = 0.5) +
   tm_borders(col = "grey") +
-flowLine_des_etn %>%  
-  filter(DAY_TYPE == "WEEKENDS/HOLIDAY", TOTAL_TRIPS >= 500, TIME_PER_HOUR == 13) %>%
+flowLine_org %>%
+  filter(ORIGIN_hex %in% org_hex_3000$index[org_hex_3000$PLN_AREA_N %in% c("BEDOK", "PUNGGOL", "PAYA LEBAR")]) %>%  
+  filter(TOTAL_TRIPS >= 3000, TIME_PER_HOUR == 8) %>%
+left_join(org_hex_3000 %>% distinct(index, PLN_AREA_N), by = c("ORIGIN_hex" = "index")) %>%
   tm_shape() +
   tm_lines(lwd = "TOTAL_TRIPS",
-           style = "fixed",
+           col = "PLN_AREA_N",
+           palette = "Dark2",
+           scale = c(1, 2, 3, 4, 5, 7, 9),
+           alpha = 0.5
+  ) + 
+  tm_layout(main.title = "Bedok, Paya Lebar & Punggol Origin: Desire Lines between \nTraffic Analysis Zones with >3000 Trips (Nov '23 - Jan '24)",
+            main.title.position = "center",
+            main.title.size = 0.6,
+            frame = TRUE) +
+  tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4) +
+tm_view(set.zoom.limits = c(12,30))
+```
+
+-   There are more origin locations at Bedok than Punggol at 8am.
+
+-   There are noticeable outgoing bus trips from Punggol to Bedok Planning Area at 8am.
+
+The potential user interface for the above scenario may look like this:
+
+![](img/Commute Flow Map (8).png)
+
+# Level 3: Subzone
+
+The user might also want to view bus travels at the subzone level, such as those starting from subzone Mathilda in Punggol planning area.
+
+```{r}
+tmap_mode("plot")
+flowLine_org <- filter(flowLine, ORIGIN_hex %in% hex_grid_bounded3$index)
+org_hex <- filter(hex_grid_bounded3, index %in% flowLine_org$ORIGIN_hex)
+
+org_hex_3000 <- org_hex[org_hex$index %in% flowLine_org$ORIGIN_hex[flowLine_org$TOTAL_TRIPS >= 3000], ]
+
+tm_shape(hex_grid_bounded3) +
+  tm_borders(col = "grey") +
+org_hex_3000 %>%
+  filter(SUBZONE_N == "MATILDA") %>%
+tm_shape() + 
+  tm_fill(col = "skyblue", alpha = 0.5) +
+  tm_borders(col = "grey") +
+flowLine_org %>%
+  filter(ORIGIN_hex %in% org_hex_3000$index[org_hex_3000$SUBZONE_N == "MATILDA"]) %>%  
+  filter(TOTAL_TRIPS >= 3000, TIME_PER_HOUR == 7) %>%
+tm_shape() +
+  tm_lines(lwd = "TOTAL_TRIPS",
            scale = c(1,2,3,4,5,7,9),
            n = 6, 
            alpha = 0.5,
-           title.lwd = "Total Trips") + 
-  tm_layout(main.title = "Entertainment Density: Desire Lines with at least 500 trips \nbetween Traffic Analysis Zones for Weekend 1pm \n(Nov '23 - Jan '24)",
+           title.lwd = "Total Trips"
+           ) + 
+  tm_layout(main.title = "Punggol Matilda Origin: Desire Lines between Traffic Analysis Zones with >3000 Trips \n(Nov '23 - Jan '24)",
             main.title.position = "center",
             main.title.size = 0.6,
             frame = TRUE) +
   tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4) 
 ```
 
+-   Between 7am and 8am, there are many trips from Matilda subzone to its immediate east hexagon neighbour that is also within the Punggol Planning Area.
+
+Town Councils have recently been pushing for silver zones which promotes elderly-friendly paths along with school zones. Traffic calming in such zones may affect bus routes and it is important to check the volume of inter Planning Area bus routes. Planners can use the multiple-subzones perspective as a proxy of the potential economic costs of constructing such zones:
+
+```{r}
+tmap_mode("view")
+flowLine_org <- filter(flowLine, ORIGIN_hex %in% hex_grid_bounded3$index)
+org_hex <- filter(hex_grid_bounded3, index %in% flowLine_org$ORIGIN_hex)
+
+org_hex_3000 <- org_hex[org_hex$index %in% flowLine_org$ORIGIN_hex[flowLine_org$TOTAL_TRIPS >= 3000], ]
+
+org_hex_3000 <- org_hex_3000[, c("index", setdiff(names(org_hex_3000), "index"))]
+
+hex_grid_bounded3 <- hex_grid_bounded3[, c("index", setdiff(names(hex_grid_bounded3), "index"))]
+
+tm_shape(hex_grid_bounded3) +
+  tm_borders(col = "grey") +
+  tm_fill(col = "lightgrey", alpha = 0.2) +
+org_hex_3000 %>%
+  filter(SUBZONE_N %in% c("WATERWAY EAST", "NORTHSHORE", "MATILDA", "PUNGGOL FIELD", "CONEY ISLAND")) %>%
+tm_shape() + 
+  tm_fill(col = "SUBZONE_N", palette = "Dark2", alpha = 0.5) +
+  tm_borders(col = "grey") +
+flowLine_org %>%
+  filter(ORIGIN_hex %in% org_hex_3000$index[org_hex_3000$SUBZONE_N %in% c("WATERWAY EAST", "NORTHSHORE", "MATILDA", "PUNGGOL FIELD", "CONEY ISLAND")]) %>%  
+  filter(DAY_TYPE == "WEEKDAY",TOTAL_TRIPS >= 3000, TIME_PER_HOUR == 7) %>%
+left_join(org_hex_3000 %>% distinct(index, SUBZONE_N), by = c("ORIGIN_hex" = "index")) %>%
+  tm_shape() +
+  tm_lines(lwd = "TOTAL_TRIPS",
+           col = "SUBZONE_N",
+           palette = "Dark2",
+           scale = c(1, 2, 3, 4, 5, 7, 9),
+           alpha = 0.5
+  ) + 
+  tm_layout(main.title = "Punggol Subzones Origin: Desire Lines between \nTraffic Analysis Zones with >3000 Trips (Nov '23 - Jan '24)",
+            main.title.position = "center",
+            main.title.size = 0.6,
+            frame = TRUE) +
+  tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4) +
+tm_view(set.zoom.limits = c(12,20))
+```
+
+::: callout-tip
+-   On weekdays, 7-8am, there has been a high total bus traffic of 29,460 trips from Matilda (hex 1368) to Punggol Field (hex 1390), and 29,178 trips from Punggol Field (hex 1390) to Waterway East (hex 1412).
+
+-   There is also high bus traffic of 14,581 trips within Punggol Field subzone, from hex 1390 to hex 1400. Should there be construction plans in these hexagonal areas, the relevant government agencies or even the town council can advice residents on alternative routes to go to their respective destinations.
 :::
 
+The potential user interface for the above scenario may look like this:
 
-## Population
+![](img/Commute Flow Map (9).png)
 
-### Origin
+# Validating Spatial Interaction Models
 
+As a teaser to SIMs, users can have a look at whether the volume of bus trips could be influenced by areas of interests within the vicinity.
 
+From the previous map, we can see that there is a total high bus traffic of 14,581 from Punggol Field hex 1400 to Bedok North (hex 1515) from 7-8am on weekdays.
 
-### Destination
+```{r}
+tmap_mode("view")
+tm_shape(hex_grid_bounded3) +
+  tm_borders(col = "grey") +
+org_hex_3000 %>%
+  filter(SUBZONE_N %in% c("WATERWAY EAST", "NORTHSHORE", "MATILDA", "PUNGGOL FIELD", "CONEY ISLAND")) %>%
+tm_shape() + 
+  tm_fill(col = "SUBZONE_N", palette = "Dark2", alpha = 0.5) +
+  tm_borders(col = "grey") +
+flowLine_org %>%
+  filter(ORIGIN_hex %in% org_hex_3000$index[org_hex_3000$SUBZONE_N %in% c("WATERWAY EAST", "NORTHSHORE", "MATILDA", "PUNGGOL FIELD", "CONEY ISLAND")]) %>%  
+  filter(TOTAL_TRIPS >= 3000, TIME_PER_HOUR == 7) %>%
+left_join(org_hex_3000 %>% distinct(index, SUBZONE_N), by = c("ORIGIN_hex" = "index")) %>%
+  tm_shape() +
+  tm_lines(lwd = "TOTAL_TRIPS",
+           col = "SUBZONE_N",
+           palette = "Dark2",
+           scale = c(1, 2, 3, 4, 5, 7, 9),
+           alpha = 0.5
+  ) + 
+tm_shape(biz) +
+  tm_dots(col = "blue") +
+tm_layout(main.title = "Punggol Subzones Origin: Desire Lines between \nTraffic Analysis Zones with >3000 Trips (Nov '23 - Jan '24)",
+          main.title.position = "center",
+          main.title.size = 0.6,
+          frame = TRUE) +
+tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4) +
+tm_view(set.zoom.limits = c(12,20))
+```
 
+```{r}
+tmap_mode("plot")
+```
 
+::: callout-note
+-   Perhaps on weekdays 8-9am, Bedok North hex 1515 is a popular destination for the population living in Punggol Field hex 1400 due to the numerous businesses in the former hex which is also an industrial area.
+:::
 
+![](img/Commute Flow Map (10).png)
 
+# Follow-up Actions
 
+The space for the commute flow maps could be further utilised with a data table showing the top statistics based on the features the user has selected.
