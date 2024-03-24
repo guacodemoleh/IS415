@@ -156,7 +156,6 @@ rs_mlr <- lm(RESALE_PRICE ~ FLOOR_AREA_SQM +
 We need to get the coordinate pairs from the training and testing data set.
 
 ```{r}
-
 coords <- st_coordinates(rs_sf)
 coords_train <- st_coordinates(train_sf)
 coords_test <- st_coordinates(test_sf)
@@ -348,7 +347,20 @@ mc <- test_pred %>%
                values_to = "predicted")
 ```
 
+```{r}
+mc %>% 
+  group_by(models) %>%
+  yardstick::rmse(RESALE_PRICE, 
+                  predicted)
+```
 
+
+```{r}
+ggplot(data = test_pred,
+       aes(x=grf_pred,
+           y=RESALE_PRICE))  +
+  geom_point()
+```
 
 
 ```{r}
