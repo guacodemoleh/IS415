@@ -1,0 +1,10 @@
+---
+title: "In-class Exercise 10"
+execute: 
+  warning: false
+  eval: true
+  echo: true
+  freeze: true
+date: "25 March, 2024"
+date-modified: "last-modified"
+---
