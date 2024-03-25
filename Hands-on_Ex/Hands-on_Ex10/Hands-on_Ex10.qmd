@@ -24,7 +24,7 @@ editor: visual
 
 -   Computer accessibility measure by using Hansen’s potential model and Spatial Accessibility Measure (SAM)
 
--   Visualise the accessibility measures by using tmap and ggplot2 packages.
+-   Visualise the accessibility measures by using tmap and ggplot2 packages. 
 
 
 
