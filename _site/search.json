@@ -2847,5 +2847,75 @@
     "title": "IS415-GAA",
     "section": "",
     "text": "&lt;!DOCTYPE qgis PUBLIC ‘http://mrcc.com/qgis.dtd’ ‘SYSTEM’&gt;     dataset\n\n\n                 0 0     false"
+  },
+  {
+    "objectID": "In-class_Ex/In-class_Ex10/In-class_Ex10.html",
+    "href": "In-class_Ex/In-class_Ex10/In-class_Ex10.html",
+    "title": "In-class Exercise 10",
+    "section": "",
+    "text": "Import GIS polygon data into R and save them as simple feature data frame by using appropriate functions of sf package of R\nImport aspatial data into R and save them as simple feature data frame by using appropriate functions of sf package of R\nComputer accessibility measure by using Hansen’s potential model and Spatial Accessibility Measure (SAM)\nVisualise the accessibility measures by using tmap and ggplot2 packages."
+  },
+  {
+    "objectID": "In-class_Ex/In-class_Ex10/In-class_Ex10.html#update-crs",
+    "href": "In-class_Ex/In-class_Ex10/In-class_Ex10.html#update-crs",
+    "title": "In-class Exercise 10",
+    "section": "Update CRS",
+    "text": "Update CRS\n\nmpsz &lt;- st_transform(mpsz, 3414)\neldercare &lt;- st_transform(eldercare, 3414)\nhexagons &lt;- st_transform(hexagons, 3414)"
+  },
+  {
+    "objectID": "In-class_Ex/In-class_Ex10/In-class_Ex10.html#cleaning-geospatial-data",
+    "href": "In-class_Ex/In-class_Ex10/In-class_Ex10.html#cleaning-geospatial-data",
+    "title": "In-class Exercise 10",
+    "section": "Cleaning geospatial data",
+    "text": "Cleaning geospatial data\n\neldercare &lt;- eldercare %&gt;%\n  select(fid, ADDRESSPOS) %&gt;%\n  mutate(capacity = 100)\n\n\nhexagons &lt;- hexagons %&gt;%\n  select(fid) %&gt;%\n  mutate(demand = 100)"
+  },
+  {
+    "objectID": "In-class_Ex/In-class_Ex10/In-class_Ex10.html#import-distance-matrix",
+    "href": "In-class_Ex/In-class_Ex10/In-class_Ex10.html#import-distance-matrix",
+    "title": "In-class Exercise 10",
+    "section": "Import Distance Matrix",
+    "text": "Import Distance Matrix\n\nODMatrix &lt;- read_csv(\"data/aspatial/OD_Matrix.csv\", skip = 0)\n\n\ndistmat &lt;- ODMatrix %&gt;%\n  select(origin_id, destination_id, total_cost) %&gt;%\n  spread(destination_id, total_cost)%&gt;%\n  select(c(-c('origin_id')))\n\n\ndistmat_km &lt;- as.matrix(distmat/1000)"
+  },
+  {
+    "objectID": "In-class_Ex/In-class_Ex10/In-class_Ex10.html#computing-hansens-accessibility",
+    "href": "In-class_Ex/In-class_Ex10/In-class_Ex10.html#computing-hansens-accessibility",
+    "title": "In-class Exercise 10",
+    "section": "Computing Hansen’s Accessibility",
+    "text": "Computing Hansen’s Accessibility\n\nacc_Hansen &lt;- data.frame(ac(hexagons$demand,\n                            eldercare$capacity,\n                            distmat_km, \n                            power = 2, \n                            family = \"Hansen\"))\n\n\ncolnames(acc_Hansen) &lt;- \"accHansen\"\n\n\nacc_Hansen &lt;- tbl_df(acc_Hansen)\n\n\nhexagon_Hansen &lt;- bind_cols(hexagons, acc_Hansen)\n\nAlternative method to the previous steps:\n\nacc_Hansen &lt;- data.frame(ac(hexagons$demand,\n                            eldercare$capacity,\n                            distmat_km, \n                            #d0 = 50,\n                            power = 0.5, \n                            family = \"Hansen\"))\n\ncolnames(acc_Hansen) &lt;- \"accHansen\"\nacc_Hansen &lt;- tbl_df(acc_Hansen)\nhexagon_Hansen &lt;- bind_cols(hexagons, acc_Hansen)"
+  },
+  {
+    "objectID": "In-class_Ex/In-class_Ex10/In-class_Ex10.html#visualising-hansens-accessibility",
+    "href": "In-class_Ex/In-class_Ex10/In-class_Ex10.html#visualising-hansens-accessibility",
+    "title": "In-class Exercise 10",
+    "section": "Visualising Hansen’s Accessibility",
+    "text": "Visualising Hansen’s Accessibility\n\nExtracting map extend\n\nmapex &lt;- st_bbox(hexagons)\n\n\ntmap_mode(\"plot\")\ntm_shape(hexagon_Hansen,\n         bbox = mapex) + \n  tm_fill(col = \"accHansen\",\n          n = 10,\n          style = \"quantile\",\n          border.col = \"black\",\n          border.lwd = 1) +\ntm_shape(eldercare) +\n  tm_symbols(size = 0.1) +\n  tm_layout(main.title = \"Accessibility to eldercare: Hansen method\",\n            main.title.position = \"center\",\n            main.title.size = 2,\n            legend.outside = FALSE,\n            legend.height = 0.45, \n            legend.width = 3.0,\n            legend.format = list(digits = 6),\n            legend.position = c(\"right\", \"top\"),\n            frame = TRUE) +\n  tm_compass(type=\"8star\", size = 2) +\n  tm_scale_bar(width = 0.15) +\n  tm_grid(lwd = 0.1, alpha = 0.5)"
+  },
+  {
+    "objectID": "In-class_Ex/In-class_Ex10/In-class_Ex10.html#statistical-graphic-visualisation",
+    "href": "In-class_Ex/In-class_Ex10/In-class_Ex10.html#statistical-graphic-visualisation",
+    "title": "In-class Exercise 10",
+    "section": "Statistical graphic visualisation",
+    "text": "Statistical graphic visualisation\n\nhexagon_Hansen &lt;- st_join(hexagon_Hansen, mpsz, \n                          join = st_intersects)\n\n\nggplot(data=hexagon_Hansen, \n       aes(y = log(accHansen), \n           x= REGION_N)) +\n  geom_boxplot() +\n  geom_point(stat=\"summary\", \n             fun.y=\"mean\", \n             colour =\"red\", \n             size=2)"
+  },
+  {
+    "objectID": "In-class_Ex/In-class_Ex10/In-class_Ex10.html#visualising-kd2sfcas-accessibility",
+    "href": "In-class_Ex/In-class_Ex10/In-class_Ex10.html#visualising-kd2sfcas-accessibility",
+    "title": "In-class Exercise 10",
+    "section": "Visualising KD2SFCA’s Accessibility",
+    "text": "Visualising KD2SFCA’s Accessibility\n\ntmap_mode(\"plot\")\ntm_shape(hexagon_KD2SFCA,\n         bbox = mapex) + \n  tm_fill(col = \"accKD2SFCA\",\n          n = 10,\n          style = \"quantile\",\n          border.col = \"black\",\n          border.lwd = 1) +\ntm_shape(eldercare) +\n  tm_symbols(size = 0.1) +\n  tm_layout(main.title = \"Accessibility to eldercare: KD2SFCA method\",\n            main.title.position = \"center\",\n            main.title.size = 2,\n            legend.outside = FALSE,\n            legend.height = 0.45, \n            legend.width = 3.0,\n            legend.format = list(digits = 6),\n            legend.position = c(\"right\", \"top\"),\n            frame = TRUE) +\n  tm_compass(type=\"8star\", size = 2) +\n  tm_scale_bar(width = 0.15) +\n  tm_grid(lwd = 0.1, alpha = 0.5)"
+  },
+  {
+    "objectID": "In-class_Ex/In-class_Ex10/In-class_Ex10.html#statistical-graphic-visualisation-1",
+    "href": "In-class_Ex/In-class_Ex10/In-class_Ex10.html#statistical-graphic-visualisation-1",
+    "title": "In-class Exercise 10",
+    "section": "Statistical Graphic Visualisation",
+    "text": "Statistical Graphic Visualisation\n\nhexagon_KD2SFCA &lt;- st_join(hexagon_KD2SFCA, mpsz, \n                          join = st_intersects)\n\n\nggplot(data=hexagon_KD2SFCA, \n       aes(y = accKD2SFCA, \n           x= REGION_N)) +\n  geom_boxplot() +\n  geom_point(stat=\"summary\", \n             fun.y=\"mean\", \n             colour =\"red\", \n             size=2)"
+  },
+  {
+    "objectID": "In-class_Ex/In-class_Ex10/In-class_Ex10.html#statistical-graphic-visualisation-2",
+    "href": "In-class_Ex/In-class_Ex10/In-class_Ex10.html#statistical-graphic-visualisation-2",
+    "title": "In-class Exercise 10",
+    "section": "Statistical Graphic Visualisation",
+    "text": "Statistical Graphic Visualisation\n\nhexagon_SAM &lt;- st_join(hexagon_SAM, mpsz, \n                       join = st_intersects)\n\n\nggplot(data=hexagon_SAM, \n       aes(y = accSAM, \n           x= REGION_N)) +\n  geom_boxplot() +\n  geom_point(stat=\"summary\", \n             fun.y=\"mean\", \n             colour =\"red\", \n             size=2)"
   }
 ]

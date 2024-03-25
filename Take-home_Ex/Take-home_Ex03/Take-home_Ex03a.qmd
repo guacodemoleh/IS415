@@ -1494,7 +1494,7 @@ tm_shape() +
 
 The potential user interface for the above scenario may look like this:
 
-![](img/Commute Flow Map (2).png)
+![](img/Commute%20Flow%20Map%20(2).png)
 
 Table for Top Five Propulsive Hexagons (TBC)
 
@@ -1534,7 +1534,7 @@ This scenario assumes that the user is interested in the popular bus destination
 flowLine_dest <- filter(flowLine, DESTIN_hex %in% hex_grid_bounded3$index)
 dest_hex <- filter(hex_grid_bounded3, index %in% flowLine_dest$DESTIN_hex)
 
-dest_hex_8000 <- dest_hex[dest_hex$index %in% flowLine_dest$DESTIN_hex[flowLine_dest$TOTAL_TRIPS >= 8000], ]
+dest_hex_8000 <- dest_hex[dest_hex$index %in% flowLine_dest$DESTIN_hex[flowLine_dest$TOTAL_TRIPS >= 10000], ]
 
 tm_shape(hex_grid_bounded3) +
   tm_borders(col = "grey") +
@@ -1560,7 +1560,7 @@ tm_shape() +
 
 The potential user interface for the above scenario may look like this:
 
-![](img/Commute Flow Map (3).png)
+![](img/Commute%20Flow%20Map%20(3).png)
 
 ## Weekday vs Weekend/Holiday
 
@@ -1595,7 +1595,7 @@ tm_shape() +
 
 The potential user interface for the above scenario may look like this:
 
-![](img/Commute Flow Map (4).png)
+![](img/Commute%20Flow%20Map%20(4).png)
 
 ## Specific Hour of the Day
 
@@ -1631,7 +1631,7 @@ tm_shape() +
 
 The potential user interface for the above scenario may look like this:
 
-![](img/Commute Flow Map (5).png)
+![](img/Commute%20Flow%20Map%20(9).png)
 
 Since too many desire lines are plotted, the user can narrow the minimum number of total trips per origin-destination hexagon pair to 10000.
 
@@ -1664,7 +1664,7 @@ tm_shape() +
 
 The potential user interface for the above scenario may look like this:
 
-![](img/Commute Flow Map (6).png)
+![](img/Commute%20Flow%20Map%20(4).png)
 
 # Level 2: Planning Area
 
@@ -1705,7 +1705,7 @@ tm_shape() +
 
 The potential user interface for the above scenario may look like this:
 
-![](img/Commute Flow Map (7).png)
+![](img/Commute%20Flow%20Map%20(5).png)
 
 Multiple starting planning areas for bus trips can also be observed.
 
@@ -1748,7 +1748,7 @@ tm_view(set.zoom.limits = c(12,30))
 
 The potential user interface for the above scenario may look like this:
 
-![](img/Commute Flow Map (8).png)
+![](img/Commute%20Flow%20Map%20(6).png)
 
 # Level 3: Subzone
 
@@ -1835,7 +1835,7 @@ tm_view(set.zoom.limits = c(12,20))
 
 The potential user interface for the above scenario may look like this:
 
-![](img/Commute Flow Map (9).png)
+![](img/Commute%20Flow%20Map%20(7).png)
 
 # Validating Spatial Interaction Models
 
@@ -1881,7 +1881,7 @@ tmap_mode("plot")
 -   Perhaps on weekdays 8-9am, Bedok North hex 1515 is a popular destination for the population living in Punggol Field hex 1400 due to the numerous businesses in the former hex which is also an industrial area.
 :::
 
-![](img/Commute Flow Map (10).png)
+![](img/Commute%20Flow%20Map%20(8).png)
 
 # Follow-up Actions
 
