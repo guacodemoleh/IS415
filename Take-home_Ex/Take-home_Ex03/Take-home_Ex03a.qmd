@@ -41,11 +41,8 @@ I will load up the below R packages for the following purposes:
 
 -   knitr: to combine code into a single documents that can be easily converted to various output formats like html, pdf, or Word.
 
--   
+-   kableExtra: to further style any Kables.
 
-    ```         
-    kableExtra: to further style any Kables.
-    ```
 
 ```{r}
 pacman::p_load(tmap, sf, sp, reshape2, ggplot2, ggpubr, tidyverse, stplanr, knitr, kableExtra)
@@ -152,6 +149,7 @@ hex_grid_bounded <- st_intersection(hex_grid, mpsz_border)
 ```
 
 ```{r}
+#| eval: false
 # Check if hex grid intersects any polygons using st_intersects
 # Returns a list of intersecting hexagons
 intersection_list = hex_grid$index[lengths(st_intersects(hex_grid, hex_grid_bounded)) > 0]
@@ -161,8 +159,7 @@ hex_grid_bounded2 = hex_grid %>%
   filter(index %in% intersection_list)
 
 tm_shape(hex_grid_bounded2) +
-  tm_polygons(alpha = 0.2) +
-  tm_basemap("OpenStreetMap")
+  tm_polygons(alpha = 0.2)
 ```
 
 -   The map above now shows the complete analytical hexagon data of 375m (perpendicular distance between the centre of hexagon and its edges) that represents the TAZ.
@@ -170,6 +167,7 @@ tm_shape(hex_grid_bounded2) +
 Map over SUBZONE_N and PLN_AREA_N to hex_grid_bounded2.
 
 ```{r}
+#| eval: false
 joined <- st_join(hex_grid_bounded2, mpsz3414, join = st_intersects, left = FALSE)
 
 aggregated <- joined %>%
@@ -182,13 +180,10 @@ hex_grid_bounded2 <- hex_grid_bounded2 %>%
   mutate(index = as.factor(row_number()))
 
 hex_grid_bounded2 <- hex_grid_bounded2[, c("SUBZONE_N", setdiff(names(hex_grid_bounded2), "SUBZONE_N"))]
-
-tm_shape(hex_grid_bounded2) +
-  tm_fill(col = "SUBZONE_N",
-          alpha = 0.7)
 ```
 
 ```{r}
+#| eval: false
 aggregated <- joined %>%
   group_by(index) %>%
   summarise(PLN_AREA_N = first(PLN_AREA_N))
@@ -199,15 +194,25 @@ hex_grid_bounded2 <- hex_grid_bounded2 %>%
   mutate(index = as.factor(row_number()))
 
 hex_grid_bounded2 <- hex_grid_bounded2[, c("PLN_AREA_N", setdiff(names(hex_grid_bounded2), "PLN_AREA_N"))]
+```
+
+```{r}
+#| eval: false
+tmap_mode("plot")
+
+hex_grid_bounded2 <- hex_grid_bounded2[, c(length(hex_grid_bounded2):1)]
+
+write_rds(hex_grid_bounded2, "data/rds/hex_grid_bounded2.rds")
+```
+
+```{r}
+hex_grid_bounded2 <- read_rds("data/rds/hex_grid_bounded2.rds")
 
 tm_shape(hex_grid_bounded2) +
   tm_fill(col = "PLN_AREA_N",
           alpha = 0.7)
 ```
 
-```{r}
-tmap_mode("plot")
-```
 
 ## Bus Stop Locations
 
@@ -279,17 +284,26 @@ write_rds(OD, "data/rds/odbus_combined.rds")
 ```
 
 ```{r}
+#| eval: false
 odbus_combined <- readRDS("data/rds/odbus_combined.rds")
 ```
 
 # Commuting Flow Data
 
 ```{r}
+#| eval: false
 od <- odbus_combined %>%
-  group_by(ORIGIN_PT_CODE, DESTINATION_PT_CODE, DAY_TYPE ,TIME_PER_HOUR) %>%
+  group_by(ORIGIN_PT_CODE, ORIGIN_SUBZONE, DESTINATION_PT_CODE, DESTINATION_SUBZONE, DAY_TYPE ,TIME_PER_HOUR) %>%
   summarise(TRIPS = sum(TOTAL_TRIPS)) %>%
   ungroup()
+
+write_rds(od, "data/rds/od.rds")
 ```
+
+```{r}
+od <- read_rds("data/rds/od.rds")
+```
+
 
 ## Geospatial Data Wrangling
 
@@ -311,6 +325,7 @@ glimpse(BusStop_hex)
 Append the hexagon grid index from `BusStop_hex` data frame to the segregated od data frames for both `ORIGIN_PT_CODE` and `DESTINATION_PT_CODE`.
 
 ```{r}
+#| eval: false
 od_data <- left_join(od, BusStop_hex,
             by = c("ORIGIN_PT_CODE" = "BusStopCode")) %>%
   rename("ORIGIN_hex" = "index")
@@ -319,18 +334,29 @@ od_data <- left_join(od_data, BusStop_hex,
             by = c("DESTINATION_PT_CODE" = "BusStopCode")) %>%
   rename("DESTIN_hex" = "index") %>%
   drop_na() %>%
-  group_by(ORIGIN_hex, DESTIN_hex, DAY_TYPE, TIME_PER_HOUR) %>%
+  group_by(ORIGIN_hex, ORIGIN_SUBZONE, DESTIN_hex, DESTINATION_SUBZONE, DAY_TYPE, TIME_PER_HOUR) %>%
   summarise(TOTAL_TRIPS = sum(TRIPS))
 
 cols_to_convert <- c("ORIGIN_hex", "DESTIN_hex")
 
 od_data[cols_to_convert] <- lapply(od_data[cols_to_convert], as.factor)
+```
+
+
+```{r}
+#| eval: false
 write_rds(od_data, "data/rds/od_data.rds")
 ```
+
+```{r}
+od_data <- read_rds("data/rds/od_data.rds")
+```
+
 
 Check for duplicates
 
 ```{r}
+#| eval: false
 duplicate <- od_data %>%
   group_by_all() %>%
   filter(n()>1) %>%
@@ -339,7 +365,9 @@ duplicate <- od_data %>%
 DT::datatable(duplicate)
 ```
 
-No duplicates found.
+No duplicates were found.
+
+
 
 ## Visualisation of O-D Flows
 
@@ -360,19 +388,29 @@ Use *od2line()* of **stplanr** package to create the desire lines.
 
 ```{r}
 #| eval: false
+od_plot <- od_plot[, c(1, 3, 2, 4:ncol(od_plot))]
+
 flowLine <- od2line(flow = od_plot, 
                     zones = hex_grid_bounded2,
                     zone_code = "index")
 ```
+
+::: callout-note
+### Learning Point
+The flow data in the `od2line` function must have the origin and destination indexes in its first two columns.
+:::
 
 ```{r}
 #| eval: false
 write_rds(flowLine, "data/rds/flowLine.rds")
 ```
 
+
 ```{r}
 flowLine <- read_rds("data/rds/flowLine.rds")
 ```
+
+
 
 ### Visualise desire lines
 
@@ -383,6 +421,7 @@ The traffic density by desire lines may vary across time. Thus, the visualisatio
 #### Weekday
 
 ::: panel-tabset
+
 ##### 6 AM
 
 ```{r}
@@ -1197,15 +1236,17 @@ names(attractiveness) <- destin
 
 # Compute Distance Matrix
 
-A distance matrix shows the distance between pairs of locations. A location's distance from itselfis shown in the main diagonal of a distance matrix table.
+A distance matrix shows the distance between pairs of locations. A location's distance from itself is shown in the main diagonal of a distance matrix table.
 
 In view of time, we will use sp rather than sf.
 
 ```{r}
+#| eval: false
 hex_grid_sp <- as(hex_grid_bounded2, "Spatial")
 ```
 
 ```{r}
+#| eval: false
 dist <- spDists(hex_grid_sp, longlat = FALSE)
 
 # resultant matrix
@@ -1219,12 +1260,14 @@ The result is a matrix object class and the column and row headers are not label
 Create a list sorted according to the distance matrix by Traffic Analytical Zones.
 
 ```{r}
+#| eval: false
 hex_names <- hex_grid_bounded2$index
 ```
 
 Attach the hexagon grid index to the rows and columns for distance matrix matching.
 
 ```{r}
+#| eval: false
 colnames(dist) <- paste0(hex_names)
 rownames(dist) <- paste0(hex_names)
 ```
@@ -1234,6 +1277,7 @@ rownames(dist) <- paste0(hex_names)
 The distance matrix is pivoted into a long table by using the *melt()* function of **reshape2**.
 
 ```{r}
+#| eval: false
 distPair <- reshape2::melt(dist) %>%
   rename(dist = value)
 
@@ -1247,6 +1291,7 @@ head(distPair, 10)
 Check for the lowest non-zero distance value.
 
 ```{r}
+#| eval: false
 distPair %>%
   filter(dist > 0) %>%
   summary()
@@ -1255,6 +1300,7 @@ distPair %>%
 Since the lowest is 750m, any distance less than 750m can represent the intra-zonal distance. For consistency, 375m is appended to intra-zonal distances.
 
 ```{r}
+#| eval: false
 distPair$dist <- ifelse(distPair$dist == 0,
                         375, distPair$dist)
 
@@ -1264,6 +1310,7 @@ summary(distPair)
 Rename the origin and destination fields and convert into factor data type.
 
 ```{r}
+#| eval: false
 distPair <- distPair %>%
   rename(orig = Var1,
          dest = Var2) %>%
@@ -1275,6 +1322,7 @@ distPair <- distPair %>%
 A new column `FlowNoIntra` is created to differentiate intra-zone trips from inter-zone trips based on the comparison of origin and destination zones.
 
 ```{r}
+#| eval: false
 od_data$FlowNoIntra <- ifelse(
   od_data$ORIGIN_hex == od_data$DESTIN_hex, 0, od_data$TOTAL_TRIPS)
 od_data$offset <- ifelse(
@@ -1282,6 +1330,7 @@ od_data$offset <- ifelse(
 ```
 
 ```{r}
+#| eval: false
 od_data <- od_data%>%
   filter(FlowNoIntra > 0)
 ```
@@ -1291,6 +1340,7 @@ od_data <- od_data%>%
 Convert the data value type into factor for the origin and destination hex indexes.
 
 ```{r}
+#| eval: false
 od_data$ORIGIN_hex <- as.factor(od_data$ORIGIN_hex)
 od_data$DESTIN_hex <- as.factor(od_data$DESTIN_hex)
 ```
@@ -1298,6 +1348,7 @@ od_data$DESTIN_hex <- as.factor(od_data$DESTIN_hex)
 Then perform a left join to join the OD data and distPair. Store it under `flow_data`.
 
 ```{r}
+#| eval: false
 flow_data <- od_data %>%
   left_join (distPair,
              by = c("ORIGIN_hex" = "orig",
@@ -1307,6 +1358,7 @@ flow_data <- od_data %>%
 ## Preparing origin attributes
 
 ```{r}
+#| eval: false
 flow_data <- flow_data %>%
   left_join (propulsive,
              by = c("ORIGIN_hex" = "index"))
@@ -1315,6 +1367,7 @@ flow_data <- flow_data %>%
 ## Preparing destination attributes
 
 ```{r}
+#| eval: false
 flow_data <- flow_data %>%
   left_join (attractiveness,
              by = c("DESTIN_hex" = "index"))
@@ -1325,6 +1378,7 @@ flow_data <- flow_data %>%
 For log transformation, log 0 is undefined so it is critical to ensure there are no zero values in the explanatory variables.
 
 ```{r}
+#| eval: false
 #| echo: false
 summary(flow_data)
 ```
@@ -1446,6 +1500,7 @@ dbcSIM <- read_rds("data/rds/decSIM.rds")
 summary(dbcSIM)
 ```
 
+
 # Prototype for Exploratory Spatial Data Analysis
 
 In light of our class project, I aim to test the feasibility of plotting out the various commuting flow maps.
@@ -1456,13 +1511,27 @@ The analytical unit could be planning area, subzone or even hexagonal.
 
 Before diving into these analytical units, we can have a look at the general inflow and outflows from origins and destinations.
 
+
+
 # Level 1: General Perspective
 
 The `TOTAL_TRIPS` is set to 3000 at minimum due to computational time taken to run the below code chunks.
 
+Split outgoing and incoming flows along with the origin and destination hexagon layers.
+
+```{r}
+flowLine_org <- filter(flowLine, ORIGIN_hex %in% hex_grid_bounded3$index)
+org_hex <- filter(hex_grid_bounded3, index %in% flowLine_org$ORIGIN_hex)
+
+flowLine_dest <- filter(flowLine, DESTIN_hex %in% hex_grid_bounded3$index)
+dest_hex <- filter(hex_grid_bounded3, index %in% flowLine_dest$DESTIN_hex)
+```
+
+
 ## General Outflows from Origins (Propulsive)
 
 Here, I assume that the user is interested in bus traffic flows and where buses typically leave.
+
 
 ```{r}
 flowLine_org <- filter(flowLine, ORIGIN_hex %in% hex_grid_bounded3$index)
@@ -1492,39 +1561,16 @@ tm_shape() +
   
 ```
 
+```{r}
+
+```
+
+
 The potential user interface for the above scenario may look like this:
 
 ![](img/Commute%20Flow%20Map%20(2).png)
 
-Table for Top Five Propulsive Hexagons (TBC)
 
-```{r}
-#| eval: false
-#| echo: false
-top_hexagons <- st_join(flowLine_org, org_hex_3000, 
-                        left_on = "ORIGIN_hex", right_on = "index") %>%
-  filter(TOTAL_TRIPS >= 3000) 
-
-write_rds(top_hexagons, "data/rds/org_hex_3000_detailed")
-```
-
-```{r}
-#| eval: false
-#| echo: false
-org_hex_3000_detailed <- read_rds("data/rds/org_hex_3000_detailed")
-
-aggregated <- org_hex_3000_detailed %>%
-  group_by(index) %>%
-  summarise(SUBZONE_N = first(SUBZONE_N))
-
-top_hexagons <- org_hex_3000_detailed %>%
-  select(ORIGIN_hex, PLN_AREA_N, SUBZONE_N, TOTAL_TRIPS) %>%
-  arrange(desc(TOTAL_TRIPS)) %>%
-  head(5)
-
-kable(top_hexagons, caption = "Top 5 Most Propulsive Hexagons", row.names = FALSE) %>%
-  kable_styling(bootstrap_options = c("striped", "hover"))
-```
 
 ## Inflows to Destinations (Attractive)
 

@@ -1,0 +1,112 @@
+---
+title: "Hands-on Exercise 11: Calibrating Spatial Interaction Models with R"
+author: "Victoria Grace ANN"
+execute: 
+  warning: false
+  eval: true
+  echo: true
+  freeze: true
+format:  
+  html: 
+    code-summary: "Show the code"
+    toc-depth: 4
+date: "11 March, 2024"
+date-modified: "last-modified"
+editor: visual
+---
+
+# Case
+
+Calibrating spatial interaction models (SIM) to determine factors affecting the public bus passenger flows during morning peak in Singapore.
+
+# Packages
+
+```{r}
+pacman::p_load(tmap, sf, sp,
+               performance, reshape2,
+               ggpubr, tidyverse)
+```
+
+-   sf is for importing and transforming geospatial data
+
+-   tidyverse is for wrangling and visualising data
+
+-   tmap is to create thematic maps
+
+# Data
+
+-   od_data.rds: weekday morning peak passenger flows at planning subzone level
+
+-   mpsz.rds: URA Master Plan 2019 Planning Subzone boundary
+
+# Computing Distance Matrix
+
+In spatial interaction, a distance matrix is a table showing the distance between pairs of locations. The diagonal of the table should be 0.
+
+```{r}
+mpsz <- st_read("data/geospatial/MPSZ-2019.shp")
+mpsz
+```
+
+## Converting from sf data.table to SPDF
+
+```{r}
+mpsz_sp <- as(mpsz, "Spatial")
+mpsz_sp
+```
+
+## Computing
+
+```{r}
+dist <- spDists(mpsz_sp, 
+                longlat = FALSE)
+```
+
+```{r}
+head(dist, n=c(10, 10))
+```
+
+-   The column and row headers are not labelled with the planning subzone codes
+
+-   The output of `dist` is a matrix object class.
+
+## Labelling column and row headers of distance matrix
+
+```{r}
+sz_names <- mpsz$SUBZONE_C
+```
+
+Then attach `SUBZONE_C` to row and column for distance matrix matching ahead
+
+```{r}
+colnames(dist) <- paste0(sz_names)
+rownames(dist) <- paste0(sz_names)
+```
+
+## Pivot distance value by SUBZONE_C
+
+```{r}
+distPair <- melt(dist) %>%
+  rename(dist = value)
+head(distPair, 10)
+```
+
+-   The intra-zonal distance is 0.
+
+## Updating intra-zonal distances
+
+Replace the intra-zonal distances of zero with 50.
+
+```{r}
+distPair %>%
+  filter(dist > 0) %>%
+  summary()
+```
+
+```{r}
+distPair$dist <- ifelse(distPair$dist == 0,
+                        50, distPair$dist)
+
+distPair %>%
+  summary()
+```
