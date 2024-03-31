@@ -15,14 +15,13 @@ date-modified: "last-modified"
 editor: visual
 ---
 
-
-# 1.0   Overview
+# 1.0 Overview
 
 In this exercise, my focus would be on prototyping exploratory spatial data analysis, particularly density of spatial assets within hexagonal traffic analysis zones. In conventional geography, a traffic analysis zone is the unit most commonly used in transportation planning models and the size of it varies. Hexagonal traffic analysis zones has gained traction as the hexagons of the study area have a uniform size which are easily comparable with each other when determining transport attractiveness. It is also recommended that hexagon radius should be 125m for areas in high urbanisation and 250m in areas with less urbanisation (Chmielewski et al., 2020).
 
 The data preparation for this purpose also supports the preparation for calibrating spatial interaction models. For the prototyping, only exploratory spatial data analysis will be done.
 
-# 2.0   Package Installation
+# 2.0 Package Installation
 
 I will load up the below R packages for the following purposes:
 
@@ -55,9 +54,7 @@ devtools::install_github("LukeCe/spflow")
 library(spflow)
 ```
 
-
-# 3.0   Data sources
-
+# 3.0 Data sources
 
 -   URA's Masterplan Subzone 2019 Layer in shapefile format
 
@@ -73,22 +70,11 @@ library(spflow)
 
 -   Hospitals, polyclinics and CHAS clinics derived from Google Maps
 
+# 4.0 Data preparation
 
-# 4.0   Data preparation 
-
-# 4.1   Data preparation for bus-induced hexagons
-
+# 4.1 Data preparation for bus-induced hexagons
 
 ::: panel-tabset
-
-## Bus Stops Layer
-
-Read the aspatial bus stop layer and set its CRS to 3414.
-
-```{r}
-BusStop <- read.csv("data/aspatial/bus_coords_subzone_v2.csv") %>% st_as_sf(coords=c("Longitude", "Latitude"), crs=4326) %>%
-  st_transform(crs=3414)
-```
 
 
 ## Subzone Layer
@@ -144,7 +130,7 @@ Remove unwanted outer islands.
 
 ```{r}
 #| eval: false
-mpsz3414 <- st_transform(mpsz, 3414)
+mpsz3414 <- mpsz %>% st_transform(crs = 3414)
 
 outer_islands <- c("SEMAKAU", "SUDONG", "NORTH-EASTERN ISLANDS", "SOUTHERN GROUP")
 mpsz3414 <- mpsz3414 %>%
@@ -155,107 +141,119 @@ Create the shapefile.
 
 ```{r}
 #| eval: false
-st_write(mpsz3414, "data/geospatial/mpsz_sf.shp", append=FALSE)
+st_write(mpsz3414, "data/geospatial/mpsz3414.shp", append=FALSE)
 ```
-
 
 Read the updated shapefile.
 
 ```{r}
-mpsz_sf <- st_read("data/geospatial/mpsz_sf.shp")
+mpsz3414 <- st_read("data/geospatial/mpsz3414.shp") 
 ```
 
+## Bus Stops Layer
+
+Read the aspatial bus stop layer and set its CRS to 3414.
+
+```{r}
+BusStop <- read.csv("data/aspatial/bus_coords_subzone_v2.csv") %>% st_as_sf(coords=c("Longitude", "Latitude"), crs=4326) %>%
+  st_transform(crs=3414)
+
+summary(BusStop)
+```
+
+Ensure that all bus stops are within Singapore's boundary.
+
+```{r}
+BusStop <- BusStop %>% st_intersection(mpsz3414) %>% select(BusStopCode, )
+
+tm_shape(mpsz3414) +
+  tm_polygons() +
+  tm_shape(BusStop) +
+  tm_dots()
+```
 
 ## Spatial Grids Layer
 
-The goal to create incoming and outgoing bus traffic flow visualisations from trip origins to trip destinations only requires hexagons containing bus stops.
-
-Let's look at how bus stops are distributed in Singapore.
+Generate the hexagon grids using `st_make_grid()` with a cellsize of 750m.
 
 ```{r}
-tmap_options(check.and.fix = TRUE)
-
-tm_shape(mpsz_sf) +
-  tm_polygons(title = "Singapore Boundary") +
-  tm_layout(main.title = "Bus stops in Singapore",
-            main.title.position = "center",
-            main.title.size = 1.0,
-            legend.height = 0.35, 
-            legend.width = 0.35,
-            frame = TRUE) +
-  tm_shape(BusStop) +
-  tm_dots(col = "red", size = 0.005, title = "Bus Stops") +
-  tm_compass(type="8star", size = 2) +
-  tm_scale_bar() +
-  tm_grid(alpha = 0.2)
-```
-
-
-There are a few bus stops that are located in Malaysia after the Tuas Checkpoint. Since they are geographically beyond Singapore's boundary, these bus stops need to be removed.
-
-
-```{r}
-BusStop <- BusStop %>%  
-  st_intersection(mpsz_sf) %>%
-  select(BusStopCode,)
-```
-
-
-Some regions like the Central Water Catchment area and the west-end of Singapore do not have any bus stops. To make the hexagons containing bus stops,
-
-```{r}
-hex_sg <- BusStop %>% st_make_grid(
-  cellsize = 750,
-  what = "polygons",
-  square = FALSE) %>%
+hex_grids <- BusStop %>% st_make_grid(cellsize =750,
+                                       what = "polygons",
+                                       square = FALSE) %>%
   st_sf() %>%
-  mutate(index = as.factor(row_number()))
-
-mpsz_border <- mpsz_sf %>% st_union()
-hex_sg2 <- st_intersection(hex_sg, mpsz_border)
-```
-
-```{r}
-hex_grids <- hex_sg %>%
   filter(lengths(st_intersects(geometry, BusStop)) > 0)
 ```
 
 
 ::: {.callout-tip collapse="true"}
 ### Code interpretation
--   st_make_grid: creates grids 
+
+-   st_make_grid: creates grids covering areas also without bus stops
 
 -   cellsize: hexagon size determined by twice the length of the apothem
 
 -   st_sf: set the hexagons as a sf object
 
--   filter: filtering for hexagons that contain bus stops 
+-   filter: filtering for hexagons that contain bus stops
 
--   mutate: creating index IDs for the filtered hexagons based on the row number
 :::
 
 
+Have a look and check if the hexagons cover all the bus stop locations.
+
 ```{r}
-tm_shape(mpsz_sf) +
+tm_shape(mpsz3414) +
   tm_polygons(title = "Singapore Boundary") +
   tm_shape(hex_grids) +
-  tm_polygons(col = "white") +
-  tm_layout(main.title = "Hexagons with SG Bus Stops",
+  tm_polygons(col = "white", title = "Hexagons", alpha = 1) +
+  tm_layout(main.title = "Hexagons corresponding to Singapore bus stops",
             main.title.position = "center",
             main.title.size = 1.0,
             legend.height = 0.35, 
             legend.width = 0.35,
             frame = TRUE) +
+  tm_compass(type="8star", size = 2, bg.color = "white", bg.alpha = 0.5) +
+  tm_scale_bar(bg.color = "white", bg.alpha = 0.5) +
   tm_shape(BusStop) +
-  tm_dots(col = "red", size = 0.005, title = "Bus Stops") +
-  tm_compass(type="8star", size = 2) +
-  tm_scale_bar() +
+  tm_dots(col = "red", size = 0.001, title = "Bus Stops") +
   tm_grid(alpha = 0.2)
 ```
+
+
+### Assign ID to each hexagon
+
+Each hexagon will have an assigned ID that will be their unique identifier. This new information can be stored under the HEX_ID column which will be helpful for joining data frames.
+
+```{r}
+#| eval: false
+hex_grids$HEX_ID <- sprintf("H%04d", seq_len(nrow(hex_grids))) %>%
+  as.factor()
+```
+
+
+::: {.callout-tip collapse="true"}
+### Save the layer
+
+```{r}
+#| eval: false
+write_rds(hex_grids, "data/rds/hex_grids.rds")
+```
+
 :::
 
 
-# 4.2 Constructing bus commuter flow data
+```{r}
+hex_grids <- read_rds("data/rds/hex_grids.rds")
+
+kable(head(hex_grids))
+```
+
+
+
+# 4.2 Spatial Interaction Analysis
+
+
+## Importing data sets
 
 ::: {.callout-note collapse="true"}
 ## Combining OD data
@@ -302,7 +300,6 @@ write_rds(OD, "data/rds/odbus_combined.rds")
 #| eval: false
 odbus_combined <- read_rds("data/rds/odbus_combined.rds")
 ```
-
 :::
 
 ::: {.callout-note collapse="true"}
@@ -319,134 +316,284 @@ write_rds(od, "data/rds/od.rds")
 ```
 
 ```{r}
-#| eval: false
 od <- read_rds("data/rds/od.rds")
 ```
 :::
 
+
+
 :::{.callout-note collapse="true"}
-## Geospatial Wrangling
-Now we need to convert the od data from aspatial to geospatial data.
+## Generating O-D trip data by hexagon level
 
-First, we populate the hexagon grid indexes of `hex_grid_bounded2` sf data frame into `BusStop` sf data frame using *st_intersection()*.
+We can create a lookup table for the bus stops associated to each hexagon.
 
-```{r}
-#| eval: false
-BusStop_hex <- st_intersection(BusStop, hex_sg) %>%
-  select(BusStopCode, index) %>%
-  st_drop_geometry()
 
-cols_to_convert <- c("BusStopCode")
-BusStop_hex[cols_to_convert] <- lapply(BusStop_hex[cols_to_convert], as.factor)
+## Generating lookup table for bus stop to associated hexagon
 
-glimpse(BusStop_hex)
-```
-
-Append the hexagon grid index from `BusStop_hex` data frame to the segregated od data frames for both `ORIGIN_PT_CODE` and `DESTINATION_PT_CODE`.
+To connect the trip data to their corresponding hexagons, a lookup table needs to be made so that there is a relationship beetween the aspatial `od` and `hex_grids`.
 
 ```{r}
-#| eval: false
-od_data <- left_join(od, BusStop_hex,
-            by = c("ORIGIN_PT_CODE" = "BusStopCode")) %>%
-  rename("ORIGIN_hex" = "index")
+bs_hex <- st_intersection(BusStop, hex_grids) %>%
+  st_drop_geometry() %>%
+  select(c(BusStopCode, HEX_ID))
 
-od_data <- left_join(od_data, BusStop_hex,
-            by = c("DESTINATION_PT_CODE" = "BusStopCode")) %>%
-  rename("DESTIN_hex" = "index") %>%
-  drop_na() %>%
-  group_by(ORIGIN_hex, ORIGIN_SUBZONE, DESTIN_hex, DESTINATION_SUBZONE, DAY_TYPE, TIME_PER_HOUR) %>%
-  summarise(TOTAL_TRIPS = sum(TRIPS))
-
-cols_to_convert <- c("ORIGIN_hex", "DESTIN_hex")
-
-od_data[cols_to_convert] <- lapply(od_data[cols_to_convert], as.factor)
+kable(head(bs_hex))
 ```
 
 
-```{r}
-#| eval: false
-write_rds(od_data, "data/rds/od_data.rds") 
-```
+:::{.callout-warning}
+### Multiple HEX_ID per bus stop
+Some bus stops may fall in the boundary of neighbouring hexagons. To resolve this, such bus stops shall be assigned to the first identified corresponding HEX_ID.
+:::
 
 ```{r}
-od_data <- read_rds("data/rds/od_data.rds")
+bs_hex <- bs_hex %>%
+  group_by(BusStopCode) %>%
+  summarise(across(everything(), first)) %>%
+  ungroup()
+
+nrow(bs_hex) == nrow(BusStop)
 ```
+
 :::
 
 
 ::: {.callout-note collapse="true"}
-## Remove intra-zonal flows
+## Joining *od* and *bs_hex*
 
-It is not meaningful to include trips that started and ended from the same point, so we will only include point pairs where the origin and destination of a trip are different.
+Associate the origin bus stops and destination bus stops to their corresponding hexagons.
+
 
 ```{r}
-#| eval: false
-od_plot <- od_data[od_data$ORIGIN_hex!=od_data$DESTIN_hex,]
+bs_hex$BusStopCode <- as.factor(bs_hex$BusStopCode)
+
+od_trips_w_hex <- od %>%
+  inner_join(bs_hex,
+             by = c("ORIGIN_PT_CODE" = "BusStopCode")) %>%
+  rename(ORIG_HEX_ID = HEX_ID) %>%
+  inner_join(bs_hex,
+             by = c("DESTINATION_PT_CODE" = "BusStopCode")) %>%
+  rename(DEST_HEX_ID = HEX_ID)
+
+kable(head(od_trips_w_hex))
 ```
 
 :::
 
-::: {.callout-note collapse="true"}
-## Create desire lines
+::: {,callout-warning collapse="true"}
+### Save Data Memory Space
 
-Use *od2line()* of **stplanr** package to create the desire lines.
+`od` is not needed anymore since the necessary data has been extracted, so we can offload it.
+
+```{r}
+rm(od)
+```
+
+:::
+
+
+::: {.callout-note collapse="true"}
+
+## Aggregating data by hexagon
+
+Perform aggregations by `ORIGIN_HEX_ID` and `DEST_HEX_ID` to have an aggregated sum of trips by hexagon instead of bus stops.
+
+```{r}
+od_hex <- od_trips_w_hex %>%
+  group_by(ORIG_HEX_ID, ORIGIN_SUBZONE ,DEST_HEX_ID, DESTINATION_SUBZONE, DAY_TYPE, TIME_PER_HOUR) %>%
+  summarise(TRIPS = sum(TRIPS))
+
+kable(head(od_hex))
+```
+
+:::
+
+
+::: {.callout-tip collapse="true"}
+### Save the layer
+
+```{r}
+write_rds(bs_hex, "data/rds/bs_hex.rds")
+write_rds(od_hex, "data/rds/od_hex.rds")
+```
+:::
+
+
+::: {.callout-note collapse="true:}
+## Generating flow lines
 
 ```{r}
 #| eval: false
-od_plot <- od_plot[, c(1, 3, 2, 4:ncol(od_plot))]
+od_hex <- od_hex[, c(1, 3, 2, 4:ncol(od_hex))]
 
-flowLine <- od2line(flow = od_plot, 
-                    zones = hex_grids,
-                    zone_code = "index")
+flowlines <- od_hex %>% od2line(
+  hex_grids,
+  zone_code = "HEX_ID")
+
+write_rds(flowlines, "data/rds/flowlines.rds")
 ```
 
 ::: callout-tip
 ### Learning Point
+
 The flow data in the `od2line` function must have the origin and destination indexes in its first two columns.
 :::
 
-Write and read the flowline layer.
 
 ```{r}
-#| eval: false
-write_rds(flowLine, "data/rds/flowLine.rds")
+flowlines <- read_rds("data/rds/flowlines.rds")
 ```
 
 
+## Inspect flowlines
+
+:::{.callout-warning collapse="false"}
+### Large data size
+The flowlines data is very large.
+
+For all visualisations, the number of trips per flowline shown will be 3000 and above.
+:::
+
+
 ```{r}
-flowLine <- read_rds("data/rds/flowLine.rds")
+tm_shape(mpsz3414) +
+  tm_polygons(title = "Singapore Boundary", alpha = 0.5) +
+  
+  tm_shape(hex_grids) +
+  tm_polygons(col = "white", title = "Hexagons", alpha = 1) +
+  
+  tm_shape(flowlines[flowlines$TRIPS >= 3000,]) +
+  tm_lines(lwd = "TRIPS",
+           style = "quantile",
+           col = "red",
+           scale = c(0.1, 1, 3, 5, 7),
+           title.lwd = "# of bus trips",
+           alpha = 0.8) +
+  
+  tm_layout(main.title = "Overall Bus Passenger Flow for Weekdays)",
+            main.title.position = "center",
+            main.title.size = 1.0,
+            legend.height = 0.35, 
+            legend.width = 0.35,
+            frame = TRUE) +
+  
+  tm_compass(type="8star", size = 2, bg.color = "white", bg.alpha = 0.5) +
+  tm_scale_bar(bg.color = "white", bg.alpha = 0.5) +
+  tm_grid(alpha = 0.2)
+```
+
+
+:::
+
+:::{.callout-warning collapse="true"}
+### Save Data Memory
+
+```{r}
+rm(flowlines)
+rm(od_hex)
 ```
 
 :::
 
 
-
-# 5.0   Spatial Push & Pull Factors
-
-Push factors are reasons for pushing people or passengers away from their location. Pull factors are reasons for attracting passenger to a location. These are the factor densities I am looking into:
-
--   **Population density** of an area has an impact on movement patterns as higher population density areas can act as a propulsive force. The HDB data will be used as a proxy for the population density, where a greater number of units will indicate a higher population density.
-
--   **Employment opportunities density** of an area can also contribute a location's push or pull. An area with more businesses will attract more workers to the area and thus the registered business data will be used as a proxy.
-
--   **School Density** can determine the volume of passengers commuting to an area as an area with more schools would attract more human traffic whilst an area with fewer or no schools will not attract students especially during school hours.
-
--   **Financial Services Density** can contribute to the overall attractiveness of a destination of a destination for employment by offering convenience.
-
--   **Public Healthcare Density** can reflect the utility of polyclinics and public hospitals through the traffic network.
+# 4.2.1 Prototype for Spatial Interaction Analysis
 
 
-# 5.1   Data preparation for POIs
+
+# 5.0 Spatial Interaction Modelling
+
+## 5.1.1 Attractiveness variables
+
+Initiate the attractiveness from `hex_grids`.
+
+```{r}
+attractiveness <- hex_grids %>% st_set_crs(3414)
+```
+
+
+For all the variables, we only need to count the number of each location types per hexagon, which can be done using `lengths()` and `st_intersects()`.
+
+### POIs
 
 ::: panel-tabset
 
-## Population
+### Bus Stops
 
-::: {.callout-note}
+```{r}
+attractiveness$BUS_STOP_COUNT <- lengths(
+  st_intersects(attractiveness, BusStop))
+```
 
-### Importing Aspatial HDB data
+### Entertainment
 
-Use *read_csv()* from the **readr** package to import the prepared HDB csv data.
+```{r}
+entertn <- st_read("data/geospatial/entertn.shp") %>% st_set_crs(3414)
+```
+
+```{r}
+attractiveness$ENTERTN_COUNT <- lengths(st_intersects(attractiveness, entertn))
+```
+
+
+### F&B
+
+```{r}
+food_bev <- st_read("data/geospatial/F&B.shp") %>% st_set_crs(3414)
+```
+
+```{r}
+attractiveness$FOOD_BEV_COUNT <- lengths(st_intersects(attractiveness, food_bev))
+```
+
+### Leisure & Recreation
+
+```{r}
+leis_rec <- st_read("data/geospatial/Liesure&Recreation.shp") %>% st_set_crs(3414)
+```
+
+```{r}
+attractiveness$LEISURE_COUNT <- lengths(st_intersects(attractiveness, leis_rec))
+```
+
+
+### Retail
+
+```{r}
+retail <- st_read("data/geospatial/Retails.shp") %>% st_set_crs(3414)
+```
+
+```{r}
+attractiveness$RETAIL_COUNT <- lengths(st_intersects(attractiveness, retail))
+```
+
+
+### Business
+
+```{r}
+biz <- st_read("data/geospatial/Business.shp") %>% st_set_crs(3414)
+```
+
+```{r}
+attractiveness$BIZ_COUNT <- lengths(st_intersects(attractiveness, biz))
+```
+
+
+### Financial Services
+
+```{r}
+fin <- st_read("data/geospatial/FinServ.shp") %>% st_set_crs(3414)
+```
+
+```{r}
+attractiveness$FIN_COUNT <- lengths(st_intersects(attractiveness, fin))
+```
+
+
+### Housing Population Proxies
+
+::: {.callout-note collapse="true"}
+
+#### Data preparation
 
 ```{r}
 hdb <- read_csv("data/aspatial/hdb.csv")
@@ -462,7 +609,6 @@ hdb_residential <- hdb %>%
 head(hdb_residential, 10)
 ```
 
-
 There are also some outliers like hotels that are classified as a residential unit. We can remove rows containing 'hotel' using *grepl()*.
 
 ```{r}
@@ -471,7 +617,6 @@ hotels <- hdb_residential %>%
 
 kable(hotels)
 ```
-
 
 The HDB Blk 1 Beach Road shares a similar address as Raffles Hotel's 1 Beach Road, but they have different postal codes.
 
@@ -483,7 +628,6 @@ beach_rd <- hdb_residential %>%
 
 kable(beach_rd)
 ```
-
 
 2, 5 and 15 Beach Road do not have the correct postal codes following the 1900XX convention. Additionally, these addresses do not have the correct coordinates too.
 
@@ -519,140 +663,38 @@ duplicate <- hdb_residential2 %>%
 DT::datatable(duplicate)
 ```
 
-
-:::
-
-::: {.callout-note}
-
-### Converting Aspatial data to Geospatial data
-
-Longitude and latitude values are in decimal degrees and thus the data is in wgs84 geographic coordinate system.
-
-To convert `hdb_residential2` into sf, we use *st_as_sf()* and set the `crs` argument to 4326 first. The transformation to Singapore's coordinate reference system 3414 will be done with *st_transform()*.
-
-We only need the postal code, total dwelling units and geometry attributes so we will use the *select()* function to extract these columns.
-
 ```{r}
-hdb_residential_sf <- st_as_sf(hdb_residential2, 
-                   coords = c("lng", "lat"),
-                   crs=4326) %>%
-  st_transform(crs = 3414) %>%
-  select(postal, total_dwelling_units, geometry)
+hdb_residential2 <- st_as_sf(hdb_residential2, coords = c("lng","lat"), crs=4326) 
 
-str(hdb_residential_sf)
-```
-:::
-
-::: {.callout-note}
-### Performing in-polygon count
-
-```{r}
-housing_count <- st_join(hex_sg, hdb_residential_sf, 
-                     join = st_intersects, left = TRUE) %>%
-  st_drop_geometry() %>%
-  group_by(index) %>%
-  summarise(housing_count = sum(total_dwelling_units)) %>%
-  ungroup() %>%
-  mutate(housing_count = ifelse(is.na(housing_count), 0, housing_count))
-```
-
-```{r}
-hex_sg2 <- left_join(hex_sg, housing_count,
-                               by = c("index" = "index"))
-
-summary(hex_sg2$housing_count)
-```
-:::
-
-
-## Business
-
-::: {.callout-note}
-
-### Import Geospatial data: Business
-
-```{r}
-biz <- st_read("data/geospatial/Business.shp") %>% st_transform(crs=3414)
-```
-
-:::
-
-::: {.callout-note}
-
-### Perform point-in-polygon count
-
-```{r}
-hex_sg2$biz_count <- lengths(st_intersects(hex_sg2, biz))
-
-summary(hex_sg2$biz_count)
-```
-
-:::
-
-## School
-
-::: {.callout-note}
-
-### Import aspatial data: School
-
-```{r}
-schools <- read_csv("data/aspatial/schoolsclean.csv")
-
-schools <- schools %>%
-  separate(latlong, into = c("latitude", "longitude"), sep = ",", convert = TRUE)
-
-schools_sf <- st_as_sf(schools, coords = c("longitude","latitude"), crs = 4326) %>% 
-  st_transform(crs=3414)
-```
-
-:::
-
-::: {.callout-note}
-
-### Perform point-in-polygon count
-
-```{r}
-hex_sg2$school_count <- lengths(st_intersects(hex_sg2, schools_sf))
-
-summary(hex_sg2$school_count)
+hdb_residential2 <- st_transform(hdb_residential2, crs=3414)
 ```
 
 :::
 
 
-## Financial Services
-
-::: {.callout-note}
-
-### Import Geospatial data: Financial Services
-
 ```{r}
-FinServ <- st_read(dsn = "data/geospatial", layer = "FinServ") %>%
-  st_transform(crs = 3414)
+attractiveness$HDB_COUNT <- lengths(st_intersects(attractiveness, hdb_residential2))
 ```
 
-:::
 
-::: {.callout-note}
+::: {.callout-warning collapse}
 
-### Perform point-in-polygon count
+#### Save Memory Space by Offloading
 
 ```{r}
-hex_sg2$fin_count <- lengths(st_intersects(hex_sg2, FinServ))
-
-summary(hex_sg2$fin_count)
+rm(hdb)
+rm(hdb_residential)
 ```
 
 :::
 
 
-## Public Healthcare
+### Public Healthcare 
 
-::: {.callout-note}
-
-### Import aspatial data: Healthcare
+#### Data Preparation
 
 ```{r}
+#| eval: false
 public_hc <- read_csv("data/aspatial/HospitalsPolyclinics v_2024.csv")
 
 public_hc.sf <- st_as_sf(public_hc[1:42,], wkt = "geometry", crs = 4326) %>% 
@@ -662,597 +704,672 @@ public_hc2.sf <- st_as_sf(public_hc[43:1235,], wkt = "geometry", crs = 3414) # C
 
 public_hc.sf <- rbind(public_hc.sf, public_hc2.sf)
 
-#write_rds(public_hc.sf, "data/geospatial/public_hc.sf")
+write_rds(public_hc.sf, "data/rds/public_hc.rds")
 ```
-
-:::
-
-::: {.callout-note}
-
-### Perform point-in-polygon count
 
 ```{r}
-hex_sg2$hc_count <- lengths(st_intersects(hex_sg2, public_hc.sf))
-
-summary(hex_sg2$hc_count)
+hc <- read_rds("data/rds/public_hc.rds")
 ```
 
-:::
-
-
-## Leisure & Recreation
-
-::: {.callout-note}
-
-### Import Geospatial data: Leisure & Recreation
 
 ```{r}
-leisure_recre <- st_read("data/geospatial/Liesure&Recreation.shp") %>% st_transform(crs=3414)
+attractiveness$HC_COUNT <- lengths(st_intersects(attractiveness, hc))
 ```
 
-:::
+### School
 
-::: {.callout-note}
-
-### Perform point-in-polygon count
 
 ```{r}
-hex_sg2$leisure_recre_count <- lengths(st_intersects(hex_sg2, leisure_recre))
+#| eval: false
+schools <- read_csv("data/aspatial/schoolsclean.csv")
 
-summary(hex_sg2$leisure_recre_count)
+schools <- schools %>%
+  separate(latlong, into = c("latitude", "longitude"), sep = ",", convert = TRUE)
+
+schools_sf <- st_as_sf(schools, coords = c("longitude","latitude"), crs = 4326) %>% 
+  st_transform(crs=3414)
+
+write_rds(schools_sf, "data/rds/schools.rds")
 ```
 
-:::
+::: {.callout-note collapse}
 
-
-## Food & Beverages
-
-::: {.callout-note}
-
-### Import Geospatial data: F&B
+#### Save Memory Space by Offloading
 
 ```{r}
-food_bev <- st_read("data/geospatial/F&B.shp") %>% st_transform(crs=3414)
+#| eval: false
+rm(schools_sf)
 ```
 
 :::
-
-::: {.callout-note}
-
-### Perform point-in-polygon count
 
 ```{r}
-hex_sg2$food_bev_count <- lengths(st_intersects(hex_sg2, food_bev))
+schools <- read_rds("data/rds/schools.rds")
 
-summary(hex_sg2$food_bev_count)
+attractiveness$SCH_COUNT <- lengths(st_intersects(attractiveness, schools))
 ```
 
 :::
 
 
-## Retail
-
-::: {.callout-note}
-
-### Import Geospatial data: Leisure & Recreation
+Check attractiveness variables have been added correctly.
 
 ```{r}
-retail <- st_read("data/geospatial/Retails.shp") %>% st_transform(crs=3414)
+kable(head(attractiveness))
 ```
 
-:::
-
-::: {.callout-note}
-
-### Perform point-in-polygon count
+::: {.callout-tip collapse="true"}
 
 ```{r}
-hex_sg2$retail_count <- lengths(st_intersects(hex_sg2, retail))
-
-summary(hex_sg2$retail_count)
+write_rds(attractiveness, "data/rds/attractiveness.rds")
 ```
 
 :::
 
 
-## Entertainment
+::: {.callout-warning collapse="true"}
+```{r}
+rm(hotels)
+```
+:::
 
-::: {.callout-note}
 
-### Import Geospatial data: Entertainment
+## 5.1.2 Deriving Passengers  Alighting from Bus Stop
+
+Aggregate the trips using `inner_join()`, `group_by()` and `summarise()`.
 
 ```{r}
-entertn <- st_read("data/geospatial/entertn.shp") %>% st_transform(crs=3414)
+dest_bus_hex <- od_trips_w_hex %>%
+  inner_join(bs_hex,
+             by = join_by(DESTINATION_PT_CODE == BusStopCode)) %>%
+  group_by(HEX_ID) %>%
+  summarise(TRIPS = sum(TRIPS))
+
+kable(head(dest_bus_hex))
 ```
 
+
+:::{.callout-tip collapse="true"}
+### Why use inner join?
+
+-   An inner join returns only the rows that have matching values in both tables based on the specified join condition.
+
+-   It discards unmatched rows from both the left and right tables.
+
+-   The result set contains only the rows where the join condition is satisfied.
+
+-   Rows from either table that do not have a match in the other table are excluded from the result.
 :::
 
-::: {.callout-note}
 
-### Perform point-in-polygon count
+:::{.callout-tip collapse="true"}
+### Save the layer
 
 ```{r}
-hex_sg2$entertn_count <- lengths(st_intersects(hex_sg2, entertn))
-
-summary(hex_sg2$entertn_count)
+write_rds(dest_bus_hex, "data/rds/dest_bus_hex.rds")
 ```
 
 :::
 
-## Bus Stop
 
-::: {.callout-note}
-
-### Perform point-in-polygon count
+:::{.callout-warning collapse="true"}
+### Save Data Memory Space
 
 ```{r}
-hex_sg2$bus_count <- lengths(st_intersects(hex_sg2, BusStop))
-
-summary(hex_sg2$bus_count)
+rm(bs_hex)
 ```
 
--   There are up to 20 bus stops in a study hexagon.
-
-:::
-
 :::
 
 
-# 5.2 Visualisation of POI densities
+## 5.2.1 Propulsiveness variables
+
+```{r}
+propulsiveness <- hex_grids
+```
+
+
+```{r}
+propulsiveness <- propulsiveness %>%
+  left_join(st_drop_geometry(dest_bus_hex)) %>%
+  rename(BUS_ALIGHT_COUNT = TRIPS)
+
+kable(head(propulsiveness))
+```
+
+
+```{r}
+propulsiveness[is.na(propulsiveness)] <- 0
+kable(head(propulsiveness))
+```
+
+
+:::{.callout-tip collapse="true"}
+### Save the layer
+
+```{r}
+write_rds(propulsiveness, "data/rds/propulsiveness.rds")
+```
+
+:::
+
+
+## 5.3 Generating distance table
+
+### Generating distance matrix
+
+We can use `spDists()` to generate the distance matrix from the hex_grids layer. The column and row names need to be renamed according to the corresponding `HEX_ID`s.
+
+```{r}
+dist_mat <- spDists(as(hex_grids, "Spatial"),
+                    longlat = FALSE)
+
+colnames(dist_mat) <- paste0(hex_grids$HEX_ID)
+rownames(dist_mat) <- paste0(hex_grids$HEX_ID)
+
+kable(head(dist_mat, n=c(10,10)))
+```
+
+:::{.callout-tip}
+Notice that the distance between adjacent centroids are 750m.
+:::
+
+
+### Generating a pivot table
+
+```{r}
+dist_tbl <- melt(dist_mat) %>%
+  rename(DISTANCE = value) %>%
+  rename(ORIG_HEX_ID = Var1) %>%
+  rename(DEST_HEX_ID = Var2)
+kable(head(dist_tbl))
+```
+
+Logically, intra-zonal distances are 0. This occurs when bus passengers are commuting to bus stops along the bus route that are within the same hexagon from where the passenger boarded the bus.
+
+However, distances cannot be kept to 0 since we are going to conduct log-based Poisson regression modelling for spatial interaction modelling. Specifically, log(0) is undefined.
+
+A reasonable replacement of the zero values would be 200m, assuming that the shortest distance between two consecutive bus stops is 200m. 
+
+Setting intra-zonal distances to 200m,
+
+```{r}
+dist_tbl$DISTANCE[dist_tbl$ORIG_HEX_ID == dist_tbl$DEST_HEX_ID] <- 200
+summary(dist_tbl$DISTANCE)
+```
+
+:::{.callout-tip collapse="true"}
+### Save the layer
+
+```{r}
+write_rds(dist_tbl, "data/rds/dist_tbl.rds")
+```
+
+:::
+
+
+:::{.callout-tip collapse="true"}
+### Save Data Memory Space by offloading
+
+```{r}
+rm(dist_mat)
+```
+
+:::
+
+
+
+# 6.0 Data Consolidation
+
+Load the necessary data
+
+```{r}
+hex_grids <- read_rds("data/rds/hex_grids.rds")
+flowlines <- read_rds("data/rds/flowlines.rds")
+dist_tbl <- read_rds("data/rds/dist_tbl.rds")
+attractiveness <- read_rds("data/rds/attractiveness.rds")
+propulsiveness <- read_rds("data/rds/propulsiveness.rds")
+```
+
+
+Generating the consolidated geospatial data will require the following columns:
+
+-   `ORIG_HEX_ID`: ID corresponding to the origin zone
+
+-   `DEST_HEX_ID`: ID corresponding to the destination zone
+
+-   `DISTANCE`: Distance between the (centroids of) origin and destination zones
+
+-   `TRIPS`: Number of bus trips between the origin and destination zones
+
+-   `DEST_*_COUNT`: Values from [Attractiveness Variables Table (attractiveness)]
+
+-   `ORIG_*_COUNT`: Values from [Propulsiveness Variables Table (propulsiveness)]
+
+-   Geometry defining flowlines
+
+
+Now proceed to join the tables!
 
 ::: panel-tabset
 
-## Bus Stop
+## Flowlines
 
 ```{r}
-tm_shape(hex_sg2) +
-  tm_fill(col = "bus_count",
-          palette = "Blues",
-          style = "cont", 
-          title = "Bus Stop Density") + 
-  tm_borders(col = "grey")  +
-  tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4)
+kable(head(flowlines))
+```
+
+```{r}
+#| eval: false
+od_hex2 <- od_trips_w_hex %>%
+  group_by(ORIG_HEX_ID, DEST_HEX_ID) %>%
+  summarise(TRIPS = sum(TRIPS))
+
+flowlines2 <- od_hex2 %>% od2line(
+  hex_grids,
+  zone_code = "HEX_ID")
+
+SIM_data <- flowlines2 %>% 
+  group_by(ORIG_HEX_ID, DEST_HEX_ID) %>%
+  summarise(TRIPS = sum(TRIPS))
+```
+
+## Distance
+
+```{r}
+#| eval: false
+SIM_data <- SIM_data %>% left_join(dist_tbl)
 ```
 
 
-## Population
+## Propulsive
+
+Propulsive zones originate from origins so `propulsiveness` will join with `SIM_data` with the unique identifier as `ORIG_HEX_ID`. The `ORIG_` prefix will be added in by `propulsiveness`.
 
 ```{r}
-tm_shape(hex_sg2) +
-  tm_fill(col = "housing_count",
-          palette = "Blues",
-          style = "cont", 
-          title = "Housing Density") + 
-  tm_borders(col = "grey")  +
-  tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4)
+#| eval: false
+SIM_data <- left_join(
+  SIM_data,
+  propulsiveness %>%
+    st_drop_geometry() %>%
+    rename_with(~paste("ORIG_", .x, sep = ""))
+  )
 ```
 
 
-## Business
+## Attractive
+
+Attractive zones originate from destinations so `attractiveness` will join with `SIM_data` with the unique identifier as `DEST_HEX_ID`. The `DEST_` prefix will be added in by `propulsiveness`.
 
 ```{r}
-tm_shape(hex_sg2) +
-  tm_fill(col = "biz_count",
-          palette = "Blues",
-          style = "cont", 
-          title = "Business Density") + 
-  tm_borders(col = "grey")  +
-  tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4)
+#| eval: false
+SIM_data <- left_join(
+  SIM_data,
+  attractiveness %>%
+    st_drop_geometry() %>%
+    rename_with(~paste("DEST_", .x, sep= ""))
+)
+
+
+write_rds(SIM_data, "data/rds/SIM_data.rds")
 ```
 
 
-## School
+:::
+
+## Finishing Touches
 
 ```{r}
-tm_shape(hex_sg2) +
-  tm_fill(col = "school_count",
-          palette = "Blues",
-          style = "cont", 
-          title = "School Density") + 
-  tm_borders(col = "grey")  +
-  tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4)
+SIM_data <- read_rds("data/rds/SIM_data.rds")
+summary(SIM_data)
 ```
 
 
-## Financial Services
+
+For the data to be compatible with modelling, we can change the zeroes to 0.99.
 
 ```{r}
-tm_shape(hex_sg2) +
-  tm_fill(col = "fin_count",
-          palette = "Blues",
-          style = "cont", 
-          title = "Financial Services Density") + 
-  tm_borders(col = "grey")  +
-  tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4)
+replace_zeroes <- function(data, col_name) {
+  data[[col_name]][data[[col_name]] == 0] <- 0.99
+  data
+}
+
+SIM_data <- SIM_data %>%
+  replace_zeroes("ORIG_BUS_ALIGHT_COUNT") %>%
+  replace_zeroes("DEST_ENTERTN_COUNT") %>%
+  replace_zeroes("DEST_FOOD_BEV_COUNT") %>%
+  replace_zeroes("DEST_LEISURE_COUNT") %>%
+  replace_zeroes("DEST_RETAIL_COUNT") %>%
+  replace_zeroes("DEST_BIZ_COUNT") %>%
+  replace_zeroes("DEST_FIN_COUNT") %>%
+  replace_zeroes("DEST_HC_COUNT") %>%
+  replace_zeroes("DEST_SCH_COUNT") %>%
+  replace_zeroes("DEST_HDB_COUNT")
+
+summary(SIM_data)
 ```
 
 
-## Public Healthcare
+:::{.callout-tip collapse="true"}
+### Save the layer
 
 ```{r}
-tm_shape(hex_sg2) +
-  tm_fill(col = "hc_count",
-          palette = "Blues",
-          style = "cont", 
-          title = "Public Healthcare Density") + 
-  tm_borders(col = "grey")  +
-  tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4)
-```
-
-
-## Leisure & Recreation
-
-```{r}
-tm_shape(hex_sg2) +
-  tm_fill(col = "leisure_recre_count",
-          palette = "Blues",
-          style = "cont", 
-          title = "Leisure & Recreation Density") + 
-  tm_borders(col = "grey")  +
-  tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4)
-```
-
-
-## Food & Beverages
-
-```{r}
-tm_shape(hex_sg2) +
-  tm_fill(col = "food_bev_count",
-          palette = "Blues",
-          style = "cont", 
-          title = "F&B Density") + 
-  tm_borders(col = "grey")  +
-  tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4)
-```
-
-
-## Retail
-
-```{r}
-tm_shape(hex_sg2) +
-  tm_fill(col = "entertn_count",
-          palette = "Blues",
-          style = "cont", 
-          title = "Entertainment Density") + 
-  tm_borders(col = "grey")  +
-  tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4)
-```
-
-
-## Entertainment
-
-```{r}
-tm_shape(hex_sg2) +
-  tm_fill(col = "entertn_count",
-          palette = "Blues",
-          style = "cont", 
-          title = "Entertainment Density") + 
-  tm_borders(col = "grey")  +
-  tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4)
+#| eval: false
+write_rds(SIM_data, "data/rds/SIM_data_final1.rds")
 ```
 
 :::
 
+# 7.0 Visualising Spatial Interactions
 
-# 6.0   Distance Matrix Computation
 
-# 6.1   Prepare Origin & Destination Variables
-
-::: {.callout-note collapse="true"}
-## Origin (Propulsive)
+Load relevant datasets.
 
 ```{r}
-propulsive <- hex_sg2 %>%
-  st_drop_geometry() %>%
-  select(index, biz_count, school_count, fin_count, hc_count, bus_count, housing_count, leisure_recre_count, retail_count, entertn_count, food_bev_count)
+mpsz3414 <- st_read("data/geospatial/mpsz3414.shp")
+hex_grids <- read_rds("data/rds/hex_grids.rds")
+flowlines <- read_rds("data/rds/flowlines.rds")
+SIM_data <- read_rds("data/rds/SIM_data_final1.rds")
+propulsiveness <- read_rds("data/rds/propulsiveness.rds")
+attractiveness <- read_rds("data/rds/attractiveness.rds")
+```
+
+
+
+## General view
+
+Since the flowlines dataset is large, remove the intra-zonal flows.
+
+```{r}
+flowlines_no_intra <- flowlines %>%
+  filter(ORIG_HEX_ID != DEST_HEX_ID)
+```
+
+
+Then we can use `quantile()` to check the appropriate cut-off numbers.
+
+```{r}
+quantile(flowlines_no_intra$TRIPS,
+         probs = c(0.8, 0.9, 0.95, 0.99, 1))
+```
+
+Showing the top 1% of these flow lines will reveal important details as they take up the majority of the bu trips that occurred from November 2023 to January 2024.
+
+```{r}
+flowlines_base <- filter(flowlines_no_intra, flowlines_no_intra$TRIPS>=2386)
+```
+
+
+```{r}
+tm_shape(mpsz3414) +
+  tm_polygons("lightgrey",title="Singapore Boundary", alpha = 0.8) +
   
-
-origin <- names(propulsive) %>%
-  modify_at(-1, ~ paste0("o_", .))  # Add prefix to all except index
-
-# Assign modified names back to the data frame
-names(propulsive) <- origin
-```
-:::
-
-::: {.callout-note collapse="true"}
-## Destination
-
-```{r}
-attractiveness <- hex_sg2 %>%
-  st_drop_geometry() %>%
-  select(index, biz_count, school_count, fin_count, hc_count, bus_count, housing_count, leisure_recre_count, retail_count, entertn_count, food_bev_count)
+  tm_shape(hex_grids) +
+  tm_polygons("white", title="Hexagons", alpha=1) +
   
-
-destin <- names(propulsive) %>%
-  modify_at(-1, ~ paste0("d_", .))  # Add prefix to all except index
-
-# Assign modified names back to the data frame
-names(attractiveness) <- destin
+  tm_shape(flowlines_base) +
+  tm_lines(lwd="TRIPS",
+           style = "quantile",
+           col = "red",
+           scale = c(0.1, 1, 3, 5, 7),
+           title.lwd = "# of bus trips",
+           alpha = 0.8) +
+  
+  tm_layout(main.title = "Top 1% Bus Passenger flows",
+            main.title.position = "center",
+            main.title.size = 1.0,
+            legend.height = 0.35, 
+            legend.width = 0.35,
+            frame = TRUE) +
+  
+  tm_compass(type="8star", size = 2, bg.color = "white", bg.alpha = 0.5) +
+  tm_scale_bar(bg.color = "white", bg.alpha = 0.5) +
+  tm_grid(alpha = 0.2)
 ```
-:::
 
-# 6.2    Construction
 
-A distance matrix shows the distance between pairs of locations. A location's distance from itself is shown in the main diagonal of a distance matrix table.
 
-In view of time, we will use sp rather than sf.
+
+# Plotting TRIPS vs DISTANCE
+
 
 ```{r}
-hex_grid_sp <- as(hex_grids, "Spatial")
+ggplot(SIM_data,
+       aes(x = DISTANCE, y = TRIPS)) +
+  geom_point() +
+  geom_hline(yintercept = 2386, color = "red", linetype = "dashed") +
+  annotate("text", x = 20000,
+           y = 600, label = "95th percentile",
+           hjust = -0.1, color = "red", size = 3) +
+  geom_hline(yintercept = 1510, color = "purple", linetype = "dashed") +
+  annotate("text", x = 20000,
+           y = 1800, label = "99th percentile",
+           hjust = -0.1, color = "purple", size = 3) +
+  labs(title = "Number of Trips as a Function of Distance",
+       x = "Distance (m)",
+       y = "Number of Trips")
 ```
+
 
 ```{r}
-dist <- spDists(hex_grid_sp, longlat = FALSE)
-
-# resultant matrix
-head(dist, n=c(10, 10))
+ggplot(SIM_data,
+       aes(x = log(DISTANCE), y = log(TRIPS))) +
+  geom_point() +
+  geom_smooth(method = lm)
 ```
-::: {.callout-note}
-The result is a matrix object class and the column and row headers are not labeled with the hexagon grid index representing the TAZ.
-:::
 
-## Label column and row headers
 
-Create a list sorted according to the distance matrix by Traffic Analytical Zones.
+
+## Visualising propulsive forces
+
+::: {callout-tip collapse="true"}
+### Creating a helper function
 
 ```{r}
-hex_names <- hex_grids$index
+plot_propulsive <- function(var_name, title_comp, day_type = NULL, hour = NULL, pa=NULL) {
+  flowlines_filtered <- flowlines_no_intra
+  
+  if (!is.null(day_type)) {
+    flowlines_filtered <- flowlines_filtered %>% filter(DAY_TYPE == day_type)
+  }
+  
+  if (!is.null(hour)) {
+    flowlines_filtered <- flowlines_filtered %>% filter(TIME_PER_HOUR == hour)
+  }
+  
+  if (!is.null(pa)) {
+    flowlines_filtered <- flowlines_filtered %>% filter(ORIGIN_SUBZONE == pa)
+  }
+  
+  tm_shape(mpsz3414) +
+  tm_polygons("lightgrey", title = "Singapore Boundary") +
+  
+  # Adding this layer underneath propulsiveness as we removed 0s. from the map
+  # so it won't skew the legend
+  tm_shape(hex_grids) +
+  tm_polygons(col = "white") +
+  
+  tm_shape(propulsiveness %>% filter(if_any(var_name, ~. >= 1))) +
+  tm_polygons(var_name, palette = "Blues", style = "quantile") +
+    
+  tm_shape(flowlines_no_intra %>% filter(TRIPS > 2385)) +
+  tm_lines(lwd = "TRIPS",
+           style = "quantile",
+           col = "red",
+           scale = c(0.1, 1, 3, 5, 7, 10),
+           title.lwd = "# of bus trips",
+           n = 6,
+           alpha = 0.5) +
+  
+  tm_layout(main.title = paste("Top 1% Bus Passenger Flows and", title_comp),
+            main.title.position = "center",
+            main.title.size = 1.0,
+            legend.height = 0.35, 
+            legend.width = 0.35,
+            frame = TRUE) +
+  
+  tm_scale_bar(bg.color = "white", bg.alpha = 0.7, position = c("right", "top")) +
+  tm_compass(type="8star", size = 2, bg.color = "white",
+             bg.alpha = 0.5, position = c("right", "top")) +
+  tm_grid(alpha = 0.2) +
+  tm_credits("*Passenger data",
+             bg.color = "white", bg.alpha = 0.7,
+             position = c("left", "bottom"))
+}
 ```
 
-Attach the hexagon grid index to the rows and columns for distance matrix matching.
-
-```{r}
-colnames(dist) <- paste0(hex_names)
-rownames(dist) <- paste0(hex_names)
-```
-
-## Pivot distance value by hexagon grid index
-
-The distance matrix is pivoted into a long table by using the *melt()* function of **reshape2**.
-
-```{r}
-distPair <- reshape2::melt(dist) %>%
-  rename(dist = value)
-
-head(distPair, 10)
-```
-
--   The intra-zonal distances are 0.
-
-## Update intra-zonal distances
-
-Check for the lowest non-zero distance value.
-
-```{r}
-distPair %>%
-  filter(dist > 0) %>%
-  summary()
-```
-
-Since the lowest distance is 750m, any distance less than 750m can represent the intra-zonal distance. For consistency, 375m is appended to intra-zonal distances.
-
-:::{.callout-warning, collapse="true}
-### Warning: Do not leave distances at zero value
-
-In Poisson regression, log is applied to the distances and distances need to be set as positive values.
-:::
-
-```{r}
-distPair$dist <- ifelse(distPair$dist == 0,
-                        375, distPair$dist)
-
-summary(distPair)
-```
-
-Rename the origin and destination fields and convert into factor data type.
-
-```{r}
-distPair <- distPair %>%
-  rename(orig = Var1,
-         dest = Var2) %>%
-  mutate(across(c(orig, dest), as.factor))
-```
-
-#   6.3 Separating intra-flow from passenger volume
-
-A new column `FlowNoIntra` is created to differentiate intra-zone trips from inter-zone trips based on the comparison of origin and destination zones.
-
-```{r}
-od_data$FlowNoIntra <- ifelse(
-  od_data$ORIGIN_hex == od_data$DESTIN_hex, 0, od_data$TOTAL_TRIPS)
-od_data$offset <- ifelse(
-  od_data$ORIGIN_hex == od_data$DESTIN_hex, 0.000001, 1)
-```
-
-```{r}
-od_data <- od_data%>%
-  filter(FlowNoIntra > 0)
-```
-
-## Combining passenger volume data with distance value
-
-Convert the data value type into factor for the origin and destination hex indexes.
-
-```{r}
-od_data$ORIGIN_hex <- as.factor(od_data$ORIGIN_hex)
-od_data$DESTIN_hex <- as.factor(od_data$DESTIN_hex)
-```
-
-Then perform a left join to join the OD data and distPair. Store it under `flow_data`.
-
-```{r}
-flow_data <- od_data %>%
-  left_join (distPair,
-             by = c("ORIGIN_hex" = "orig",
-                    "DESTIN_hex" = "dest"))
-```
-
-## Preparing origin attributes
-
-```{r}
-flow_data <- flow_data %>%
-  left_join (propulsive,
-             by = c("ORIGIN_hex" = "index"))
-```
-
-## Preparing destination attributes
-
-```{r}
-flow_data <- flow_data %>%
-  left_join (attractiveness,
-             by = c("DESTIN_hex" = "index"))
-```
-
-## Check for variables with zero values
-
-For log transformation, log 0 is undefined so it is critical to ensure there are no zero values in the explanatory variables.
-
-```{r}
-#| eval: false
-#| echo: false
-summary(flow_data)
-```
-
-All except the bus stop count variables contain zero values and need to be replaced with a negligible value like 0.99.
-
-```{r}
-#| eval: false
-flow_data <- flow_data %>%
-  mutate_at(vars(ends_with("_count")), ~ ifelse(. == 0, 0.99, .))
-
-write_rds(flow_data, "data/rds/flow_data.rds")
-```
-
-```{r}
-flow_data <- read_rds("data/rds/flow_data.rds")
-```
-
-## Apply log transformation
-
-Poisson regression is based on log, so log() has to be applied to all our explanatory variables before calibrating the various spatial interaction models.
-
-```{r}
-#| eval: false
-flow_data_log <- flow_data %>%
-  mutate_at(vars(ends_with("_count")), log) %>%
-  mutate(dist = log(dist))
-
-summary(flow_data_log)
-```
-
-
-#   7.0 Spatial Econometric Interaction Modelling
-
-##    7.1 Spatial Interaction Model
-SIM is a mathematical model predicting the movement of people between origins (like homes) and destinations by examining the distance between them.
-
-In a healthcare context, a SIM can account the likely demand for health services and the quality of service provision at health centres. Conventionally, SIM's cousin term is gravity model.
-
-
-:::{.callout-note collapse="true"}
-## Variable Construction
-
-```{r}
-# Generate propulsive variables names
-origin_var <- propulsive %>%
-  select(-(index)) %>%
-  names()
-
-# Generate attractiveness variables names
-destin_var <- attractiveness %>%
-  select(-(index)) %>%
-  names()
-```
 :::
 
 
-:::{.callout-note collapse="true"}
-## Origin Constrained Model
+Looking at transfers from Buses.
 
 ```{r}
-#| eval: false
-# Generate the formula dynamically
-formula_string <- paste("TOTAL_TRIPS ~ ORIGIN_hex +", 
-                        paste(destin_var, collapse = " + "), "+ dist - 1")
-
-# Convert the string to a formula
-formula <- as.formula(formula_string)
-
-orcSIM <- glm(formula,
-              family = poisson(link = "log"),
-              data = flow_data_log,
-              na.action = na.exclude)
-
-write_rds(orcSIM, "data/rds/decSIM.rds")
+plot_propulsive("BUS_ALIGHT_COUNT", "Potential Transfers from Bus")
 ```
+
+
+## Visualising attractive forces
+
+::: {callout-tip collapse="true"}
+### Creating a helper function
 
 ```{r}
-orcSIM <- read_rds("data/rds/orcSIM.rds")
-summary(orcSIM)
+plot_attractive <- function(var_name, title_comp, day_type = NULL, hour = NULL, pa = NULL) {
+  flowlines_filtered <- flowlines_no_intra
+  
+  if (!is.null(day_type)) {
+    flowlines_filtered <- flowlines_filtered %>% filter(DAY_TYPE == day_type)
+  }
+  
+  if (!is.null(hour)) {
+    flowlines_filtered <- flowlines_filtered %>% filter(TIME_PER_HOUR == hour)
+  }
+  
+  if (!is.null(pa)) {
+    flowlines_filtered <- flowlines_filtered %>% filter(DESTINATION_SUBZONE == pa)
+  }
+  
+  tm_shape(mpsz3414) +
+  tm_polygons("green", title = "Singapore Boundary") +
+  
+  # Adding this layer underneath attractiveness as we removed 0s. from the map
+  # so it won't skew the legend
+  tm_shape(hex_grids) +
+  tm_polygons(col = "white") +
+  
+  tm_shape(attractiveness %>% filter(if_any({{var_name}}, ~. >= 1))) +
+  tm_polygons({{var_name}}, palette = "Purples", style = "quantile") +
+    
+  tm_shape(flowlines_filtered %>% filter(TRIPS > 2385)) +
+  tm_lines(lwd = "TRIPS",
+           style = "quantile",
+           col = "red",
+           scale = c(0.1, 1, 3, 5, 7, 10),
+           title.lwd = "# of bus trips",
+           n = 6,
+           alpha = 0.5) +
+  
+  tm_layout(main.title = paste("Top 1% Bus Passenger Flows and", {{title_comp}}),
+            main.title.position = "center",
+            main.title.size = 1.0,
+            legend.height = 0.35, 
+            legend.width = 0.35,
+            frame = TRUE) +
+  
+  tm_scale_bar(bg.color = "white", bg.alpha = 0.7, position = c("right", "top")) +
+  tm_compass(type="8star", size = 2, bg.color = "white",
+             bg.alpha = 0.5, position = c("right", "top")) +
+  tm_grid(alpha = 0.2) +
+  tm_credits("*Passenger data",
+             bg.color = "white", bg.alpha = 0.7,
+             position = c("left", "bottom"))
+}
 ```
-:::
 
-:::{.callout-note collapse="true"}
-## Destination Constrained Model
-
-```{r}
-#| eval: false
-# Generate the formula dynamically
-formula_string <- paste("TOTAL_TRIPS ~ DESTIN_hex +", 
-                        paste(destin_var, collapse = " + "), "+ dist - 1")
-
-# Convert the string to a formula
-formula <- as.formula(formula_string)
-
-decSIM <- glm(formula,
-              family = poisson(link = "log"),
-              data = flow_data_log,
-              na.action = na.exclude)
-
-write_rds(decSIM, "data/rds/decSIM.rds")
-```
-
-```{r}
-#| eval: false
-decSIM <- read_rds("data/rds/decSIM.rds")
-summary(decSIM)
-```
-:::
-
-
-:::{.callout-note collapse="true"}
-## Doubly Constrained Model
-
-```{r}
-#| eval: false
-dbcSIM <- glm(formula = TOTAL_TRIPS ~ 
-                ORIGIN_hex + 
-                DESTIN_hex + 
-                dist,
-              family = poisson(link = "log"),
-              data = flow_data_log,
-              na.action = na.exclude)
-
-write_rds(dbcSIM, "data/rds/dbcSIM.rds")
-```
-
-```{r}
-#| eval: false
-dbcSIM <- read_rds("data/rds/decSIM.rds")
-summary(dbcSIM)
-```
 :::
 
 
+::: panel-tabset
+
+### Bus Stops
+```{r}
+plot_attractive("BUS_STOP_COUNT", "Number of Bus Stops")
+```
+
+### HDBs
+```{r}
+plot_attractive("HDB_COUNT", "Number of HDB Blocks")
+```
+
+### Businesses
+```{r}
+plot_attractive("BIZ_COUNT", "Number of Business Locations", day_type = "WEEKENDS/HOLIDAY")
+```
+
+### Entertainment
+```{r}
+plot_attractive("ENTERTN_COUNT", "Number of Entertainment \nLocations at 5pm on Weekdays", day_type = "WEEKDAY", hour=17)
+```
+
+### F&B
+```{r}
+plot_attractive("FOOD_BEV_COUNT", "Number of F&B Locations", pa = "BEDOK")
+```
+
+### Leisure
+```{r}
+plot_attractive("LEISURE_COUNT", "Number of Leisure \n& Recreation Spots attracting flows to Bedok and Paya Lebar", pa = c("BEDOK", "PAYA LEBAR"))
+```
+
+### Retail
+```{r}
+plot_attractive("RETAIL_COUNT", "Number of Retail Locations at 1pm", hour = 13)
+```
+
+### Financial Services
+```{r}
+plot_attractive("FIN_COUNT", "Number of Financial Service Locations")
+```
+
+### Public Healthcare Services
+```{r}
+plot_attractive("HC_COUNT", "Number of Public Healthcare Spots")
+```
+
+### School
+```{r}
+plot_attractive("SCH_COUNT", "Number of School Locations")
+```
+
+:::
+
+# 7.1 Prototype Potential
+
+The user inputs will include:
+
+-   Flow direction with the choices of `Overall`, `Outgoing`, `Incoming`
+
+-   A viewing level drop-down bar with choices of `Overall`, `PLN_AREA`. If `PLN_AREA` is selected, there will be a further drp-down feature for the user to select the interested planning areas of the Origins and Destinations.
+
+-   Day type with the choices of `Overall`, `WEEKDAY`, `WEEKENDS/HOLIDAYS`
+
+-   Time hour choice in a sliding bar style, ranging from 0 to 23.
+
+-   A sliding bar to control the number of trips shown based on the user inputs
 
 
-##    7.2 Spatial Econometric Interaction Modelling
 
-Spatial Econometric Interaction Models extend the traditional SIM by considering econometric matters. It addresses the limitation of SIM which assumes there is independence across observations. SEIM addresses the spatial dependencies across observations and acknowledge that nearby locations might influence each other's behaviour or out comes. Additionally, SEIM handles spatial autocorrelation more effectively and addresses multicollinearity.
+# 8.0 Spatial Econometric Interaction Modelling
+
+Remove the intra-zonal zones pairs from SIM_data.
+
+```{r}
+SIM_data_no_intra <- SIM_data %>% filter(ORIG_HEX_ID != DEST_HEX_ID)
+```
 
 
-Three data sets are needed to calibrate SEIM using **spflow** package:
+
+To calibrate SEIM using spflow package, three data sets are required:
 
 -   Spatial Weights
 
@@ -1260,77 +1377,119 @@ Three data sets are needed to calibrate SEIM using **spflow** package:
 
 -   Explanatory Variables
 
-::: {.callout-note collapse="true"}
-## Preparing Spatial Weights
 
-The connectivity between traffic analytical zones can be described using contiguity, fixed distance and adaptive distance matrices.
+## Prepare Spatial Weights
 
 ```{r}
-coords <- hex_sg2 %>% 
-  filter(bus_count > 0) %>%
+
+
+hex_grid <- st_make_grid(mpsz3414, cellsize = c(750, 750), what = "polygons", square = FALSE) %>%
+  st_sf() %>%
+  # Apply as.factor() since index will be used as the identifier to link to other data sets
+  mutate(index = as.factor(row_number()))
+
+# Create border of Singapore's land area
+mpsz_border <- mpsz3414 %>% st_union()
+
+# Clip the hexagon grid layer
+hex_grid_bounded <- st_intersection(hex_grid, mpsz_border)
+
+# Check if hex grid intersects any polygons using st_intersects
+# Returns a list of intersecting hexagons
+intersection_list = hex_grid$index[lengths(st_intersects(hex_grid, hex_grid_bounded)) > 0]
+
+# Filter for the intersecting hexagons
+hex_grids = hex_grid %>%
+  filter(index %in% intersection_list)
+
+
+hex_grids$BUS_COUNT <- lengths(st_intersects(hex_grids, BusStop))
+hex_grids$ENTERTN_COUNT <- lengths(st_intersects(hex_grids, entertn))
+hex_grids$FOOD_BEV_COUNT <- lengths(st_intersects(hex_grids, food_bev))
+hex_grids$LEISURE_COUNT <- lengths(st_intersects(hex_grids, leis_rec))
+hex_grids$RETAIL_COUNT <- lengths(st_intersects(hex_grids, retail))
+hex_grids$BIZ_COUNT <- lengths(st_intersects(hex_grids, biz))
+hex_grids$FIN_COUNT <- lengths(st_intersects(hex_grids, fin))
+hex_grids$HDB_COUNT <- lengths(st_intersects(hex_grids, hdb_residential2))
+hex_grids$HC_COUNT <- lengths(st_intersects(hex_grids, hc))
+hex_grids$SCHOOL_COUNT <- lengths(st_intersects(hex_grids, schools))
+
+
+tm_shape(hex_grids) +
+  tm_fill(col = "BUS_COUNT",
+          palette = "Blues",
+          style = "cont",
+          title = "Bus Stop Density") +
+  tm_borders(col="grey")
+```
+
+
+```{r}
+coords <- hex_grids %>%
+  filter("BUS_COUNT" > 0) %>%
   select(geometry) %>%
   st_centroid()
 
 k1 <- knn2nb(knearneigh(coords))
 k1dists <- unlist(nbdists(k1, coords, longlat = FALSE))
 
+# Print summary report
 summary(k1dists)
 ```
 
-:::{callout-tip}
-### Interpreting Summary Report
-The largest first nearest neighbour distance is 3269m and it will be used as the upper threshold such that all k neighbours have at least one neighbour.
-:::
-
-:::
-
-
-::: {.callout-note collapse="true"}
-
-## Computing Spatial Weights
+The largest first nearest neighbour distance is 2461.2.
 
 ```{r}
 centroids <- suppressWarnings({
-    st_point_on_surface(st_geometry(hex_sg2))})
+    st_point_on_surface(st_geometry(hex_grids))})
 
 hexgrid_nb <- list(
-  "by_contiguity" = poly2nb(hex_sg2),
+  "by_contiguity" = poly2nb(hex_grids),
   "by_distance" = dnearneigh(centroids, 
-                             d1 = 0, d2 = 3269),
+                             d1 = 0, d2 = 3437),
   "by_knn" = knn2nb(knearneigh(centroids, 6))
 )
 
 hexgrid_nb
 ```
-:::
 
-::: {.callout-note collapse="true"}
 
-## Prepare Flow Data
+
+## Preparing Flow Data
+
 
 ```{r}
-flow_data1 <- flow_data %>%
-  group_by(ORIGIN_hex, DESTIN_hex) %>%
-  summarise(TOTAL_TRIPS = sum(TOTAL_TRIPS), dist = first(dist))
+#| eval: false
+flowlines$DISTANCE <- dist_tbl$DISTANCE[match(paste(flowlines$ORIG_HEX_ID, flowlines$DEST_HEX_ID), paste(dist_tbl$ORIG_HEX_ID, dist_tbl$DEST_HEX_ID))]
+
+flow_data <- flowlines %>%
+  select(ORIG_HEX_ID, DEST_HEX_ID, TRIPS, DISTANCE) %>%
+  group_by(ORIG_HEX_ID, DEST_HEX_ID, DISTANCE) %>%
+  summarise(TRIPS = sum(TRIPS)) %>%
+  ungroup()
+
+write_rds(flow_data, "data/rds/flow_data_3b.rds")
 ```
 
-:::
-
-
-::: {.callout-note collapse="true"}
-
-## Prepare Explanatory Variables
-
 ```{r}
-explanatory <- hex_sg2 %>%
+flow_data <- read_rds("data/rds/flow_data_3b.rds")
+```
+
+
+## Preparing Explanatory Variables
+
+
+````{r}
+explanatory <- hex_grids %>%
   st_drop_geometry()
+
+write_rds(explanatory, "data/rds/explanatory.rds")
+
+explanatory <- read_rds("data/rds/explanatory.rds")
 ```
 
-:::
 
-::: {.callout-note collapse="true"}
-
-## Create spflow_network-class objects
+## Creating spflow_network-class objects
 
 ```{r}
 hex_net <- spflow_network(
@@ -1343,14 +1502,16 @@ hex_net <- spflow_network(
 hex_net
 ```
 
+Create spflow_network_pair-class using `spflow_network_pair()`
 
 ```{r}
+#| eval: false
 hex_net_pairs <- spflow_network_pair(
   id_orig_net = "sg",
   id_dest_net = "sg",
-  pair_data = flow_data1,
-  orig_key_column = "ORIGIN_hex",
-  dest_key_column = "DESTIN_hex"
+  pair_data = flow_data,
+  orig_key_column = "ORIG_HEX_ID",
+  dest_key_column = "DEST_HEX_ID"
 )
 
 hex_net_pairs
@@ -1358,559 +1519,21 @@ hex_net_pairs
 
 
 ```{r}
+#| eval: false
 hex_multi_net <- spflow_network_multi(hex_net, hex_net_pairs)
 
 hex_multi_net
 ```
 
-:::
 
-## Correlation Analysis
 
 
-```{r}
-# Generate explanatory variables names
-var_name <- explanatory %>%
-  select(-(index)) %>%
-  names()
 
-# Generate the formula dynamically
-cor_formula <- log(1 + TOTAL_TRIPS) ~ 
-  bus_count + 
-  housing_count + 
-  biz_count + 
-  school_count + 
-  fin_count + 
-  hc_count + 
-  leisure_recre_count +
-  food_bev_count + 
-  retail_count + 
-  entertn_count + 
-  P_(log(dist + 1))
 
-cor_mat <- pair_cor(
-  hex_multi_net, 
-  spflow_formula = cor_formula, 
-  add_lags_x = FALSE)
+# References
 
-colnames(cor_mat) <- paste0(
-  substr(
-    colnames(cor_mat),1,3),"...")
+M. Chan. Applied Spatial Interaction Models - Case Study of Singapore Public Bus Commuter Flows. https://geospatial2023.netlify.app/take_home_exercise/ex2/take_home_ex2#calibrate-spatial-econometric-interaction-model-usng-maximum-likelihood-estimation
 
-cor_image(cor_mat)
-```
+K. J. Paas, 2023. Take Home Exercise 2: A Case Study of Singapore Public Bus Commuter Flows. https://isss624-kjcpaas.netlify.app/take-home_ex2/take-home_ex2
 
-Given that there are no variable pairs that are very highly correlated with one another, all variables will be used to calibrate the SEIM.
-
-
-## 7.2.1    SEIM Calibration
-
-```{r}
-base_model <- spflow(
-  spflow_formula = log(1 + TOTAL_TRIPS) ~ 
-    O_(bus_count + 
-  housing_count + 
-  biz_count + 
-  school_count + 
-  fin_count + 
-  hc_count + 
-  leisure_recre_count +
-  food_bev_count + 
-  retail_count + 
-  entertn_count) +
-    D_(bus_count + 
-  housing_count + 
-  biz_count + 
-  school_count + 
-  fin_count + 
-  hc_count + 
-  leisure_recre_count +
-  food_bev_count + 
-  retail_count + 
-  entertn_count) +
-    P_(log(dist + 1)),
-  spflow_networks = hex_multi_net)
-
-base_model
-```
-
-### Residual diagnostics
-
-```{r}
-old_par <- par(mfrow = c(1, 3), 
-               mar = c(2,2,2,2))
-
-spflow_moran_plots(base_model)
-```
-
-
-### Visualise Fitted Values
-
-```{r}
-model.df <- as_tibble(base_model@spflow_indicators) %>%
-  mutate(FITTED_Y = round(exp(FITTED),0))
-
-inter_zonal_flow <- flow_data %>%
-  left_join(model.df) %>%
-  mutate(diff = (FITTED_Y-TOTAL_TRIPS))
-```
-
-```{r}
-ggplot(data = inter_zonal_flow,
-                aes(x = FITTED,
-                    y = ACTUAL)) +
-  geom_point() +
-  geom_smooth(method = lm) +
-  coord_cartesian(xlim=c(0,14),
-                  ylim=c(0,14)) + 
-  labs(title = "Observed vs. Fitted Values for SEIM",
-       x = "Fitted Values", y = "Observed Values")
-```
-
-
-#   8.0 Prototype
-
-In light of our class project, I aim to test the feasibility of plotting out the various commuting flow maps.
-
-Specifically, the maps can focus on the various areas of interest and plot the flow lines originating and ending in AOIs of ranged densities.
-
-The analytical unit could be planning area, subzone or even hexagonal.
-
-Before diving into these analytical units, we can have a look at the general inflow and outflows from origins and destinations.
-
-# Level 1: General Perspective
-
-The `TOTAL_TRIPS` is set to 3000 at minimum due to computational time taken to run the below code chunks.
-
-```{r}
-flowLine <- filter(flowLine, TOTAL_TRIPS>=3000)
-```
-
-Split outgoing and incoming flows along with the origin and destination hexagon layers.
-
-```{r}
-#| eval: false
-flowLine_org <- filter(flowLine, ORIGIN_hex %in% hex_sg2$index)
-org_hex <- filter(hex_sg2, index %in% flowLine_org$ORIGIN_hex)
-
-flowLine_dest <- filter(flowLine, DESTIN_hex %in% hex_sg2$index)
-dest_hex <- filter(hex_sg2, index %in% flowLine_dest$DESTIN_hex)
-```
-
-## General Outflows from Origins (Propulsive)
-
-Here, I assume that the user is interested in bus traffic flows and where buses typically leave.
-
-```{r}
-#| eval: false
-flowLine_org <- filter(flowLine, ORIGIN_hex %in% hex_grid_bounded3$index)
-org_hex <- filter(hex_sg2, index %in% flowLine_org$ORIGIN_hex)
-
-org_hex_3000 <- org_hex[org_hex$index %in% flowLine_org$ORIGIN_hex[flowLine_org$TOTAL_TRIPS >= 3000], ]
-
-tm_shape(hex_sg2) +
-  tm_borders(col = "grey") +
-tm_shape(org_hex_3000) + 
-  tm_fill(col = "skyblue", alpha = 0.5) +
-  tm_borders(col = "grey") +
-flowLine_org %>%  
-  filter(TOTAL_TRIPS >= 3000) %>%
-tm_shape() +
-  tm_lines(lwd = "TOTAL_TRIPS",
-           scale = c(1,2,3,4,5,7,9),
-           n = 6, 
-           alpha = 0.5,
-           title.lwd = "Total Trips"
-           ) + 
-  tm_layout(main.title = "Origin: Desire Lines Traffic Analysis Zones \n(Nov '23 - Jan '24)",
-            main.title.position = "center",
-            main.title.size = 0.6,
-            frame = TRUE) +
-  tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4) 
-  
-```
-
-
-The potential user interface for the above scenario may look like this:
-
-![](img/Commute%20Flow%20Map%20(2).png)
-
-## Inflows to Destinations (Attractive)
-
-This scenario assumes that the user is interested in the popular bus destinations, i.e. `TOTAL_TRIPS` is minmally **8000** on **weekdays**.
-
-```{r}
-#| eval: false
-flowLine_dest <- filter(flowLine, DESTIN_hex %in% hex_grid_bounded3$index)
-dest_hex <- filter(hex_grid_bounded3, index %in% flowLine_dest$DESTIN_hex)
-
-dest_hex_8000 <- dest_hex[dest_hex$index %in% flowLine_dest$DESTIN_hex[flowLine_dest$TOTAL_TRIPS >= 10000], ]
-
-tm_shape(hex_grid_bounded3) +
-  tm_borders(col = "grey") +
-tm_shape(dest_hex_8000) + 
-  tm_fill(col = "skyblue", alpha = 0.5) +
-  tm_borders(col = "grey") +
-flowLine_dest %>%  
-  filter(DAY_TYPE == "WEEKDAY", TOTAL_TRIPS >= 8000) %>%
-tm_shape() +
-  tm_lines(lwd = "TOTAL_TRIPS",
-           scale = c(1,2,3,4,5,7,9),
-           n = 6, 
-           alpha = 0.5,
-           title.lwd = "Total Trips"
-           ) + 
-  tm_layout(main.title = "Destinations: Desire Lines with at least 8000 trips \nbetween Traffic Analysis Zones for Weekdays \n(Nov '23 - Jan '24)",
-            main.title.position = "center",
-            main.title.size = 0.6,
-            frame = TRUE) +
-  tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4) 
-  
-```
-
-The potential user interface for the above scenario may look like this:
-
-![](img/Commute%20Flow%20Map%20(3).png)
-
-## Weekday vs Weekend/Holiday
-
-This scenario simulates the user wanting to find out how do bus destinations differ on **weekends** compared to **weekdays**.
-
-```{r}
-#| eval: false
-tm_shape(hex_grid_bounded3) +
-  tm_borders(col = "grey") +
-tm_shape(dest_hex_8000) + 
-  tm_fill(col = "skyblue", alpha = 0.5) +
-  tm_borders(col = "grey") +
-flowLine_dest %>%  
-  filter(DAY_TYPE == "WEEKENDS/HOLIDAY", TOTAL_TRIPS >= 8000) %>%
-tm_shape() +
-  tm_lines(lwd = "TOTAL_TRIPS",
-           scale = c(1,2,3,4,5,7,9),
-           n = 6, 
-           alpha = 0.5,
-           title.lwd = "Total Trips"
-           ) + 
-  tm_layout(main.title = "Destinations: Desire Lines with at least 8000 trips \nbetween Traffic Analysis Zones for Weekends \n(Nov '23 - Jan '24)",
-            main.title.position = "center",
-            main.title.size = 0.6,
-            frame = TRUE) +
-  tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4) 
-  
-```
-
--   Hexagons linked to desire lines reveal that they are more popular starting or destination locations for bus rides.
-
--   There are many trips made to destinations in the north, which is around Tuas Checkpoint.
-
-The potential user interface for the above scenario may look like this:
-
-![](img/Commute%20Flow%20Map%20(4).png)
-
-## Specific Hour of the Day
-
-A user might be curious about bus traffic flows and where they start on weekdays at 8am.
-
-```{r}
-#| eval: false
-flowLine_org <- filter(flowLine, ORIGIN_hex %in% hex_grid_bounded3$index)
-org_hex <- filter(hex_grid_bounded3, index %in% flowLine_org$ORIGIN_hex)
-
-org_hex_3000 <- org_hex[org_hex$index %in% flowLine_org$ORIGIN_hex[flowLine_org$TOTAL_TRIPS >= 3000], ]
-
-tm_shape(hex_grid_bounded3) +
-  tm_borders(col = "grey") +
-tm_shape(org_hex_3000) + 
-  tm_fill(col = "skyblue", alpha = 0.5) +
-  tm_borders(col = "grey") +
-flowLine_org %>%  
-  filter(TOTAL_TRIPS >= 3000, TIME_PER_HOUR == 8) %>%
-tm_shape() +
-  tm_lines(lwd = "TOTAL_TRIPS",
-           scale = c(1,2,3,4,5,7,9),
-           n = 6, 
-           alpha = 0.5,
-           title.lwd = "Total Trips"
-           ) + 
-  tm_layout(main.title = "Origin: Desire Lines Traffic Analysis Zones Weekdays, 8am \n(Nov '23 - Jan '24)",
-            main.title.position = "center",
-            main.title.size = 0.6,
-            frame = TRUE) +
-  tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4) 
-  
-```
-
-The potential user interface for the above scenario may look like this:
-
-![](img/Commute%20Flow%20Map%20(9).png)
-
-Since too many desire lines are plotted, the user can narrow the minimum number of total trips per origin-destination hexagon pair to 10000.
-
-```{r}
-#| eval: false
-flowLine_org <- filter(flowLine, ORIGIN_hex %in% hex_grid_bounded3$index)
-org_hex <- filter(hex_grid_bounded3, index %in% flowLine_org$ORIGIN_hex)
-
-org_hex_10000 <- org_hex[org_hex$index %in% flowLine_org$ORIGIN_hex[flowLine_org$TOTAL_TRIPS >= 10000], ]
-
-tm_shape(hex_grid_bounded3) +
-  tm_borders(col = "grey") +
-tm_shape(org_hex_10000) + 
-  tm_fill(col = "skyblue", alpha = 0.5) +
-  tm_borders(col = "grey") +
-flowLine_org %>%  
-  filter(TOTAL_TRIPS >= 10000, TIME_PER_HOUR == 8) %>%
-tm_shape() +
-  tm_lines(lwd = "TOTAL_TRIPS",
-           scale = c(1,2,3,4,5,7,9),
-           n = 6, 
-           alpha = 0.5,
-           title.lwd = "Total Trips"
-           ) + 
-  tm_layout(main.title = "Origin: Desire Lines between Traffic Analysis Zones with >10000 Trips \n(Nov '23 - Jan '24)",
-            main.title.position = "center",
-            main.title.size = 0.6,
-            frame = TRUE) +
-  tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4) 
-```
-
-The potential user interface for the above scenario may look like this:
-
-![](img/Commute%20Flow%20Map%20(4).png)
-
-# Level 2: Planning Area
-
-The below scenario is whereby a user is interested in looking at bus trips starting from a Planning Area like Bedok at 8am on a weekday.
-
-```{r}
-#| eval: false
-tmap_mode("view")
-flowLine_org <- filter(flowLine, ORIGIN_hex %in% hex_grid_bounded3$index)
-org_hex <- filter(hex_grid_bounded3, index %in% flowLine_org$ORIGIN_hex)
-
-org_hex_3000 <- org_hex[org_hex$index %in% flowLine_org$ORIGIN_hex[flowLine_org$TOTAL_TRIPS >= 3000], ]
-
-tm_shape(hex_grid_bounded3) +
-  tm_borders(col = "grey") +
-org_hex_3000 %>%
-  filter(PLN_AREA_N == "BEDOK") %>%
-tm_shape() + 
-  tm_fill(col = "skyblue", alpha = 0.5) +
-  tm_borders(col = "grey") +
-flowLine_org %>%
-  filter(ORIGIN_hex %in% org_hex_3000$index[org_hex_3000$PLN_AREA_N == "BEDOK"]) %>%  
-  filter(TOTAL_TRIPS >= 3000, TIME_PER_HOUR == 8) %>%
-tm_shape() +
-  tm_lines(lwd = "TOTAL_TRIPS",
-           scale = c(1,2,3,4,5,7,9),
-           n = 6, 
-           alpha = 0.5,
-           title.lwd = "Total Trips"
-           ) + 
-  tm_layout(main.title = "Bedok Origin: Desire Lines between Traffic Analysis Zones with >3000 Trips \n(Nov '23 - Jan '24)",
-            main.title.position = "center",
-            main.title.size = 0.6,
-            frame = TRUE) +
-  tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4) 
-```
-
--   The majority of bus trips at 8 am starting from Bedok Planning Area mostly end within the Planning Area too.
-
-The potential user interface for the above scenario may look like this:
-
-![](img/Commute%20Flow%20Map%20(5).png)
-
-Multiple starting planning areas for bus trips can also be observed.
-
-```{r}
-#| eval: false
-tmap_mode("view")
-flowLine_org <- filter(flowLine, ORIGIN_hex %in% hex_grid_bounded3$index)
-org_hex <- filter(hex_grid_bounded3, index %in% flowLine_org$ORIGIN_hex)
-
-org_hex_3000 <- org_hex[org_hex$index %in% flowLine_org$ORIGIN_hex[flowLine_org$TOTAL_TRIPS >= 3000], ]
-
-tm_shape(hex_grid_bounded3) +
-  tm_borders(col = "grey") +
-org_hex_3000 %>%
-  filter(PLN_AREA_N %in% c("BEDOK", "PUNGGOL", "PAYA LEBAR")) %>%
-tm_shape() + 
-  tm_fill(col = "PLN_AREA_N", palette = "Dark2", alpha = 0.5) +
-  tm_borders(col = "grey") +
-flowLine_org %>%
-  filter(ORIGIN_hex %in% org_hex_3000$index[org_hex_3000$PLN_AREA_N %in% c("BEDOK", "PUNGGOL", "PAYA LEBAR")]) %>%  
-  filter(TOTAL_TRIPS >= 3000, TIME_PER_HOUR == 8) %>%
-left_join(org_hex_3000 %>% distinct(index, PLN_AREA_N), by = c("ORIGIN_hex" = "index")) %>%
-  tm_shape() +
-  tm_lines(lwd = "TOTAL_TRIPS",
-           col = "PLN_AREA_N",
-           palette = "Dark2",
-           scale = c(1, 2, 3, 4, 5, 7, 9),
-           alpha = 0.5
-  ) + 
-  tm_layout(main.title = "Bedok, Paya Lebar & Punggol Origin: Desire Lines between \nTraffic Analysis Zones with >3000 Trips (Nov '23 - Jan '24)",
-            main.title.position = "center",
-            main.title.size = 0.6,
-            frame = TRUE) +
-  tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4) +
-tm_view(set.zoom.limits = c(12,30))
-```
-
--   There are more origin locations at Bedok than Punggol at 8am.
-
--   There are noticeable outgoing bus trips from Punggol to Bedok Planning Area at 8am.
-
-The potential user interface for the above scenario may look like this:
-
-![](img/Commute%20Flow%20Map%20(6).png)
-
-# Level 3: Subzone
-
-The user might also want to view bus travels at the subzone level, such as those starting from subzone Mathilda in Punggol planning area.
-
-```{r}
-#| eval: false
-tmap_mode("plot")
-flowLine_org <- filter(flowLine, ORIGIN_hex %in% hex_grid_bounded3$index)
-org_hex <- filter(hex_grid_bounded3, index %in% flowLine_org$ORIGIN_hex)
-
-org_hex_3000 <- org_hex[org_hex$index %in% flowLine_org$ORIGIN_hex[flowLine_org$TOTAL_TRIPS >= 3000], ]
-
-tm_shape(hex_grid_bounded3) +
-  tm_borders(col = "grey") +
-org_hex_3000 %>%
-  filter(SUBZONE_N == "MATILDA") %>%
-tm_shape() + 
-  tm_fill(col = "skyblue", alpha = 0.5) +
-  tm_borders(col = "grey") +
-flowLine_org %>%
-  filter(ORIGIN_hex %in% org_hex_3000$index[org_hex_3000$SUBZONE_N == "MATILDA"]) %>%  
-  filter(TOTAL_TRIPS >= 3000, TIME_PER_HOUR == 7) %>%
-tm_shape() +
-  tm_lines(lwd = "TOTAL_TRIPS",
-           scale = c(1,2,3,4,5,7,9),
-           n = 6, 
-           alpha = 0.5,
-           title.lwd = "Total Trips"
-           ) + 
-  tm_layout(main.title = "Punggol Matilda Origin: Desire Lines between Traffic Analysis Zones with >3000 Trips \n(Nov '23 - Jan '24)",
-            main.title.position = "center",
-            main.title.size = 0.6,
-            frame = TRUE) +
-  tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4) 
-```
-
--   Between 7am and 8am, there are many trips from Matilda subzone to its immediate east hexagon neighbour that is also within the Punggol Planning Area.
-
-Town Councils have recently been pushing for silver zones which promotes elderly-friendly paths along with school zones. Traffic calming in such zones may affect bus routes and it is important to check the volume of inter Planning Area bus routes. Planners can use the multiple-subzones perspective as a proxy of the potential economic costs of constructing such zones:
-
-```{r}
-#| eval: false
-tmap_mode("view")
-flowLine_org <- filter(flowLine, ORIGIN_hex %in% hex_grid_bounded3$index)
-org_hex <- filter(hex_grid_bounded3, index %in% flowLine_org$ORIGIN_hex)
-
-org_hex_3000 <- org_hex[org_hex$index %in% flowLine_org$ORIGIN_hex[flowLine_org$TOTAL_TRIPS >= 3000], ]
-
-org_hex_3000 <- org_hex_3000[, c("index", setdiff(names(org_hex_3000), "index"))]
-
-hex_grid_bounded3 <- hex_grid_bounded3[, c("index", setdiff(names(hex_grid_bounded3), "index"))]
-
-tm_shape(hex_grid_bounded3) +
-  tm_borders(col = "grey") +
-  tm_fill(col = "lightgrey", alpha = 0.2) +
-org_hex_3000 %>%
-  filter(SUBZONE_N %in% c("WATERWAY EAST", "NORTHSHORE", "MATILDA", "PUNGGOL FIELD", "CONEY ISLAND")) %>%
-tm_shape() + 
-  tm_fill(col = "SUBZONE_N", palette = "Dark2", alpha = 0.5) +
-  tm_borders(col = "grey") +
-flowLine_org %>%
-  filter(ORIGIN_hex %in% org_hex_3000$index[org_hex_3000$SUBZONE_N %in% c("WATERWAY EAST", "NORTHSHORE", "MATILDA", "PUNGGOL FIELD", "CONEY ISLAND")]) %>%  
-  filter(DAY_TYPE == "WEEKDAY",TOTAL_TRIPS >= 3000, TIME_PER_HOUR == 7) %>%
-left_join(org_hex_3000 %>% distinct(index, SUBZONE_N), by = c("ORIGIN_hex" = "index")) %>%
-  tm_shape() +
-  tm_lines(lwd = "TOTAL_TRIPS",
-           col = "SUBZONE_N",
-           palette = "Dark2",
-           scale = c(1, 2, 3, 4, 5, 7, 9),
-           alpha = 0.5
-  ) + 
-  tm_layout(main.title = "Punggol Subzones Origin: Desire Lines between \nTraffic Analysis Zones with >3000 Trips (Nov '23 - Jan '24)",
-            main.title.position = "center",
-            main.title.size = 0.6,
-            frame = TRUE) +
-  tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4) +
-tm_view(set.zoom.limits = c(12,20))
-```
-
-::: callout-tip
--   On weekdays, 7-8am, there has been a high total bus traffic of 29,460 trips from Matilda (hex 1368) to Punggol Field (hex 1390), and 29,178 trips from Punggol Field (hex 1390) to Waterway East (hex 1412).
-
--   There is also high bus traffic of 14,581 trips within Punggol Field subzone, from hex 1390 to hex 1400. Should there be construction plans in these hexagonal areas, the relevant government agencies or even the town council can advice residents on alternative routes to go to their respective destinations.
-:::
-
-The potential user interface for the above scenario may look like this:
-
-![](img/Commute%20Flow%20Map%20(7).png)
-
-# Validating Spatial Interaction Models
-
-As a teaser to SIMs, users can have a look at whether the volume of bus trips could be influenced by areas of interests within the vicinity.
-
-From the previous map, we can see that there is a total high bus traffic of 14,581 from Punggol Field hex 1400 to Bedok North (hex 1515) from 7-8am on weekdays.
-
-```{r}
-#| eval: false
-tmap_mode("view")
-tm_shape(hex_grid_bounded3) +
-  tm_borders(col = "grey") +
-org_hex_3000 %>%
-  filter(SUBZONE_N %in% c("WATERWAY EAST", "NORTHSHORE", "MATILDA", "PUNGGOL FIELD", "CONEY ISLAND")) %>%
-tm_shape() + 
-  tm_fill(col = "SUBZONE_N", palette = "Dark2", alpha = 0.5) +
-  tm_borders(col = "grey") +
-flowLine_org %>%
-  filter(ORIGIN_hex %in% org_hex_3000$index[org_hex_3000$SUBZONE_N %in% c("WATERWAY EAST", "NORTHSHORE", "MATILDA", "PUNGGOL FIELD", "CONEY ISLAND")]) %>%  
-  filter(TOTAL_TRIPS >= 3000, TIME_PER_HOUR == 7) %>%
-left_join(org_hex_3000 %>% distinct(index, SUBZONE_N), by = c("ORIGIN_hex" = "index")) %>%
-  tm_shape() +
-  tm_lines(lwd = "TOTAL_TRIPS",
-           col = "SUBZONE_N",
-           palette = "Dark2",
-           scale = c(1, 2, 3, 4, 5, 7, 9),
-           alpha = 0.5
-  ) + 
-tm_shape(biz) +
-  tm_dots(col = "blue") +
-tm_layout(main.title = "Punggol Subzones Origin: Desire Lines between \nTraffic Analysis Zones with >3000 Trips (Nov '23 - Jan '24)",
-          main.title.position = "center",
-          main.title.size = 0.6,
-          frame = TRUE) +
-tm_legend(position = c("RIGHT", "BOTTOM"), legend.text.size = 0.4) +
-tm_view(set.zoom.limits = c(12,20))
-```
-
-```{r}
-#| eval: false
-tmap_mode("plot")
-```
-
-::: callout-note
--   Perhaps on weekdays 8-9am, Bedok North hex 1515 is a popular destination for the population living in Punggol Field hex 1400 due to the numerous businesses in the former hex which is also an industrial area.
-:::
-
-![](img/Commute%20Flow%20Map%20(8).png)
-
-
-
-#   References
-
-M. Chan. Applied Spatial Interaction Models - Case Study of Singapore Public Bus Commuter Flows.
-https://geospatial2023.netlify.app/take_home_exercise/ex2/take_home_ex2#calibrate-spatial-econometric-interaction-model-usng-maximum-likelihood-estimation
-
-K. J. Paas, 2023. Take Home Exercise 2: A Case Study of Singapore Public Bus Commuter Flows.
-https://isss624-kjcpaas.netlify.app/take-home_ex2/take-home_ex2
-
-T. S. Kam. 
-
+T. S. Kam.
