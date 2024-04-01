@@ -1,0 +1,602 @@
+---
+title: "In-class Exercise 11"
+author: "Victoria Grace ANN"
+execute: 
+  warning: false
+  eval: true
+  echo: true
+  freeze: true
+format:  
+  html: 
+    code-summary: "Show the code"
+    toc-depth: 4
+date: "1 April, 2024"
+date-modified: "last-modified"
+editor: visual
+---
+
+
+# Import packages
+
+```{r}
+pacman::p_load(tmap, sf, DT, stplanr, tidyverse)
+```
+
+# Flow model
+
+## Aspatial OD data
+
+```{r}
+odbus <- read_csv("C:/guacodemoleh/IS415-GAA/Hands-on_Ex/Hands-on_Ex11/data/aspatial/origin_destination_bus_202210.csv")
+```
+
+
+```{r}
+odbus$ORIGIN_PT_CODE <- as.factor(odbus$ORIGIN_PT_CODE)
+odbus$DESTINATION_PT_CODE <- as.factor(odbus$DESTINATION_PT_CODE) 
+```
+
+
+
+```{r}
+odbus6_9 <- odbus %>%
+  filter(DAY_TYPE == "WEEKDAY") %>%
+  filter(TIME_PER_HOUR >= 6 &
+           TIME_PER_HOUR <= 9) %>%
+  group_by(ORIGIN_PT_CODE,
+           DESTINATION_PT_CODE) %>%
+  summarise(TRIPS = sum(TOTAL_TRIPS))
+```
+
+
+```{r}
+datatable(odbus6_9)
+```
+
+
+```{r}
+write_rds(odbus6_9, "data/rds/odbus6_9.rds")
+```
+
+
+## Geospatial Bus Stop Data
+
+```{r}
+busstop <- st_read("C:/guacodemoleh/IS415-GAA/Hands-on_Ex/Hands-on_Ex11/data/geospatial/BusStop.shp")
+```
+
+## Geospatial Singapore Boundary Layer
+
+```{r}
+mpsz <- read_rds("data/rds/mpsz.rds")
+```
+
+
+```{r}
+mpsz
+```
+
+
+# Geospatial data wrangling
+
+```{r}
+busstop <- st_set_crs(busstop,3414)
+mpsz <- st_set_crs(mpsz, 3414)
+
+busstop_mpsz <- st_intersection(busstop, mpsz) %>%
+  select(BUS_STOP_N, SUBZONE_C) %>%
+  st_drop_geometry()
+```
+
+:::{.callout-note}
+
+-   `st_intersection()` is used to perform point and polygon and the output will be point sf object
+
+-   `select()` is used to retain the BUS_STOP_N and SUBZONE_C in the busstop_mpsz sf data frame
+
+-   five bus stops are excluded in the resultant data frame since they are outside the Singapore boundary.
+:::
+
+
+```{r}
+datatable(busstop_mpsz)
+```
+
+
+```{r}
+write_rds(busstop_mpsz, "data/rds/busstop_mpsz.rds")
+```
+
+
+Now append the origin subzone code from busstop_mpsz onto odbus6_9 data frame.
+
+```{r}
+od_data <- left_join(odbus6_9 , busstop_mpsz,
+            by = c("ORIGIN_PT_CODE" = "BUS_STOP_N")) %>%
+  rename(ORIGIN_BS = ORIGIN_PT_CODE,
+         ORIGIN_SZ = SUBZONE_C,
+         DESTIN_BS = DESTINATION_PT_CODE)
+```
+
+
+Check if there are any duplicates
+
+```{r}
+duplicate <- od_data %>%
+  group_by_all() %>%
+  filter(n()>1) %>%
+  ungroup()
+```
+
+
+We can use the `unique()` function to retain unique records.
+
+```{r}
+od_data <- unique(od_data)
+```
+
+
+Now perform another left join to get form the destination subzones.
+
+```{r}
+od_data <- left_join(od_data , busstop_mpsz,
+            by = c("DESTIN_BS" = "BUS_STOP_N")) 
+```
+
+
+```{r}
+od_data <- od_data %>%
+  rename(DESTIN_SZ = SUBZONE_C) %>%
+  drop_na() %>%
+  group_by(ORIGIN_SZ, DESTIN_SZ) %>%
+  summarise(MORNING_PEAK = sum(TRIPS))
+```
+
+
+```{r}
+write_rds(od_data, "data/rds/od_data_fii.rds")
+```
+
+
+```{r}
+od_data_fii <- read_rds("data/rds/od_data_fii.rds")
+```
+
+
+# Visualising Spatial Interaction
+
+```{r}
+od_data_fij <- od_data[od_data$ORIGIN_SZ!=od_data$DESTIN_SZ,]
+```
+
+
+```{r}
+write_rds(od_data_fij, "data/rds/od_data_fij.rds")
+```
+
+
+```{r}
+od_data_fij <- read_rds("data/rds/od_data_fij.rds")
+```
+
+
+# Creating desire lines
+
+```{r}
+flowLine <- od2line(flow = od_data_fij,
+                    zones = mpsz,
+                    zone_code = "SUBZONE_C")
+```
+
+
+```{r}
+write_rds(flowLine, "data/rds/flowLine.rds")
+```
+
+
+```{r}
+flowLine <- read_rds("data/rds/flowLine.rds")
+```
+
+
+## Visualise desire lines
+
+Plot a static map with all the flow lines within Singapore.
+
+```{r}
+tm_shape(mpsz) +
+  tm_polygons() +
+flowLine %>%  
+tm_shape() +
+  tm_lines(lwd = "MORNING_PEAK",
+           style = "quantile",
+           scale = c(0.1, 1, 3, 5, 7, 10),
+           n = 6,
+           alpha = 0.3)
+```
+
+
+It is better to filter for selected flows such that the flow data plotted is less messy.
+
+Restricting the flows to more than or equal to 5000.
+
+```{r}
+tm_shape(mpsz) +
+  tm_polygons() +
+flowLine %>%  
+  filter(MORNING_PEAK >= 5000) %>%
+tm_shape() +
+  tm_lines(lwd = "MORNING_PEAK",
+           style = "quantile",
+           scale = c(0.1, 1, 3, 5, 7, 10),
+           n = 6,
+           alpha = 0.3)
+```
+
+
+
+# Calibrating Spatial Interaction Model
+
+## Import Packages
+
+```{r}
+pacman::p_load(tmap, sf, sp,
+               performance, reshape2,
+               ggpubr, tidyverse, gtsummary)
+```
+
+
+## Converting sf data table to SpatialPolygonsDataFrame
+
+```{r}
+mpsz_sp <- as(mpsz, "Spatial")
+mpsz_sp
+```
+
+
+## Computing distance matrix
+
+```{r}
+dist <- spDists(mpsz_sp, 
+                longlat = FALSE)
+```
+
+
+## Label column and row headers
+
+```{r}
+sz_names <- mpsz$SUBZONE_C
+```
+
+
+```{r}
+colnames(dist) <- paste0(sz_names)
+rownames(dist) <- paste0(sz_names)
+```
+
+
+## Pivoting distance values by SUBZONE_C
+
+```{r}
+distPair <- melt(dist) %>%
+  rename(dist = value)
+head(distPair, 10)
+```
+
+Update intra zone distances
+
+```{r}
+distPair$dist <- ifelse(distPair$dist == 0,
+                        50, distPair$dist)
+```
+
+
+```{r}
+distPair %>%
+  summary()
+```
+
+
+Rename the origin and destination fields.
+
+
+The from locations are denoted by rows, and the to locations are denoted by columns.
+
+```{r}
+distPair <- distPair %>%
+  rename(orig = Var1,
+         dest = Var2)
+```
+
+
+```{r}
+write_rds(distPair, "data/rds/distPair.rds")
+```
+
+
+```{r}
+distPair <- read_rds("data/rds/distPair.rds")
+```
+
+
+## Preparing flow data
+
+```{r}
+od_data_fii <- read_rds("data/rds/od_data_fii.rds")
+```
+
+
+Compute the total passenger trip between and within planning subzones using the following code chunk.
+
+```{r}
+flow_data <- od_data_fii %>%
+  group_by(ORIGIN_SZ, DESTIN_SZ) %>% 
+  summarize(TRIPS = sum(MORNING_PEAK)) 
+```
+
+
+### Separate intra-flow from passenger volume
+
+```{r}
+flow_data$FlowNoIntra <- ifelse(
+  flow_data$ORIGIN_SZ == flow_data$DESTIN_SZ, 
+  0, flow_data$TRIPS)
+flow_data$offset <- ifelse(
+  flow_data$ORIGIN_SZ == flow_data$DESTIN_SZ, 
+  0.000001, 1)
+```
+
+
+### Combine passenger volume data with distance value
+
+```{r}
+flow_data$ORIGIN_SZ <- as.factor(flow_data$ORIGIN_SZ)
+flow_data$DESTIN_SZ <- as.factor(flow_data$DESTIN_SZ)
+```
+
+
+Use left_join() to join flow_data and distPair data frame.
+
+```{r}
+flow_data1 <- flow_data %>%
+  left_join (distPair,
+             by = c("ORIGIN_SZ" = "orig",
+                    "DESTIN_SZ" = "dest"))
+```
+
+
+
+## Preparing Origin and Destination Attributes
+
+### Import population data
+
+```{r}
+pop <- read_csv("C:/guacodemoleh/IS415-GAA/Hands-on_Ex/Hands-on_Ex11/data/aspatial/pop.csv")
+```
+
+
+### Geospatial data wrangling
+
+```{r}
+pop <- pop %>%
+  left_join(mpsz,
+            by = c("PA" = "PLN_AREA_N",
+                   "SZ" = "SUBZONE_N")) %>%
+  select(1:6) %>%
+  rename(SZ_NAME = SZ,
+         SZ = SUBZONE_C)
+```
+
+
+### Preapre origin attribute
+
+```{r}
+flow_data1 <- flow_data1 %>%
+  left_join(pop,
+            by = c(ORIGIN_SZ = "SZ")) %>%
+  rename(ORIGIN_AGE7_12 = AGE7_12,
+         ORIGIN_AGE13_24 = AGE13_24,
+         ORIGIN_AGE25_64 = AGE25_64) %>%
+  select(-c(PA, SZ_NAME))
+```
+
+
+### Prepare destination attribute
+
+```{r}
+flow_data1 <- flow_data1 %>%
+  left_join(pop,
+            by = c(DESTIN_SZ = "SZ")) %>%
+  rename(DESTIN_AGE7_12 = AGE7_12,
+         DESTIN_AGE13_24 = AGE13_24,
+         DESTIN_AGE25_64 = AGE25_64) %>%
+  select(-c(PA, SZ_NAME))
+```
+
+
+```{r}
+#| eval: false
+write_rds(flow_data1, "data/rds/SIM_data.rds")
+```
+
+
+
+## Import model data
+
+```{r}
+SIM_data <- read_rds("data/rds/SIM_data.rds")
+```
+
+
+### Check for variables with zero values
+
+```{r}
+summary(SIM_data)
+```
+
+Replace zero values with 0.99.
+
+
+```{r}
+SIM_data$DESTIN_AGE7_12 <- ifelse(
+  SIM_data$DESTIN_AGE7_12 == 0,
+  0.99, SIM_data$DESTIN_AGE7_12)
+SIM_data$DESTIN_AGE13_24 <- ifelse(
+  SIM_data$DESTIN_AGE13_24 == 0,
+  0.99, SIM_data$DESTIN_AGE13_24)
+SIM_data$DESTIN_AGE25_64 <- ifelse(
+  SIM_data$DESTIN_AGE25_64 == 0,
+  0.99, SIM_data$DESTIN_AGE25_64)
+SIM_data$ORIGIN_AGE7_12 <- ifelse(
+  SIM_data$ORIGIN_AGE7_12 == 0,
+  0.99, SIM_data$ORIGIN_AGE7_12)
+SIM_data$ORIGIN_AGE13_24 <- ifelse(
+  SIM_data$ORIGIN_AGE13_24 == 0,
+  0.99, SIM_data$ORIGIN_AGE13_24)
+SIM_data$ORIGIN_AGE25_64 <- ifelse(
+  SIM_data$ORIGIN_AGE25_64 == 0,
+  0.99, SIM_data$ORIGIN_AGE25_64)
+```
+
+
+```{r}
+summary(SIM_data)
+```
+
+
+### Unconstrained SIM
+
+```{r}
+uncSIM <- glm(formula = TRIPS ~ 
+                log(ORIGIN_AGE25_64) + 
+                log(DESTIN_AGE25_64) +
+                log(dist),
+              family = poisson(link = "log"),
+              data = SIM_data,
+              na.action = na.exclude)
+uncSIM
+```
+
+-   The output is not very presentable. In view of this, we can use tbl_regression() to present the data.
+
+-   tbl_regression() is from the gtsummary package
+
+
+```{r}
+tbl_regression(uncSIM, 
+               intercept=TRUE)
+```
+
+To measure how much the model accounts for the variation of trips, we can use R-squared. Let's create a function for the calculation of it.
+
+```{r}
+CalcRSquared <- function(observed,estimated){
+  r <- cor(observed,estimated)
+  R2 <- r^2
+  R2
+}
+```
+
+
+Compute the R-squared of the unconstrained SIM.
+
+```{r}
+CalcRSquared(uncSIM$data$TRIPS, uncSIM$fitted.values)
+```
+
+
+```{r}
+r2_mcfadden(uncSIM)
+```
+
+### Origin constrained SIM
+
+```{r}
+orcSIM <- glm(formula = TRIPS ~ 
+                 ORIGIN_SZ +
+                 log(DESTIN_AGE25_64) +
+                 log(dist),
+              family = poisson(link = "log"),
+              data = SIM_data,
+              na.action = na.exclude)
+summary(orcSIM)
+```
+
+
+# Spatial Econometric Interactive Modelling (SEIM)
+
+## Import necessary packages
+
+```{r}
+#| eval: false
+devtools:: install_github("LukeCe/spflow", force = TRUE)
+```
+
+```{r}
+pacman::p_load(tmap, sf, spdep, sp, Matrix, reshape2, knitr, tidyverse, spflow)
+```
+
+
+## Import data
+
+```{r}
+mpsz_nb <- read_rds("data/rds/mpsz_nb.rds")
+```
+
+
+```{r}
+mpsz_flow <- read_rds("data/rds/mpsz_flow.rds")
+```
+
+
+```{r}
+mpsz_var <- read_rds("data/rds/mpsz_var.rds")
+```
+
+
+## Create spflow_network-class objects
+
+
+```{r}
+mpsz_net <-  spflow_network(   id_net = "sg",   node_neighborhood = nb2mat(mpsz_nb$by_contiguity),   node_data = mpsz_var,   node_key_column = "SZ_CODE")  
+
+mpsz_net
+```
+
+
+```{r}
+mpsz_net_pairs <-  spflow_network_pair(   id_orig_net = "sg",   id_dest_net = "sg",   pair_data = mpsz_flow,   orig_key_column = "ORIGIN_SZ",   dest_key_column = "DESTIN_SZ") 
+mpsz_net_pairs
+```
+
+
+```{r}
+mpsz_multinet <- spflow_network_multi(mpsz_net, mpsz_net_pairs)
+```
+
+
+```{r}
+base_model <- spflow(
+  spflow_formula = log(1+TRIPS) ~
+    O_(BUSSTOP_COUNT +
+         AGE25_64) +
+    D_(SCHOOL_COUNT +
+         BUSINESS_COUNT +
+         RETAILS_COUNT +
+         FINSERV_COUNT) +
+    P_(log(1+DISTANCE)),
+  spflow_networks = mpsz_multinet
+)
+
+base_model
+```
+
+-   The originating trip locations caused by bus stops are significant, signalling that the concentration of bus stops and the population has an influence on starting bus trips! Bus stops and Population could be push factors.
+
+
+-   Ending trip locations influenced by financial services locations are significant.
+
+
+
+
+
