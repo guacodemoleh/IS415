@@ -1,0 +1,266 @@
+---
+title: "Spatial Econometric Interaction Model"
+author: "Victoria Grace ANN"
+---
+
+
+# Packages
+
+```{r}
+pacman::p_load(tmap, sf, sp, reshape2, ggplot2, ggpubr, tidyverse, stplanr, knitr, kableExtra, spdep, spflow)
+```
+
+
+# Data Imports
+
+## Bus Stops
+
+```{r}
+busstop <- read.csv("data/aspatial/bus_coords_subzone_v2.csv") %>% st_as_sf(coords=c("Longitude", "Latitude"), crs=4326) %>%
+  st_transform(crs=3414)
+```
+
+
+
+## Hexagon Layer
+
+```{r}
+hex_grids <- read_rds("C://guacodemoleh/IS415-GAA/Prototype/data/rds/hex_grid_bounded3.rds")
+
+colnames(hex_grids)
+```
+
+
+## OD
+
+```{r}
+od_data <- read_rds("data/rds/od_data.rds")
+
+od_data <- od_data %>%
+  group_by(ORIGIN_hex, DESTIN_hex) %>%
+  summarise(TOTAL_TRIPS = sum(TOTAL_TRIPS)) %>%
+  ungroup()
+```
+
+
+# Data Cleaning for Hexagons
+
+Remove isolated hexagons for `hex_grids`. These hexagons do not have bus stops.
+
+```{r}
+hex_grids <- hex_grids %>%
+  filter(!(PLN_AREA_N == "WESTERN ISLANDS" | index %in% c(1671,1672,1673))) # Removed correctly
+```
+
+
+```{r}
+tm_shape(hex_grids) +
+  tm_polygons()
+```
+
+
+Filter for hexagons that only have bus stops.
+
+```{r}
+hex_busstop <- hex_grids %>%
+  filter(busstop_count > 0)
+
+nrow(hex_busstop)
+```
+
+```{r}
+colnames(hex_busstop)
+```
+
+```{r}
+write_rds(hex_busstop, "data/rds/hex_var.rds")
+```
+
+
+
+# Preparing Spatial Weights
+
+Creating the contiguity, fixed distance and adaptive distance weights.
+
+```{r}
+coords <- hex_busstop %>%
+  select(geometry) %>%
+  st_centroid()
+
+k1 <- knn2nb(knearneigh(coords))
+k1dists <- unlist(nbdists(k1, coords, longlat = FALSE))
+
+# Print summary report
+summary(k1dists)
+```
+
+
+```{r}
+centroids <- suppressWarnings({
+  st_point_on_surface(st_geometry(hex_busstop))
+})
+
+hex_nb <- list(
+  "by_contiguity" = poly2nb(hex_busstop),
+  "by_distance" = dnearneigh(centroids,
+                             d1 = 0, d2 = 2705),
+  "by_knn" = knn2nb(knearneigh(centroids, 5))
+)
+```
+
+
+```{r}
+hex_nb
+```
+
+
+Checking if there are indeed 7 disjointed hex clusters.
+
+```{r}
+tm_shape(hex_grids) +
+  tm_fill(col = "pink") +
+  tm_shape(hex_busstop) +
+  tm_polygons()
+```
+
+-   Verified
+
+
+Plot spatial weights
+
+```{r}
+plot(st_geometry(hex_grids))
+plot(hex_nb$by_contiguity,
+     centroids,
+     add = T,
+     col = rgb(0,0,0,
+               alpha = 0.5))
+title("Contiguity")
+```
+
+
+
+```{r}
+plot(st_geometry(hex_grids))
+plot(hex_nb$by_distance,
+     centroids,
+     add = T,
+     col = rgb(0,0,0,
+               alpha = 0.5))
+title("Distance")
+```
+
+
+
+```{r}
+plot(st_geometry(hex_grids))
+plot(hex_nb$by_knn,
+     centroids,
+     add = T,
+     col = rgb(0,0,0,
+               alpha = 0.5))
+title("5 Nearest Neighbours")
+```
+
+
+
+Save hex_nb.
+
+```{r}
+write_rds(hex_nb, "data/rds/hex_nb.rds")
+```
+
+
+
+# Computing Distance Matrix
+
+```{r}
+hex_sp <- as(hex_busstop, "Spatial")
+hex_sp
+```
+
+
+```{r}
+distance <- spDists(hex_sp,
+                    longlat = FALSE)
+```
+
+
+```{r}
+head(distance, n=c(10,10))
+```
+
+```{r}
+hex_id <- hex_busstop$index
+```
+
+
+```{r}
+colnames(distance) <- paste0(hex_id)
+rownames(distance) <- paste0(hex_id)
+```
+
+
+Create pivot table for OD pairs 
+
+```{r}
+distPair <- melt(distance) %>%
+  rename(distance = value)
+
+head(distPair)
+```
+
+
+```{r}
+distPair <- distPair %>%
+  rename(ORIGIN_hex = Var1,
+         DESTIN_hex = Var2)
+```
+
+
+```{r}
+distPair$ORIGIN_hex <- as.factor(distPair$ORIGIN_hex)
+
+distPair$DESTIN_hex <- as.factor(distPair$DESTIN_hex)
+
+flow_data <- distPair %>%
+  left_join(od_data) %>%
+  mutate(TOTAL_TRIPS = coalesce(TOTAL_TRIPS,  0))
+```
+
+```{r}
+write_rds(flow_data, "data/rds/hex_flow.rds")
+```
+
+
+# Creating spflow_network-class objects
+
+
+## Load data
+
+```{r}
+hex_nb <- read_rds("data/rds/hex_nb.rds")
+
+hex_flow <- read_rds("data/rds/hex_flow.rds")
+
+hex_var <- read_rds("data/rds/hex_var.rds")
+```
+
+
+```{r}
+#| eval: false
+hex_net <- spflow_network(
+  id_net  = "sg",
+  node_neighborhood = nb2mat(hex_nb$by_contiguity),
+  node_data = hex_var,
+  node_key_column = "index"
+)
+
+hex_net
+```
+
+
+
+
+
+

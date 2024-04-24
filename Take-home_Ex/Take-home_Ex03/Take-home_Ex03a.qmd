@@ -43,7 +43,6 @@ I will load up the below R packages for the following purposes:
 
 -   kableExtra: to further style any Kables.
 
-
 ```{r}
 pacman::p_load(tmap, sf, sp, reshape2, ggplot2, ggpubr, tidyverse, stplanr, knitr, kableExtra)
 ```
@@ -213,7 +212,6 @@ tm_shape(hex_grid_bounded2) +
           alpha = 0.7)
 ```
 
-
 ## Bus Stop Locations
 
 ```{r}
@@ -304,7 +302,6 @@ write_rds(od, "data/rds/od.rds")
 od <- read_rds("data/rds/od.rds")
 ```
 
-
 ## Geospatial Data Wrangling
 
 Now we need to convert the od data from aspatial to geospatial data.
@@ -342,7 +339,6 @@ cols_to_convert <- c("ORIGIN_hex", "DESTIN_hex")
 od_data[cols_to_convert] <- lapply(od_data[cols_to_convert], as.factor)
 ```
 
-
 ```{r}
 #| eval: false
 write_rds(od_data, "data/rds/od_data.rds")
@@ -351,7 +347,6 @@ write_rds(od_data, "data/rds/od_data.rds")
 ```{r}
 od_data <- read_rds("data/rds/od_data.rds")
 ```
-
 
 Check for duplicates
 
@@ -366,8 +361,6 @@ DT::datatable(duplicate)
 ```
 
 No duplicates were found.
-
-
 
 ## Visualisation of O-D Flows
 
@@ -397,6 +390,7 @@ flowLine <- od2line(flow = od_plot,
 
 ::: callout-note
 ### Learning Point
+
 The flow data in the `od2line` function must have the origin and destination indexes in its first two columns.
 :::
 
@@ -405,12 +399,9 @@ The flow data in the `od2line` function must have the origin and destination ind
 write_rds(flowLine, "data/rds/flowLine.rds")
 ```
 
-
 ```{r}
 flowLine <- read_rds("data/rds/flowLine.rds")
 ```
-
-
 
 ### Visualise desire lines
 
@@ -421,7 +412,6 @@ The traffic density by desire lines may vary across time. Thus, the visualisatio
 #### Weekday
 
 ::: panel-tabset
-
 ##### 6 AM
 
 ```{r}
@@ -1500,7 +1490,6 @@ dbcSIM <- read_rds("data/rds/decSIM.rds")
 summary(dbcSIM)
 ```
 
-
 # Prototype for Exploratory Spatial Data Analysis
 
 In light of our class project, I aim to test the feasibility of plotting out the various commuting flow maps.
@@ -1510,8 +1499,6 @@ Specifically, the maps can focus on the various areas of interest and plot the f
 The analytical unit could be planning area, subzone or even hexagonal.
 
 Before diving into these analytical units, we can have a look at the general inflow and outflows from origins and destinations.
-
-
 
 # Level 1: General Perspective
 
@@ -1527,11 +1514,9 @@ flowLine_dest <- filter(flowLine, DESTIN_hex %in% hex_grid_bounded3$index)
 dest_hex <- filter(hex_grid_bounded3, index %in% flowLine_dest$DESTIN_hex)
 ```
 
-
 ## General Outflows from Origins (Propulsive)
 
 Here, I assume that the user is interested in bus traffic flows and where buses typically leave.
-
 
 ```{r}
 flowLine_org <- filter(flowLine, ORIGIN_hex %in% hex_grid_bounded3$index)
@@ -1565,12 +1550,9 @@ tm_shape() +
 
 ```
 
-
 The potential user interface for the above scenario may look like this:
 
 ![](img/Commute%20Flow%20Map%20(2).png)
-
-
 
 ## Inflows to Destinations (Attractive)
 

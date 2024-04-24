@@ -6,9 +6,9 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
-<meta name="author" content="Victoria Grace ANN  ">
+<meta name="author" content="Victoria Grace ANN">
 
-<title>IS415-GAA - IS415 Geospatial Analytics and Applications Journey</title>
+<title>IS415-GAA - sim</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -21,25 +21,59 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
 </style>
 
 
-<script src="site_libs/quarto-nav/quarto-nav.js"></script>
-<script src="site_libs/quarto-nav/headroom.min.js"></script>
-<script src="site_libs/clipboard/clipboard.min.js"></script>
-<script src="site_libs/quarto-search/autocomplete.umd.js"></script>
-<script src="site_libs/quarto-search/fuse.min.js"></script>
-<script src="site_libs/quarto-search/quarto-search.js"></script>
-<meta name="quarto:offset" content="./">
-<script src="site_libs/quarto-html/quarto.js"></script>
-<script src="site_libs/quarto-html/popper.min.js"></script>
-<script src="site_libs/quarto-html/tippy.umd.min.js"></script>
-<script src="site_libs/quarto-html/anchor.min.js"></script>
-<link href="site_libs/quarto-html/tippy.css" rel="stylesheet">
-<link href="site_libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
-<script src="site_libs/bootstrap/bootstrap.min.js"></script>
-<link href="site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
-<link href="site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
+<script src="../site_libs/quarto-nav/quarto-nav.js"></script>
+<script src="../site_libs/quarto-nav/headroom.min.js"></script>
+<script src="../site_libs/clipboard/clipboard.min.js"></script>
+<script src="../site_libs/quarto-search/autocomplete.umd.js"></script>
+<script src="../site_libs/quarto-search/fuse.min.js"></script>
+<script src="../site_libs/quarto-search/quarto-search.js"></script>
+<meta name="quarto:offset" content="../">
+<script src="../site_libs/quarto-html/quarto.js"></script>
+<script src="../site_libs/quarto-html/popper.min.js"></script>
+<script src="../site_libs/quarto-html/tippy.umd.min.js"></script>
+<script src="../site_libs/quarto-html/anchor.min.js"></script>
+<link href="../site_libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="../site_libs/quarto-html/quarto-syntax-highlighting.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="../site_libs/bootstrap/bootstrap.min.js"></script>
+<link href="../site_libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="../site_libs/bootstrap/bootstrap.min.css" rel="stylesheet" id="quarto-bootstrap" data-mode="light">
 <script id="quarto-search-options" type="application/json">{
   "location": "navbar",
   "copy-button": false,
@@ -62,7 +96,7 @@ ul.task-list li input[type="checkbox"] {
 }</script>
 
 
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="../styles.css">
 </head>
 
 <body class="nav-fixed">
@@ -72,7 +106,7 @@ ul.task-list li input[type="checkbox"] {
     <nav class="navbar navbar-expand-lg navbar-dark ">
       <div class="navbar-container container-fluid">
       <div class="navbar-brand-container">
-    <a class="navbar-brand" href="./index.html">
+    <a class="navbar-brand" href="../index.html">
     <span class="navbar-title">IS415-GAA</span>
     </a>
   </div>
@@ -88,47 +122,47 @@ ul.task-list li input[type="checkbox"] {
     </a>
     <ul class="dropdown-menu" aria-labelledby="nav-menu-hands-on-exercises">    
         <li>
-    <a class="dropdown-item" href="./Hands-on_Ex/Hands-on_Ex01/Hands-on_Ex01.html" rel="" target="">
+    <a class="dropdown-item" href="../Hands-on_Ex/Hands-on_Ex01/Hands-on_Ex01.html" rel="" target="">
  <span class="dropdown-text">Hands-on Exercise 1</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="./Hands-on_Ex/Hands-on_Ex02/Hands-on_Ex02.html" rel="" target="">
+    <a class="dropdown-item" href="../Hands-on_Ex/Hands-on_Ex02/Hands-on_Ex02.html" rel="" target="">
  <span class="dropdown-text">Hands-on Exercise 2</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="./Hands-on_Ex/Hands-on_Ex03/Hands-on_Ex03.html" rel="" target="">
+    <a class="dropdown-item" href="../Hands-on_Ex/Hands-on_Ex03/Hands-on_Ex03.html" rel="" target="">
  <span class="dropdown-text">Hands-on Exercise 3</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="./Hands-on_Ex/Hands-on_Ex04/Hands-on_Ex04.html" rel="" target="">
+    <a class="dropdown-item" href="../Hands-on_Ex/Hands-on_Ex04/Hands-on_Ex04.html" rel="" target="">
  <span class="dropdown-text">Hands-on Exercise 4</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="./Hands-on_Ex/Hands-on_Ex05/Hands-on_Ex05.html" rel="" target="">
+    <a class="dropdown-item" href="../Hands-on_Ex/Hands-on_Ex05/Hands-on_Ex05.html" rel="" target="">
  <span class="dropdown-text">Hands-on Exercise 5</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="./Hands-on_Ex/Hands-on_Ex06/Hands-on_Ex06.html" rel="" target="">
+    <a class="dropdown-item" href="../Hands-on_Ex/Hands-on_Ex06/Hands-on_Ex06.html" rel="" target="">
  <span class="dropdown-text">Hands-on Exercise 6</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="./Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html" rel="" target="">
+    <a class="dropdown-item" href="../Hands-on_Ex/Hands-on_Ex07/Hands-on_Ex07.html" rel="" target="">
  <span class="dropdown-text">Hands-on Exercise 7</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="./Hands-on_Ex/Hands-on_Ex08/Hands-on_Ex08.html" rel="" target="">
+    <a class="dropdown-item" href="../Hands-on_Ex/Hands-on_Ex08/Hands-on_Ex08.html" rel="" target="">
  <span class="dropdown-text">Hands-on Exercise 8</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="./Hands-on_Ex/Hands-on_Ex09/Hands-on_Ex09.html" rel="" target="">
+    <a class="dropdown-item" href="../Hands-on_Ex/Hands-on_Ex09/Hands-on_Ex09.html" rel="" target="">
  <span class="dropdown-text">Hands-on Exercise 9</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="./Hands-on_Ex/Hands-on_Ex10/Hands-on_Ex10.html" rel="" target="">
+    <a class="dropdown-item" href="../Hands-on_Ex/Hands-on_Ex10/Hands-on_Ex10.html" rel="" target="">
  <span class="dropdown-text">Hands-on Exercise 10</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="./Hands-on_Ex/Hands-on_Ex11/Hands-on_Ex11.html" rel="" target="">
+    <a class="dropdown-item" href="../Hands-on_Ex/Hands-on_Ex11/Hands-on_Ex11.html" rel="" target="">
  <span class="dropdown-text">Hands-on Exercise 11</span></a>
   </li>  
     </ul>
@@ -139,39 +173,39 @@ ul.task-list li input[type="checkbox"] {
     </a>
     <ul class="dropdown-menu" aria-labelledby="nav-menu-in-class-exercises">    
         <li>
-    <a class="dropdown-item" href="./In-class_Ex/In-class_Ex02/In-class_Ex02.html" rel="" target="">
+    <a class="dropdown-item" href="../In-class_Ex/In-class_Ex02/In-class_Ex02.html" rel="" target="">
  <span class="dropdown-text">In-class Exercise 2</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="./In-class_Ex/In-class_Ex03/In-class_Ex03.html" rel="" target="">
+    <a class="dropdown-item" href="../In-class_Ex/In-class_Ex03/In-class_Ex03.html" rel="" target="">
  <span class="dropdown-text">In-class Exercise 3</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="./In-class_Ex/In-class_Ex04/In-class_Ex04.html" rel="" target="">
+    <a class="dropdown-item" href="../In-class_Ex/In-class_Ex04/In-class_Ex04.html" rel="" target="">
  <span class="dropdown-text">In-class Exercise 4</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="./In-class_Ex/In-class_Ex05/In-class_Ex05.html" rel="" target="">
+    <a class="dropdown-item" href="../In-class_Ex/In-class_Ex05/In-class_Ex05.html" rel="" target="">
  <span class="dropdown-text">In-class Exercise 5</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="./In-class_Ex/In-class_Ex07/In-class_Ex07.html" rel="" target="">
+    <a class="dropdown-item" href="../In-class_Ex/In-class_Ex07/In-class_Ex07.html" rel="" target="">
  <span class="dropdown-text">In-class Exercise 7</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="./In-class_Ex/In-class_Ex08/In-class_Ex08.html" rel="" target="">
+    <a class="dropdown-item" href="../In-class_Ex/In-class_Ex08/In-class_Ex08.html" rel="" target="">
  <span class="dropdown-text">In-class Exercise 8</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="./In-class_Ex/In-class_Ex09/In-class_Ex09.html" rel="" target="">
+    <a class="dropdown-item" href="../In-class_Ex/In-class_Ex09/In-class_Ex09.html" rel="" target="">
  <span class="dropdown-text">In-class Exercise 9</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="./In-class_Ex/In-class_Ex10/In-class_Ex10.html" rel="" target="">
+    <a class="dropdown-item" href="../In-class_Ex/In-class_Ex10/In-class_Ex10.html" rel="" target="">
  <span class="dropdown-text">In-class Exercise 10</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="./In-class_Ex/In-class_Ex11/In-class_Ex11.html" rel="" target="">
+    <a class="dropdown-item" href="../In-class_Ex/In-class_Ex11/In-class_Ex11.html" rel="" target="">
  <span class="dropdown-text">In-class Exercise 11</span></a>
   </li>  
     </ul>
@@ -182,23 +216,23 @@ ul.task-list li input[type="checkbox"] {
     </a>
     <ul class="dropdown-menu" aria-labelledby="nav-menu-take-home-exercises">    
         <li>
-    <a class="dropdown-item" href="./Take-home_Ex/Take-home_Ex01/Take-home_Ex01.html" rel="" target="">
+    <a class="dropdown-item" href="../Take-home_Ex/Take-home_Ex01/Take-home_Ex01.html" rel="" target="">
  <span class="dropdown-text">Take-home Exercise 1: Technical Guide</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="./Take-home_Ex/Take-home_Ex01/Take-home_Ex01a.html" rel="" target="">
+    <a class="dropdown-item" href="../Take-home_Ex/Take-home_Ex01/Take-home_Ex01a.html" rel="" target="">
  <span class="dropdown-text">Take-home Exercise 1: Report</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="./Take-home_Ex/Take-home_Ex02/Take-home_Ex02.html" rel="" target="">
+    <a class="dropdown-item" href="../Take-home_Ex/Take-home_Ex02/Take-home_Ex02.html" rel="" target="">
  <span class="dropdown-text">Take-home Exercise 2</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="./Take-home_Ex/Take-home_Ex03/Take-home_Ex03a.html" rel="" target="">
+    <a class="dropdown-item" href="../Take-home_Ex/Take-home_Ex03/Take-home_Ex03a.html" rel="" target="">
  <span class="dropdown-text">Take-home Exercise 3 (beta)</span></a>
   </li>  
         <li>
-    <a class="dropdown-item" href="./Take-home_Ex/Take-home_Ex03/Take-home_Ex03b.html" rel="" target="">
+    <a class="dropdown-item" href="../Take-home_Ex/Take-home_Ex03/Take-home_Ex03b.html" rel="" target="">
  <span class="dropdown-text">Take-home Exercise 3</span></a>
   </li>  
     </ul>
@@ -206,11 +240,11 @@ ul.task-list li input[type="checkbox"] {
 </ul>
             <ul class="navbar-nav navbar-nav-scroll ms-auto">
   <li class="nav-item">
-    <a class="nav-link active" href="./index.html" rel="" target="" aria-current="page">
+    <a class="nav-link" href="../index.html" rel="" target="">
  <span class="menu-text">Home</span></a>
   </li>  
   <li class="nav-item">
-    <a class="nav-link" href="./about.html" rel="" target="">
+    <a class="nav-link" href="../about.html" rel="" target="">
  <span class="menu-text">About Victoria</span></a>
   </li>  
 </ul>
@@ -225,20 +259,14 @@ ul.task-list li input[type="checkbox"] {
 <!-- sidebar -->
 <!-- margin-sidebar -->
     <div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
-        <nav id="TOC" role="doc-toc" class="toc-active">
-    <h2 id="toc-title">On this page</h2>
-   
-  <ul>
-  <li><a href="#what-is-geospatial-data-and-analytics" id="toc-what-is-geospatial-data-and-analytics" class="nav-link active" data-scroll-target="#what-is-geospatial-data-and-analytics">What is Geospatial Data and Analytics?</a></li>
-  </ul>
-</nav>
+        
     </div>
 <!-- main -->
 <main class="content" id="quarto-document-content">
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">IS415 Geospatial Analytics and Applications Journey</h1>
+<h1 class="title">sim</h1>
 </div>
 
 
@@ -248,7 +276,7 @@ ul.task-list li input[type="checkbox"] {
     <div>
     <div class="quarto-title-meta-heading">Author</div>
     <div class="quarto-title-meta-contents">
-             <p>Victoria Grace ANN <a href="https://www.linkedin.com/in/victoriagraceann2021/"><img src="img/linkedin_logo.png" alt="LinkedIn logo" width="30"></a> <a href="https://github.com/guacodemoleh"><img src="img/github_logo.png" alt="Github logo" width="30"></a> </p>
+             <p>Victoria Grace ANN </p>
           </div>
   </div>
     
@@ -259,16 +287,32 @@ ul.task-list li input[type="checkbox"] {
 
 </header>
 
-<p>Welcome to <strong>Geospatial Analytics and Applications</strong>!</p>
-<p>This is the course website of IS415. I am studying this in AY2023/24 Term 2. You will find my coursework on this website.</p>
-<section id="what-is-geospatial-data-and-analytics" class="level1">
-<h1>What is Geospatial Data and Analytics?</h1>
-<p>Geospatial data refers to information including both locational and attribute data, often involving large sets of diverse data sources.</p>
-<p>Geospatial analytics is the process of analysing and visualising data to gain insights and predictions. It combines traditional data with location and temporal information to create data visualisations like maps, graphs and statistics, enabling a more comprehensive understanding of events and patterns. The overlaying and integration of various data layers reveal relationships and patterns within and across geospatial variables.</p>
-<p><a href="https://www.ibm.com/topics/geospatial-data">Source: IBM</a></p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb1"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a>pacman<span class="sc">::</span><span class="fu">p_load</span>(readr, sf, sp,</span>
+<span id="cb1-2"><a href="#cb1-2" aria-hidden="true" tabindex="-1"></a>               performance, reshape2,</span>
+<span id="cb1-3"><a href="#cb1-3" aria-hidden="true" tabindex="-1"></a>               ggpubr, tidyverse)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb2"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a>flow_data_merged <span class="ot">&lt;-</span> <span class="fu">read_rds</span>(<span class="st">"data/rds/flow_data_merged.rds"</span>)</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a>flow_data_merged_log <span class="ot">&lt;-</span> flow_data_merged <span class="sc">%&gt;%</span>   <span class="fu">mutate_at</span>(<span class="fu">vars</span>(<span class="fu">ends_with</span>(<span class="st">"_count"</span>)), log) <span class="sc">%&gt;%</span>   <span class="fu">mutate</span>(<span class="at">dist =</span> <span class="fu">log</span>(dist))</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a>orcSIM_data <span class="ot">&lt;-</span> <span class="fu">glm</span>(TOTAL_TRIPS <span class="sc">~</span> ORIGIN_hex <span class="sc">+</span> o_biz_count <span class="sc">+</span> o_school_count <span class="sc">+</span> o_fin_count <span class="sc">+</span> o_hc_count <span class="sc">+</span> o_busstop_count <span class="sc">+</span> o_housing_count <span class="sc">+</span> o_leisure_recre_count <span class="sc">+</span> o_retail_count <span class="sc">+</span> o_entertn_count <span class="sc">+</span> o_food_bev_count <span class="sc">+</span> d_biz_count <span class="sc">+</span> d_school_count <span class="sc">+</span> d_fin_count <span class="sc">+</span> d_hc_count <span class="sc">+</span> d_busstop_count <span class="sc">+</span> d_housing_count <span class="sc">+</span> d_leisure_recre_count <span class="sc">+</span> d_retail_count <span class="sc">+</span> d_entertn_count <span class="sc">+</span> d_food_bev_count <span class="sc">+</span> dist, <span class="at">family =</span> <span class="fu">poisson</span>(<span class="at">link =</span> <span class="st">"log"</span>),  <span class="at">data =</span> flow_data_merged_log, <span class="at">na.action =</span> na.exclude)</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="fu">read_rds</span>(orcSIM_data, <span class="st">"data/rds/orcSIM_data.rds"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>desSIM_weekday_morn <span class="ot">&lt;-</span> <span class="fu">glm</span>(TOTAL_TRIPS <span class="sc">~</span> DESTIN_hex <span class="sc">+</span> o_biz_count <span class="sc">+</span> o_school_count <span class="sc">+</span> o_fin_count <span class="sc">+</span> o_hc_count <span class="sc">+</span> o_busstop_count <span class="sc">+</span> o_housing_count <span class="sc">+</span> o_leisure_recre_count <span class="sc">+</span> o_retail_count <span class="sc">+</span> o_entertn_count <span class="sc">+</span> o_food_bev_count <span class="sc">+</span> dist <span class="sc">-</span> <span class="dv">1</span>,               <span class="at">family =</span> <span class="fu">poisson</span>(<span class="at">link =</span> <span class="st">"log"</span>),               <span class="at">data =</span> flow_data_merged_log,               <span class="at">na.action =</span> na.exclude)</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a><span class="fu">read_rds</span>(desSIM_weekday_morn, <span class="st">"data/rds/desSIM_weekday_morn.rds"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>dbcSIM_weekday_morn <span class="ot">&lt;-</span> <span class="fu">glm</span>(<span class="at">formula =</span> TOTAL_TRIPS <span class="sc">~</span> ORIGIN_hex <span class="sc">+</span>  DESTIN_hex <span class="sc">+</span>  dist,  <span class="at">family =</span> <span class="fu">poisson</span>(<span class="at">link =</span> <span class="st">"log"</span>), <span class="at">data =</span> flow_data_merged_log, <span class="at">na.action =</span> na.exclude)</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="fu">read_rds</span>(dbcSIM_weekday_morn, <span class="st">"data/rds/dbcSIM_weekday_morn.rds"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
 
 
-</section>
 
 </main> <!-- /main -->
 <script id="quarto-html-after-body" type="application/javascript">

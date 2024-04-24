@@ -50,7 +50,7 @@ I will load up the below R packages for the following purposes:
 ```{r}
 pacman::p_load(tmap, sf, sp, reshape2, ggplot2, ggpubr, tidyverse, stplanr, knitr, kableExtra, spdep)
 
-devtools::install_github("LukeCe/spflow")
+#devtools::install_github("LukeCe/spflow")
 library(spflow)
 ```
 
@@ -745,7 +745,9 @@ rm(schools_sf)
 
 ```{r}
 schools <- read_rds("data/rds/schools.rds")
+```
 
+```{r}
 attractiveness$SCH_COUNT <- lengths(st_intersects(attractiveness, schools))
 ```
 
@@ -1361,6 +1363,10 @@ The user inputs will include:
 
 # 8.0 Spatial Econometric Interaction Modelling
 
+
+
+
+
 Remove the intra-zonal zones pairs from SIM_data.
 
 ```{r}
@@ -1381,7 +1387,7 @@ To calibrate SEIM using spflow package, three data sets are required:
 ## Prepare Spatial Weights
 
 ```{r}
-
+mpsz3414 <- st_read("data/geospatial/mpsz3414.shp")
 
 hex_grid <- st_make_grid(mpsz3414, cellsize = c(750, 750), what = "polygons", square = FALSE) %>%
   st_sf() %>%

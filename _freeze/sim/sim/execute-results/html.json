@@ -1,0 +1,14 @@
+{
+  "hash": "705362a60bbee96bac0663f02aa15804",
+  "result": {
+    "markdown": "---\ntitle: \"sim\"\nauthor: \"Victoria Grace ANN\"\nexecute: \n  warning: false\n  eval: true\n  echo: true\n  freeze: true\n---\n\n::: {.cell}\n\n```{.r .cell-code}\npacman::p_load(readr, sf, sp,\n               performance, reshape2,\n               ggpubr, tidyverse)\n```\n:::\n\n::: {.cell}\n\n```{.r .cell-code}\nflow_data_merged <- read_rds(\"data/rds/flow_data_merged.rds\")\nflow_data_merged_log <- flow_data_merged %>%   mutate_at(vars(ends_with(\"_count\")), log) %>%   mutate(dist = log(dist))\n```\n:::\n\n::: {.cell}\n\n```{.r .cell-code}\norcSIM_data <- glm(TOTAL_TRIPS ~ ORIGIN_hex + o_biz_count + o_school_count + o_fin_count + o_hc_count + o_busstop_count + o_housing_count + o_leisure_recre_count + o_retail_count + o_entertn_count + o_food_bev_count + d_biz_count + d_school_count + d_fin_count + d_hc_count + d_busstop_count + d_housing_count + d_leisure_recre_count + d_retail_count + d_entertn_count + d_food_bev_count + dist, family = poisson(link = \"log\"),  data = flow_data_merged_log, na.action = na.exclude)\n\nread_rds(orcSIM_data, \"data/rds/orcSIM_data.rds\")\n```\n:::\n\n::: {.cell}\n\n```{.r .cell-code}\ndesSIM_weekday_morn <- glm(TOTAL_TRIPS ~ DESTIN_hex + o_biz_count + o_school_count + o_fin_count + o_hc_count + o_busstop_count + o_housing_count + o_leisure_recre_count + o_retail_count + o_entertn_count + o_food_bev_count + dist - 1,               family = poisson(link = \"log\"),               data = flow_data_merged_log,               na.action = na.exclude)\n\nread_rds(desSIM_weekday_morn, \"data/rds/desSIM_weekday_morn.rds\")\n```\n:::\n\n::: {.cell}\n\n```{.r .cell-code}\ndbcSIM_weekday_morn <- glm(formula = TOTAL_TRIPS ~ ORIGIN_hex +  DESTIN_hex +  dist,  family = poisson(link = \"log\"), data = flow_data_merged_log, na.action = na.exclude)\n\nread_rds(dbcSIM_weekday_morn, \"data/rds/dbcSIM_weekday_morn.rds\")\n```\n:::\n",
+    "supporting": [],
+    "filters": [
+      "rmarkdown/pagebreak.lua"
+    ],
+    "includes": {},
+    "engineDependencies": {},
+    "preserve": {},
+    "postProcess": true
+  }
+}

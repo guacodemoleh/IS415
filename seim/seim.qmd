@@ -1,0 +1,486 @@
+---
+title: "Spatial Econometric Interaction Model"
+author: "Victoria Grace ANN"
+execute: 
+  warning: false
+  eval: true
+  echo: true
+  freeze: true
+---
+
+# Packages
+
+```{r}
+pacman::p_load(tmap, sf, sp, reshape2, ggplot2, ggpubr, tidyverse, stplanr, knitr, kableExtra, spdep, spflow)
+```
+
+# Data Imports
+
+## Bus Stops
+
+```{r}
+busstop <- read.csv("data/aspatial/bus_coords_subzone_v2.csv") %>% st_as_sf(coords=c("Longitude", "Latitude"), crs=4326) %>%
+  st_transform(crs=3414)
+```
+
+## Hexagon Layer
+
+```{r}
+hex_grids <- read_rds("C://guacodemoleh/IS415-GAA/Prototype/data/rds/hex_grid_bounded3.rds")
+
+colnames(hex_grids)
+```
+
+## OD
+
+```{r}
+od_data <- read_rds("C://guacodemoleh/IS415-GAA/Take-home_Ex/Take-home_Ex03/data/rds/od_data.rds")
+
+od_data <- od_data %>%
+  group_by(ORIGIN_hex, DESTIN_hex) %>%
+  summarise(TOTAL_TRIPS = sum(TOTAL_TRIPS)) %>%
+  ungroup()
+```
+
+# Data Cleaning for Hexagons
+
+Remove isolated hexagons for `hex_grids`. These hexagons do not have bus stops.
+
+```{r}
+hex_grids <- hex_grids %>%
+  filter(!(PLN_AREA_N == "WESTERN ISLANDS" | index %in% c(1671,1672,1673))) # Removed correctly
+```
+
+```{r}
+tm_shape(hex_grids) +
+  tm_polygons()
+```
+
+Filter for hexagons that only have bus stops.
+
+```{r}
+hex_busstop <- hex_grids %>%
+  filter(busstop_count > 0)
+
+nrow(hex_busstop)
+```
+
+```{r}
+colnames(hex_busstop)
+```
+
+```{r}
+write_rds(hex_busstop, "data/rds/hex_var.rds")
+```
+
+# Preparing Spatial Weights
+
+Creating the contiguity, fixed distance and adaptive distance weights.
+
+```{r}
+coords <- hex_busstop %>%
+  select(geometry) %>%
+  st_centroid()
+
+k1 <- knn2nb(knearneigh(coords))
+k1dists <- unlist(nbdists(k1, coords, longlat = FALSE))
+
+# Print summary report
+summary(k1dists)
+```
+
+```{r}
+centroids <- suppressWarnings({
+  st_point_on_surface(st_geometry(hex_busstop))
+})
+
+hex_nb <- list(
+  #by_contiguity" = poly2nb(hex_busstop), # can comment out 
+  "by_distance" = dnearneigh(centroids,
+                             d1 = 0, d2 = 2705),
+  "by_knn" = knn2nb(knearneigh(centroids, 5))
+)
+```
+
+```{r}
+hex_nb
+```
+
+Checking if there are indeed 7 disjointed hex clusters.
+
+```{r}
+tm_shape(hex_grids) +
+  tm_fill(col = "pink") +
+  tm_shape(hex_busstop) +
+  tm_polygons()
+```
+
+-   Verified
+
+Plot spatial weights
+
+```{r}
+#| eval: false
+plot(st_geometry(hex_grids))
+plot(hex_nb$by_contiguity,
+     centroids,
+     add = T,
+     col = rgb(0,0,0,
+               alpha = 0.5))
+title("Contiguity")
+```
+
+```{r}
+#| eval: false
+plot(st_geometry(hex_grids))
+plot(hex_nb$by_distance,
+     centroids,
+     add = T,
+     col = rgb(0,0,0,
+               alpha = 0.5))
+title("Distance")
+```
+
+```{r}
+#| eval: false
+plot(st_geometry(hex_grids))
+plot(hex_nb$by_knn,
+     centroids,
+     add = T,
+     col = rgb(0,0,0,
+               alpha = 0.5))
+title("5 Nearest Neighbours")
+```
+
+Save hex_nb.
+
+```{r}
+#| eval: false
+write_rds(hex_nb, "data/rds/hex_nb.rds")
+```
+
+# Computing Distance Matrix
+
+```{r}
+#| eval: false
+hex_sp <- as(hex_busstop, "Spatial")
+hex_sp
+```
+
+```{r}
+#| eval: false
+distance <- spDists(hex_sp,
+                    longlat = FALSE)
+```
+
+```{r}
+#| eval: false
+head(distance, n=c(10,10))
+```
+
+```{r}
+#| eval: false
+hex_id <- hex_busstop$index
+```
+
+```{r}
+#| eval: false
+colnames(distance) <- paste0(hex_id)
+rownames(distance) <- paste0(hex_id)
+```
+
+Create pivot table for OD pairs
+
+```{r}
+#| eval: false
+distPair <- melt(distance) %>%
+  rename(distance = value)
+
+head(distPair)
+```
+
+```{r}
+#| eval: false
+distPair <- distPair %>%
+  rename(ORIGIN_hex = Var1,
+         DESTIN_hex = Var2)
+```
+
+```{r}
+#| eval: false
+distPair$ORIGIN_hex <- as.factor(distPair$ORIGIN_hex)
+
+distPair$DESTIN_hex <- as.factor(distPair$DESTIN_hex)
+
+flow_data <- distPair %>%
+  left_join(od_data) %>%
+  mutate(TOTAL_TRIPS = coalesce(TOTAL_TRIPS,  0))
+```
+
+```{r}
+#| eval: false
+flowlines <- read_rds("C://guacodemoleh/IS415-GAA/Prototype/data/rds/flowlines.rds")
+write_rds(flow_data, "data/rds/hex_flow.rds")
+```
+
+# Creating spflow_network-class objects
+
+## Load data
+
+```{r}
+hex_nb <- read_rds("data/rds/hex_nb.rds")
+
+hex_flow <- read_rds("data/rds/hex_flow.rds")
+
+hex_var <- read_rds("data/rds/hex_var.rds")
+```
+
+```{r}
+hex_net <- spflow_network(
+  id_net  = "sg",
+  node_neighborhood = nb2mat(hex_nb$by_knn),
+  node_data = hex_var,
+  node_key_column = "index"
+)
+
+hex_net
+```
+
+### Creating `spflow_network-class` object
+
+```{r}
+hex_net_pairs <- spflow_network_pair(
+  id_orig_net = "sg",
+  id_dest_net = "sg",
+  pair_data = hex_flow,
+  orig_key_column = "ORIGIN_hex",
+  dest_key_column = "DESTIN_hex"
+)
+
+hex_net_pairs
+```
+
+## Creating `spflow_network_multi-class` object
+
+```{r}
+hex_multi_net <- spflow_network_multi(hex_net,
+                                      hex_net_pairs)
+
+hex_multi_net
+```
+
+# Correlation Analysis
+
+```{r}
+#| eval: false
+cor_formula <- log(1 + TOTAL_TRIPS) ~
+  busstop_count +
+  housing_count +
+  biz_count +
+  school_count +
+  fin_count +
+  hc_count +
+  leisure_recre_count +
+  food_bev_count +
+  retail_count +
+  entertn_count +
+  P_(log(distance +1))
+
+cor_mat <- pair_cor(
+  hex_multi_net,
+  spflow_formula = cor_formula,
+  add_lags_x = FALSE
+)
+
+colnames(cor_mat) <- paste0(
+  substr(
+    colnames(cor_mat), 1, 3), "..."
+  )
+
+cor_image(cor_mat)
+```
+
+# Model Calibration
+
+```{r}
+#| eval: false
+base_model <- spflow(
+  spflow_formula = log(1 + TOTAL_TRIPS) ~
+   O_(busstop_count +
+  housing_count +
+  biz_count +
+  school_count +
+  fin_count +
+  hc_count +
+  leisure_recre_count +
+  food_bev_count +
+  retail_count +
+  entertn_count) +
+    D_(busstop_count +
+  housing_count +
+  biz_count +
+  school_count +
+  fin_count +
+  hc_count +
+  leisure_recre_count +
+  food_bev_count +
+  retail_count +
+  entertn_count) +
+  P_(log(distance + 1)),
+  spflow_networks = hex_multi_net)
+
+
+base_model
+
+```
+
+```{r}
+#| eval: false
+plot(base_model)
+```
+
+```{r}
+#| eval: false
+fitted_values <- base_model@spflow_indicators$FITTED
+fitted_values <- as.data.frame(fitted_values)
+hex_flow_fitted <- cbind(hex_flow, fitted_values)
+write_rds(hex_flow_fitted,"data/rds/hex_flow_fitted.rds")
+```
+
+## Residual diagnostics
+
+```{r}
+#| eval: false
+old_par <- par(mfrow = c(1,3),
+               mar = c(2,2,2,2))
+spflow_moran_plots(base_model)
+```
+
+```{r}
+#| eval: false
+par(old_par)
+```
+
+```{r}
+#| eval: false
+corr_residual <- pair_cor(base_model)
+colnames(corr_residual) <- substr(colnames(corr_residual),1,3)
+cor_image(corr_residual)
+```
+
+```{r}
+#| eval: false
+model.df <- as_tibble(base_model@spflow_indicators) %>%
+  mutate(FITTED_Y = round(exp(FITTED),0))
+```
+
+```{r}
+#| eval: false
+spflow_formula <- log(1 + TOTAL_TRIPS) ~
+  O_(busstop_count +
+  housing_count +
+  biz_count +
+  school_count +
+  fin_count +
+  hc_count +
+  leisure_recre_count +
+  food_bev_count +
+  retail_count +
+  entertn_count) +
+    D_(busstop_count +
+  housing_count +
+  biz_count +
+  school_count +
+  fin_count +
+  hc_count +
+  leisure_recre_count +
+  food_bev_count +
+  retail_count +
+  entertn_count) +
+  P_(log(distance + 1))
+
+model_control <- spflow_control(
+  estimation_method = "mle",
+  model = "model_8"
+)
+
+mle_model8 <- spflow(
+  spflow_formula,
+  spflow_networks = hex_multi_net,
+  estimation_control = model_control
+)
+
+mle_model8
+```
+
+```{r}
+#| eval: false
+old_par <- par(mfrow = c(1, 3), 
+               mar = c(2,2,2,2))
+spflow_moran_plots(mle_model8)
+
+```
+
+```{r}
+#| eval: false
+inter_zonal_flow <- hex_flow %>%
+  left_join(model.df) %>%
+  mutate(diff = (FITTED_Y-TOTAL_TRIPS))
+```
+
+```{r}
+#| eval: false
+ggplot(data = inter_zonal_flow,
+                aes(x = FITTED,
+                    y = ACTUAL)) +
+  geom_point() +
+  geom_smooth(method = lm) +
+  coord_cartesian(xlim=c(0,14),
+                  ylim=c(0,14)) + 
+  labs(title = "Observed vs. Fitted Values for SEIM",
+       x = "Fitted Values", y = "Observed Values")
+```
+
+# Push-pull factors
+
+```{r}
+#| eval: false
+data <- data.frame(mle_model8@estimation_results)
+```
+
+```{r}
+#| eval: false
+# Convert row names to a separate column
+data <- rownames_to_column(data, var = "Variable")
+
+# Reshape the data
+data <- data %>%
+  pivot_longer(cols = -Variable, names_to = "Statistic", values_to = "Value") %>%
+  mutate(Group = ifelse(grepl("^D_", Variable), "Top", "Bottom"))
+
+
+data <- data %>%
+  mutate(Group = ifelse(grepl("^D_", Variable), "Top", "Bottom"))
+```
+
+```{r}
+#| eval: false
+tstat_data <- data %>%
+  filter(Statistic == "t.stat")
+
+p <- ggplot(tstat_data, aes(x = Variable, y = Value, fill = Group)) +
+  geom_bar(stat = "identity", position = "dodge", width = 0.5) +
+  coord_flip() +
+  labs(x = NULL, y = "t.stat") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+p <- ggplotly(p, tooltip = c("Value"))
+
+p
+```
+
+```{r}
+#| eval: false
+write_rds(data, "data/rds/seim_est.rds")
+```
